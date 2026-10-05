@@ -1,0 +1,8 @@
+# Un lien d'invitation ouvre l'app et ajoute l'ami (compte connecté avec profil complet).
+# maestro test -e FRIEND=loic .maestro/04_lien_invitation.yaml
+appId: app.sweetin.ios
+---
+- launchApp
+- openLink: sweetin://u/${FRIEND}
+- assertVisible: "${FRIEND}"
+- assertVisible: "Partager mon lien|Share my link"

@@ -1,0 +1,229 @@
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { Fondue } from '../components/Fondue';
+import * as Linking from 'expo-linking';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+import { useToast } from '../components/Toast';
+import { Icon } from '../components/Icon';
+import { Body, BottomCTA, Button, Field, Header, Pop, Screen, Title } from '../components/ui';
+import { legal } from '../lib/legal';
+import { t } from '../i18n';
+import { signInWithApple, signInWithGoogle } from '../lib/api';
+import { track } from '../lib/monitoring';
+import { supabase } from '../lib/supabase';
+import { tx, useStyles, useTheme, type Palette } from '../theme';
+
+/**
+ * Connexion ou inscription : Apple, Google, ou email et mot de passe.
+ * Le pseudo et la date de naissance sont demandés juste après, sur /profile-setup,
+ * pour que la connexion Apple ou Google passe par le même chemin.
+ */
+export default function Auth() {
+  const { colors } = useTheme();
+  const s = useStyles(themed);
+  const { mode, next } = useLocalSearchParams<{ mode?: string; next?: string }>();
+  const signup = mode === 'signup';
+  // arrivé ici depuis un premier secret écrit sans compte
+  const sending = next === 'send';
+  const toast = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [appleOk, setAppleOk] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const mailOk = /^\S+@\S+\.\S+$/.test(email.trim());
+  const ready = mailOk && password.length >= 8;
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') AppleAuthentication.isAvailableAsync().then(setAppleOk).catch(() => {});
+  }, []);
+
+  const done = (method: string) => {
+    track(signup ? 'signup_completed' : 'login', { method });
+    router.replace('/');
+  };
+
+  const submit = async () => {
+    if (busy) return;
+    const mail = email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(mail)) return toast(t('auth.badEmail'));
+    if (password.length < 8) return toast(t('auth.shortPassword'));
+    setBusy(true);
+    try {
+      if (signup) {
+        const { data, error } = await supabase.auth.signUp({ email: mail, password, options: { emailRedirectTo: Linking.createURL('/auth-callback') } });
+        if (error) throw new Error(error.message);
+        if (data.session) done('email');
+        else setSent(true);
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: mail, password });
+        if (error) throw new Error(error.message.toLowerCase().includes('confirm') ? t('auth.confirmFirst') : t('auth.wrong'));
+        done('email');
+      }
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const social = async (provider: 'apple' | 'google') => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (provider === 'apple') {
+        await signInWithApple();
+        done('apple');
+      } else if (await signInWithGoogle()) done('google');
+      else toast(t('auth.cancelled'));
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      toast(code === 'ERR_REQUEST_CANCELED' ? t('auth.cancelled') : (e as Error).message || t('common.error'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const forgot = async () => {
+    const mail = email.trim().toLowerCase();
+    if (!mail) return toast(t('auth.emailFirst'));
+    await supabase.auth.resetPasswordForEmail(mail, { redirectTo: Linking.createURL('/auth-callback') });
+    toast(t('auth.forgotSent'));
+  };
+
+  return (
+    <Screen>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Header back logo />
+        <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
+          <View style={{ gap: 6 }}>
+            <Title size={48}>{sending ? t('auth.titleSend') : signup ? t('auth.titleSignup') : t('auth.titleLogin')}</Title>
+            <Body>{sending ? t('auth.subSend') : signup ? t('auth.subSignup') : t('auth.subLogin')}</Body>
+          </View>
+          <View style={s.socials}>
+            {appleOk && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={signup ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP : AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={27}
+                style={s.apple}
+                onPress={() => social('apple')}
+              />
+            )}
+            <Pop radius={27} borderWidth={1.5}>
+              <Pressable accessibilityRole="button" onPress={() => social('google')} style={({ pressed }) => [s.google, pressed && { opacity: 0.7 }]} disabled={busy}>
+                <GoogleG />
+                <Text style={s.googleT}>{t('auth.google')}</Text>
+              </Pressable>
+            </Pop>
+          </View>
+          <View style={s.orRow}>
+            <View style={s.orLine} />
+            <Text style={s.orT}>{t('auth.or')}</Text>
+            <View style={s.orLine} />
+          </View>
+          <Field
+            label={t('auth.email')}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="next"
+            placeholder={t('auth.emailPlaceholder')}
+            right={mailOk ? <OkDot /> : null}
+          />
+          <Field
+            label={t('auth.password')}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPw}
+            textContentType={signup ? 'newPassword' : 'password'}
+            autoComplete={signup ? 'new-password' : 'current-password'}
+            autoCapitalize="none"
+            autoCorrect={false}
+            onSubmitEditing={submit}
+            returnKeyType="go"
+            hint={signup ? t('auth.shortPassword') : undefined}
+            right={
+              <Pressable onPress={() => setShowPw((v) => !v)} hitSlop={10} accessibilityRole="button" accessibilityLabel={showPw ? t('auth.passwordHide') : t('auth.passwordShow')}>
+                <Icon name={showPw ? 'eyeOff' : 'eye'} size={20} color={colors.muted} />
+              </Pressable>
+            }
+          />
+          <View style={s.links}>
+            {!signup && (
+              <Pressable onPress={forgot} hitSlop={8} accessibilityRole="button">
+                <Text style={s.forgot}>{t('auth.forgot')}</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={() => router.setParams({ mode: signup ? 'login' : 'signup' })} hitSlop={8} accessibilityRole="button">
+              <Text style={s.forgot}>{signup ? t('welcome.login') : t('welcome.signup')}</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+        <BottomCTA>
+          <Button label={t('auth.validate')} arrow loading={busy} disabled={!ready} onPress={submit} haptic="medium" />
+          {signup && legal.termsUrl ? (
+            <Pressable onPress={() => Linking.openURL(legal.termsUrl!)} accessibilityRole="link" style={{ paddingTop: 10 }}>
+              <Text style={s.legal}>{t('auth.legal')}</Text>
+            </Pressable>
+          ) : null}
+        </BottomCTA>
+      </KeyboardAvoidingView>
+
+      {sent && (
+        <View style={[StyleSheet.absoluteFill, s.sent]}>
+          <Fondue mood="happy" size={120} />
+          <Title size={44} style={{ textAlign: 'center' }}>
+            {t('auth.sent')}
+          </Title>
+          <Body style={{ textAlign: 'center', color: colors.muted }}>{t('auth.sentSub')}</Body>
+          <Button label={t('auth.confirmed')} tone="cerise" onPress={() => router.replace({ pathname: '/auth', params: { mode: 'login', ...(next ? { next } : {}) } })} />
+        </View>
+      )}
+    </Screen>
+  );
+}
+
+function OkDot() {
+  const s = useStyles(themed);
+  return (
+    <View style={s.ok}>
+      <Icon name="check" size={13} stroke={3.4} />
+    </View>
+  );
+}
+
+function GoogleG() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 48 48">
+      <Path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z" />
+      <Path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z" />
+      <Path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.9-6.2z" />
+      <Path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z" />
+    </Svg>
+  );
+}
+
+const themed = (colors: Palette) =>
+  StyleSheet.create({
+  form: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 20, gap: 20 },
+  socials: { gap: 12 },
+  apple: { height: 54, width: '100%' },
+  google: { height: 50, borderRadius: 27, backgroundColor: colors.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  googleT: { ...tx.bold, fontSize: 17, color: colors.ink },
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  orLine: { flex: 1, height: 2, borderRadius: 1, backgroundColor: colors.sand },
+  orT: { ...tx.black, fontSize: 14, color: colors.muted },
+  links: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  forgot: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
+  sent: { backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 20 },
+  legal: { ...tx.text, fontSize: 12, lineHeight: 16, color: colors.muted, textAlign: 'center', textDecorationLine: 'underline' },
+  ok: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.pistache, alignItems: 'center', justifyContent: 'center' },
+});

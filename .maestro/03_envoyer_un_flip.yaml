@@ -1,0 +1,17 @@
+# Envoie un flip depuis la galerie à un ami existant (compte déjà connecté, au moins un ami et une photo dans la galerie).
+# maestro test -e FRIEND=loic .maestro/03_envoyer_un_flip.yaml
+appId: app.sweetin.ios
+---
+- launchApp
+- tapOn: "Choisir dans la galerie|Pick from gallery"
+- tapOn:
+    index: 0
+    id: ".*PXGGridLayout.*|.*photo.*"
+    optional: true
+- tapOn: "Choose|Choisir"
+- tapOn: "Valider la photo et écrire le message|Use this photo and write the message"
+- inputText: "Test Maestro 🍦"
+- tapOn: "Suivant|Next"
+- tapOn: ${FRIEND}
+- tapOn: "Envoyer !|Send!"
+- assertVisible: "Flip envoyé !|Flip sent!"

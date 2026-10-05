@@ -1,0 +1,22 @@
+# Un compte de moins de 16 ans ne peut pas finir son profil.
+# maestro test -e EMAIL=... -e PASSWORD=... .maestro/02_mineur_bloque.yaml
+appId: app.sweetin.ios
+---
+- launchApp:
+    clearState: true
+- tapOn: "Passer|Skip"
+- tapOn: "SIGNUP|INSCRIPTION|Signup|Inscription"
+- tapOn: "Email"
+- inputText: ${EMAIL}
+- tapOn: "Mot de passe|Password"
+- inputText: ${PASSWORD}
+- tapOn: "VALIDER|Valider|CONTINUE|Continue"
+- tapOn: "Pseudo|Username"
+- inputText: "trop_jeune"
+- tapOn: "JJ|DD"
+- inputText: "01"
+- inputText: "01"
+- inputText: "2015"
+- tapOn: "Continuer|Continue"
+- assertVisible: "Pas encore 🍦|Not yet 🍦"
+- assertVisible: "Supprimer mon compte|Delete my account"

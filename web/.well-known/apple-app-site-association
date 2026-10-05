@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.app.sweetin.ios"],
+        "components": [{ "/": "/u/*", "comment": "Liens d'invitation Sweetin" }]
+      }
+    ]
+  },
+  "webcredentials": { "apps": ["TEAMID.app.sweetin.ios"] }
+}
