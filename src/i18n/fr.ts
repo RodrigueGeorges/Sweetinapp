@@ -57,6 +57,10 @@ export const fr = {
   'auth.linkExpired': 'ce lien a fondu. reconnecte-toi.',
   'auth.welcome': 'bienvenue sur sweetin.',
   'auth.cancelled': 'connexion annulée.',
+  'auth.useEmail': 'plutôt avec un email',
+  'auth.usePhone': 'plutôt par sms',
+  'auth.badPhone': 'ce numéro a l’air bizarre.',
+  'auth.badCode': 'code incorrect.',
   'auth.legal': 'en continuant, tu acceptes nos conditions et notre politique de confidentialité.',
 
   // profil

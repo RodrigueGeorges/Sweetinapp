@@ -1,4 +1,5 @@
-# Connexion : welcome → « j'ai déjà un compte » → écran auth → toggle inscription.
+# Connexion : welcome → « j'ai déjà un compte » → écran auth phone-first (SMS),
+# bascule email, toggle inscription/connexion.
 # Déterministe : tout est local, aucun appel réseau n'est nécessaire.
 appId: host.exp.exponent
 ---
@@ -13,7 +14,14 @@ appId: host.exp.exponent
     visible: "welcome back.|te revoilà."
     timeout: 30000
 - assertVisible: "your sweets are waiting.|tes sweets t’attendent.|tes sweets t'attendent."
-# le bouton reste inactif tant que le formulaire est invalide : pas de toast sans saisie
+# voie royale : le numéro de téléphone et le code SMS, pas de mot de passe
+- assertVisible: "phone number|numéro de téléphone"
+- assertVisible: "get a code|recevoir un code"
+# repli email : bascule vers le formulaire email + mot de passe
+- tapOn: "use email instead|plutôt avec un email"
+- extendedWaitUntil:
+    visible: "password|mot de passe"
+    timeout: 30000
 - tapOn: "let me in|entrer"
 - assertNotVisible: "that email looks off.|cet email a l’air bizarre."
 # bascule vers l'inscription puis retour connexion : le toggle fonctionne dans les 2 sens

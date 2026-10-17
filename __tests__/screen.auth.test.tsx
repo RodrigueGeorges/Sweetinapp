@@ -7,12 +7,16 @@
 
 const mockSignUp = jest.fn();
 const mockSignIn = jest.fn();
+const mockOtp = jest.fn(async (_opts?: unknown): Promise<unknown> => ({ data: {}, error: null }));
+const mockVerifyOtp = jest.fn(async (_opts?: unknown): Promise<unknown> => ({ data: { session: {} }, error: null }));
 const mockResetPw = jest.fn(async (_mail: string, _opts?: unknown) => ({}));
 jest.mock('../src/lib/supabase', () => ({
   supabase: {
     auth: {
       signUp: (...a: unknown[]) => mockSignUp(...a),
       signInWithPassword: (...a: unknown[]) => mockSignIn(...a),
+      signInWithOtp: (...a: unknown[]) => mockOtp(...a),
+      verifyOtp: (...a: unknown[]) => mockVerifyOtp(...a),
       resetPasswordForEmail: (mail: string, opts?: unknown) => mockResetPw(mail, opts),
       getSession: jest.fn(),
     },
@@ -76,14 +80,57 @@ const renderAuth = () =>
     </ToastProvider>,
   );
 
+/** Le SMS est la voie par défaut : les tests email basculent d'abord sur le formulaire email. */
+const switchToEmail = async (r: { findByText: (q: string) => Promise<unknown> }) => fireEvent.press((await r.findByText(t('auth.useEmail'))) as never);
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockParams = { mode: 'login' };
 });
 
+describe('auth · téléphone (voie par défaut)', () => {
+  it('le champ téléphone est affiché en premier, le CTA exige un numéro valide', async () => {
+    const r = await renderAuth();
+    const cta = await r.findByLabelText(t('phone.send'));
+    expect(cta.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.changeText(await r.findByLabelText(t('phone.number')), '+33612345678');
+    const cta2 = await r.findByLabelText(t('phone.send'));
+    expect(cta2.props.accessibilityState?.disabled).toBe(false);
+  });
+
+  it('numéro valide → code envoyé, champ code affiché', async () => {
+    const r = await renderAuth();
+    fireEvent.changeText(await r.findByLabelText(t('phone.number')), '+33612345678');
+    fireEvent.press(await r.findByText(t('phone.send')));
+    await waitFor(() => expect(mockOtp).toHaveBeenCalledWith({ phone: '+33612345678' }));
+    expect(await r.findByLabelText(t('phone.code'))).toBeTruthy();
+  });
+
+  it('6 chiffres saisis → verifyOtp → accueil', async () => {
+    const r = await renderAuth();
+    fireEvent.changeText(await r.findByLabelText(t('phone.number')), '+33612345678');
+    fireEvent.press(await r.findByText(t('phone.send')));
+    fireEvent.changeText(await r.findByLabelText(t('phone.code')), '123456');
+    await waitFor(() => expect(mockVerifyOtp).toHaveBeenCalledWith({ phone: '+33612345678', token: '123456', type: 'sms' }));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
+  });
+
+  it('code faux → message clair, on reste sur place', async () => {
+    mockVerifyOtp.mockResolvedValueOnce({ data: {}, error: new Error('Token has expired or is invalid') });
+    const r = await renderAuth();
+    fireEvent.changeText(await r.findByLabelText(t('phone.number')), '+33612345678');
+    fireEvent.press(await r.findByText(t('phone.send')));
+    fireEvent.changeText(await r.findByLabelText(t('phone.code')), '000000');
+    expect(await r.findByText(t('auth.badCode'))).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalledWith('/');
+  });
+});
+
 describe('auth · validation', () => {
   it('le CTA exige un email valide et 8 caractères', async () => {
-    const { findByLabelText } = await renderAuth();
+    const r = await renderAuth();
+    await switchToEmail(r);
+    const { findByLabelText } = r;
     const cta = await findByLabelText(t('auth.validate'));
     // CTA désactivé tant que le formulaire n'est pas prêt
     expect(cta.props.accessibilityState?.disabled).toBe(true);
@@ -96,7 +143,9 @@ describe('auth · validation', () => {
   });
 
   it('email invalide → message clair, pas d’appel réseau', async () => {
-    const { findByLabelText, findByText } = await renderAuth();
+    const r = await renderAuth();
+    await switchToEmail(r);
+    const { findByLabelText, findByText } = r;
     fireEvent.changeText(await findByLabelText(t('auth.email')), 'pasunmail');
     fireEvent.changeText(await findByLabelText(t('auth.password')), 'motdepassetreslong');
     // le CTA est désactivé : la validation part via « entrée » du clavier
@@ -109,7 +158,9 @@ describe('auth · validation', () => {
 describe('auth · login', () => {
   it('email + mot de passe valides → signInWithPassword → accueil', async () => {
     mockSignIn.mockResolvedValue({ data: {}, error: null });
-    const { findByLabelText, findByText } = await renderAuth();
+    const r = await renderAuth();
+    await switchToEmail(r);
+    const { findByLabelText, findByText } = r;
     fireEvent.changeText(await findByLabelText(t('auth.email')), 'moi@test.fr');
     fireEvent.changeText(await findByLabelText(t('auth.password')), 'motdepasse123');
     fireEvent.press(await findByText(t('auth.validate')));
@@ -119,7 +170,9 @@ describe('auth · login', () => {
 
   it('mauvais identifiants → message « wrong », on reste sur place', async () => {
     mockSignIn.mockResolvedValue({ data: {}, error: new Error('Invalid login credentials') });
-    const { findByLabelText, findByText } = await renderAuth();
+    const r = await renderAuth();
+    await switchToEmail(r);
+    const { findByLabelText, findByText } = r;
     fireEvent.changeText(await findByLabelText(t('auth.email')), 'moi@test.fr');
     fireEvent.changeText(await findByLabelText(t('auth.password')), 'motdepasse123');
     fireEvent.press(await findByText(t('auth.validate')));
@@ -128,7 +181,9 @@ describe('auth · login', () => {
   });
 
   it('mot de passe oublié → lien de réinitialisation envoyé', async () => {
-    const { findByLabelText, findByText } = await renderAuth();
+    const r = await renderAuth();
+    await switchToEmail(r);
+    const { findByLabelText, findByText } = r;
     fireEvent.changeText(await findByLabelText(t('auth.email')), 'moi@test.fr');
     fireEvent.press(await findByText(t('auth.forgot')));
     expect(mockResetPw).toHaveBeenCalledWith('moi@test.fr', expect.objectContaining({ redirectTo: expect.stringContaining('auth-callback') }));
@@ -139,8 +194,10 @@ describe('auth · signup', () => {
   it('signup sans session immédiate → écran « check your email »', async () => {
     mockParams = { mode: 'signup', next: 'send' };
     mockSignUp.mockResolvedValue({ data: { session: null }, error: null });
-    const { findByLabelText, findByText } = await renderAuth();
+    const r = await renderAuth();
+    const { findByText, findByLabelText } = r;
     expect(await findByText(t('auth.titleSend'))).toBeTruthy();
+    await switchToEmail(r);
     fireEvent.changeText(await findByLabelText(t('auth.email')), 'nouveau@test.fr');
     fireEvent.changeText(await findByLabelText(t('auth.password')), 'motdepasse123');
     fireEvent.press(await findByText(t('auth.validate')));

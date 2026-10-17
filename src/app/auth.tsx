@@ -2,14 +2,15 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { Fondue } from '../components/Fondue';
 import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, type TextInput } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useToast } from '../components/Toast';
 import { Icon } from '../components/Icon';
 import { Sticker } from '../components/Reactions';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Body, BottomCTA, Button, Field, Header, Pop, Screen, Title } from '../components/ui';
+import { toE164 } from '../lib/contacts';
 import { legal } from '../lib/legal';
 import { t } from '../i18n';
 import { signInWithApple, signInWithGoogle } from '../lib/api';
@@ -18,9 +19,10 @@ import { supabase } from '../lib/supabase';
 import { colors, tx } from '../theme';
 
 /**
- * Connexion ou inscription : Apple, Google, ou email et mot de passe.
- * Le pseudo et la date de naissance sont demandés juste après, sur /profile-setup,
- * pour que la connexion Apple ou Google passe par le même chemin.
+ * Connexion ou inscription : le SMS est la voie royale — un code reçu en quelques
+ * secondes, ni mot de passe ni aller-retour dans la boîte mail (et le numéro sert
+ * direct au matching des contacts). Apple et Google restent, l'email en repli.
+ * Le pseudo et la date de naissance sont demandés juste après, sur /profile-setup.
  */
 export default function Auth() {
   const { mode, next, mail } = useLocalSearchParams<{ mode?: string; next?: string; mail?: string }>();
@@ -28,12 +30,18 @@ export default function Auth() {
   // arrivé ici depuis un premier secret écrit sans compte
   const sending = next === 'send';
   const toast = useToast();
+  const [method, setMethod] = useState<'phone' | 'email'>('phone');
   const [email, setEmail] = useState(mail ?? '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [appleOk, setAppleOk] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [e164, setE164] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+  const codeRef = useRef<TextInput>(null);
   const mailOk = /^\S+@\S+\.\S+$/.test(email.trim());
   const ready = mailOk && password.length >= 8;
 
@@ -41,10 +49,69 @@ export default function Auth() {
     if (Platform.OS === 'ios') AppleAuthentication.isAvailableAsync().then(setAppleOk).catch(() => {});
   }, []);
 
-  const done = (method: string) => {
-    track(signup ? 'signup_completed' : 'login', { method });
+  const done = (m: string) => {
+    track(signup ? 'signup_completed' : 'login', { method: m });
     router.replace('/');
   };
+
+  // le renvoi a un tempo : un SMS toutes les 30 s maximum
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const iv = setTimeout(() => setCooldown((n) => n - 1), 1000);
+    return () => clearTimeout(iv);
+  }, [cooldown]);
+
+  /** Code par SMS : inscription et connexion au même endroit (Supabase crée le compte si besoin). */
+  const sendCode = async () => {
+    if (busy) return;
+    const n = toE164(phone);
+    if (!n) return toast(t('auth.badPhone'));
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ phone: n });
+      if (error) throw new Error(error.message);
+      setE164(n);
+      setCode('');
+      setCooldown(30);
+      setTimeout(() => codeRef.current?.focus(), 200);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = useCallback(async () => {
+    if (!e164 || code.length < 6 || busy) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({ phone: e164, token: code, type: 'sms' });
+      if (error) {
+        const m = error.message.toLowerCase();
+        throw new Error(m.includes('invalid') || m.includes('expired') || m.includes('token') ? t('auth.badCode') : error.message);
+      }
+      done('phone');
+    } catch (e) {
+      toast((e as Error).message);
+      setCode('');
+    } finally {
+      setBusy(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- done est stable (fonction du composant)
+  }, [e164, code, busy, toast]);
+
+  // 6 chiffres tapés : on vérifie sans attendre le bouton (une seule tentative par saisie)
+  const tried = useRef(false);
+  useEffect(() => {
+    if (code.length < 6) {
+      tried.current = false;
+      return;
+    }
+    if (!tried.current && e164 && !busy) {
+      tried.current = true;
+      verify();
+    }
+  }, [code, e164, busy, verify]);
 
   const submit = async () => {
     if (busy) return;
@@ -137,50 +204,112 @@ export default function Auth() {
             <Text style={s.orT}>{t('auth.or')}</Text>
             <View style={s.orLine} />
           </View>
-          <Field
-            label={t('auth.email')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            autoComplete="email"
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="next"
-            placeholder={t('auth.emailPlaceholder')}
-            right={mailOk ? <OkDot /> : null}
-          />
-          <Field
-            label={t('auth.password')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPw}
-            textContentType={signup ? 'newPassword' : 'password'}
-            autoComplete={signup ? 'new-password' : 'current-password'}
-            autoCapitalize="none"
-            autoCorrect={false}
-            onSubmitEditing={submit}
-            returnKeyType="go"
-            hint={signup ? t('auth.shortPassword') : undefined}
-            right={
-              <Pressable onPress={() => setShowPw((v) => !v)} hitSlop={10} accessibilityRole="button" accessibilityLabel={showPw ? t('auth.passwordHide') : t('auth.passwordShow')}>
-                <Icon name={showPw ? 'eyeOff' : 'eye'} size={20} color={colors.muted} />
-              </Pressable>
-            }
-          />
-          <View style={s.links}>
-            {!signup && (
-              <Pressable onPress={forgot} hitSlop={8} accessibilityRole="button">
-                <Text style={s.forgot}>{t('auth.forgot')}</Text>
-              </Pressable>
-            )}
-            <Pressable onPress={() => router.setParams({ mode: signup ? 'login' : 'signup' })} hitSlop={8} accessibilityRole="button">
-              <Text style={s.forgot}>{signup ? t('welcome.login') : t('welcome.signup')}</Text>
-            </Pressable>
-          </View>
+          {method === 'phone' ? (
+            <>
+              <Field
+                label={t('phone.number')}
+                value={phone}
+                onChangeText={(v) => {
+                  setPhone(v);
+                  setE164(null);
+                  setCode('');
+                }}
+                keyboardType="phone-pad"
+                textContentType="telephoneNumber"
+                autoComplete="tel"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={sendCode}
+                placeholder={t('phone.placeholder')}
+                right={e164 ? <OkDot /> : null}
+              />
+              {e164 ? (
+                <View style={{ gap: 10 }}>
+                  <Field
+                    ref={codeRef}
+                    label={t('phone.code')}
+                    value={code}
+                    onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
+                    keyboardType="number-pad"
+                    textContentType="oneTimeCode"
+                    autoComplete="sms-otp"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    maxLength={6}
+                    style={s.code}
+                    onSubmitEditing={verify}
+                    returnKeyType="go"
+                  />
+                  <Pressable onPress={sendCode} hitSlop={8} accessibilityRole="button" disabled={cooldown > 0 || busy} style={{ alignSelf: 'flex-start' }}>
+                    <Text style={[s.forgot, (cooldown > 0 || busy) && { color: colors.muted, textDecorationLine: 'none' }]}>{cooldown > 0 ? t('phone.resendIn', { n: cooldown }) : t('phone.resend')}</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+              <View style={s.links}>
+                <Pressable onPress={() => setMethod('email')} hitSlop={8} accessibilityRole="button">
+                  <Text style={s.forgot}>{t('auth.useEmail')}</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <>
+              <Field
+                label={t('auth.email')}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+                placeholder={t('auth.emailPlaceholder')}
+                right={mailOk ? <OkDot /> : null}
+              />
+              <Field
+                label={t('auth.password')}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPw}
+                textContentType={signup ? 'newPassword' : 'password'}
+                autoComplete={signup ? 'new-password' : 'current-password'}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onSubmitEditing={submit}
+                returnKeyType="go"
+                hint={signup ? t('auth.shortPassword') : undefined}
+                right={
+                  <Pressable onPress={() => setShowPw((v) => !v)} hitSlop={10} accessibilityRole="button" accessibilityLabel={showPw ? t('auth.passwordHide') : t('auth.passwordShow')}>
+                    <Icon name={showPw ? 'eyeOff' : 'eye'} size={20} color={colors.muted} />
+                  </Pressable>
+                }
+              />
+              <View style={s.links}>
+                {!signup && (
+                  <Pressable onPress={forgot} hitSlop={8} accessibilityRole="button">
+                    <Text style={s.forgot}>{t('auth.forgot')}</Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={() => router.setParams({ mode: signup ? 'login' : 'signup' })} hitSlop={8} accessibilityRole="button">
+                  <Text style={s.forgot}>{signup ? t('welcome.login') : t('welcome.signup')}</Text>
+                </Pressable>
+                <Pressable onPress={() => setMethod('phone')} hitSlop={8} accessibilityRole="button">
+                  <Text style={s.forgot}>{t('auth.usePhone')}</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
         </ScrollView>
         <BottomCTA>
-          <Button label={t('auth.validate')} arrow loading={busy} disabled={!ready} onPress={submit} haptic="medium" />
+          <Button
+            label={method === 'email' ? t('auth.validate') : e164 ? t('phone.verify') : t('phone.send')}
+            arrow
+            loading={busy}
+            disabled={method === 'email' ? !ready : e164 ? code.length < 6 : !toE164(phone)}
+            onPress={method === 'email' ? submit : e164 ? verify : sendCode}
+            haptic="medium"
+          />
           {signup && legal.termsUrl ? (
             <Pressable onPress={() => Linking.openURL(legal.termsUrl!)} accessibilityRole="link" style={{ paddingTop: 10 }}>
               <Text style={s.legal}>{t('auth.legal')}</Text>
@@ -236,6 +365,7 @@ const s = StyleSheet.create({
   orLine: { flex: 1, height: 2, borderRadius: 1, backgroundColor: colors.sand },
   orT: { ...tx.black, fontSize: 14, color: colors.muted },
   links: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  code: { letterSpacing: 10, textAlign: 'center' as const, ...tx.black, fontSize: 22 },
   forgot: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
   sent: { backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 20 },
   legal: { ...tx.text, fontSize: 12, lineHeight: 16, color: colors.muted, textAlign: 'center', textDecorationLine: 'underline' },

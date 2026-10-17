@@ -59,6 +59,10 @@ export const en: Record<Key, string> = {
   'auth.linkExpired': 'that link melted. log in again.',
   'auth.welcome': 'welcome to sweetin.',
   'auth.cancelled': 'login cancelled.',
+  'auth.useEmail': 'use email instead',
+  'auth.usePhone': 'use a text instead',
+  'auth.badPhone': 'that number looks off.',
+  'auth.badCode': 'wrong code.',
   'auth.legal': 'by continuing, you agree to our terms and privacy policy.',
 
   // profile

@@ -38,6 +38,18 @@ additional_redirect_urls = ["sweetin://auth-callback", "sweetin://google-auth"]
 [auth.email]
 enable_confirmations = true
 
+# voie royale : OTP par SMS (Twilio déjà configuré côté projet hébergé ;
+# activer « Phone » dans Authentication → Providers pour l'inscription/connexion)
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+
+[auth.sms.twilio]
+enabled = true
+account_sid = "env(TWILIO_ACCOUNT_SID)"
+message_service_sid = "env(TWILIO_MESSAGE_SERVICE_SID)"
+auth_token = "env(TWILIO_AUTH_TOKEN)"
+
 [auth.external.apple]
 enabled = true
 client_id = "env(APPLE_BUNDLE_ID)"
