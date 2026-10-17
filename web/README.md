@@ -6,11 +6,13 @@
 
 | Adresse | Fichier | Utilisée par |
 | --- | --- | --- |
+| `/` | `index.html` | page d'accueil : démo de grattage animée, slogan, boutons App Store / Google Play, liens légaux | |
 | `/confidentialite/` · `/en/privacy/` | politique de confidentialité | l'app (Réglages), App Store, Google Play |
 | `/conditions/` · `/en/terms/` | conditions d'utilisation et mentions légales | l'app (Réglages), App Store |
 | `/suppression-compte/` · `/en/delete-account/` | comment supprimer son compte | Google Play (obligatoire) |
-| `/f/<jeton>` | `f/index.html` | flips envoyés par lien privé ou en story : la personne gratte dans son navigateur ; toutes les adresses `/f/*` doivent servir ce fichier |
-| `/og.png` | image d'aperçu des liens (WhatsApp, iMessage…) | |
+| `/f/<jeton>` | `f/index.html` | sweets envoyés par lien privé ou en story : la personne gratte dans son navigateur, lit le mot 10 s, puis il fond ; toutes les adresses `/f/*` doivent servir ce fichier |
+| `/og.png` | image d'aperçu des liens (WhatsApp, iMessage…), 1200 × 630 | |
+| `/fonts/*.woff2` · `/sucre-givre.png` | polices et sucre givré de l'app (DA « net + éclats »), servis depuis le site : aucune requête vers Google Fonts | `f/`, `u/` |
 | `/u/<pseudo>` | `u/index.html` | liens d'invitation ; toutes les adresses `/u/*` doivent servir ce fichier (règle de réécriture) |
 | `/.well-known/apple-app-site-association` | liens universels iOS | servir en `application/json`, sans redirection |
 | `/.well-known/assetlinks.json` | liens d'app Android | |
@@ -27,8 +29,10 @@ Les passages surlignés en jaune dans les pages (`<span class="todo">`) sont à 
 Ailleurs :
 - `.well-known/apple-app-site-association` : remplacer `TEAMID` par l'identifiant d'équipe Apple ;
 - `.well-known/assetlinks.json` : empreinte SHA-256 du certificat de signature (`eas credentials` > Android) et celle de Google Play App Signing ;
-- `u/index.html` et `f/index.html` : remplacer `APP_STORE_ID`.
-- `f/index.html` : renseigner l'adresse des fonctions Supabase dans la balise `<meta name="sweetin-api">` (`https://<ref-du-projet>.supabase.co/functions/v1`).
+- `u/index.html` et `f/index.html` : remplacer `APP_STORE_ID` (uniquement quand l'app iOS sort — jusque-là, les iPhones voient la liste d'attente).
+- `index.html`, `f/index.html` et `u/index.html` : remplacer `REF-DU-PROJET` (balise `<meta name="sweetin-api">`) par la référence du projet Supabase, en une commande :
+  `grep -rl REF-DU-PROJET . | xargs sed -i 's/REF-DU-PROJET/<ref>/'`
+- pages légales (`conditions/`, `confidentialite/`, `en/terms/`, `en/privacy/`) : remplir les champs `class="todo"` (en jaune).
 
 Exemple de règles de réécriture (Netlify, fichier `_redirects`) :
 

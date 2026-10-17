@@ -1,6 +1,8 @@
-# Sweetin · Send a flip
+# Sweetin · un mot caché sous une photo
 
-Tu prends une photo, tu la retournes pour écrire un petit secret derrière, tu l'envoies. Ton ami gratte la photo avec son doigt pour découvrir le message. Une fois tout gratté, la photo et le message sont supprimés du serveur : il ne reste que la trace (combien gratté, en combien de temps, la réaction).
+Tu prends une photo, elle se retourne, tu caches un mot dessous, tu l'envoies. Ton ami gratte la photo du doigt pour lire le mot ; 10 secondes plus tard, tout fond. La photo et le mot sont supprimés du serveur : il ne reste que la trace (lu, en combien de temps, la réaction).
+
+**Mise en ligne : suivre `MISE-EN-LIGNE.md`.**
 
 - **App** : Expo SDK 57 (React Native 0.86), Expo Router, Skia pour le grattage, Reanimated pour la carte qui se retourne. Une seule base de code pour iOS et Android.
 - **Back-end** : Supabase (Postgres + sécurité ligne par ligne, Auth email/Apple/Google, Storage privé, Edge Functions, Realtime) et notifications push via le service Expo (APNs + FCM).
@@ -45,6 +47,60 @@ __tests__/, .maestro/    tests unitaires (Jest) et parcours de bout en bout (Mae
 - **Séries 🔥** : jours consécutifs d'échange avec chaque ami, affichés dans Contacts et « Envoyer à », célébrés à l'envoi. Rappel à 19 h quand une série de 2 jours ou plus va s'éteindre.
 - **Mesure** : chaque nouvel inscrit invité est rattaché à son parrain et à la source (lien, flip, story, QR, contacts). Tableau quotidien dans le SQL editor : `select * from admin_growth;` (inscrits, inscrits parrainés, expéditeurs actifs, flips, liens ouverts, ouvertures de stories, facteur K). Événements PostHog : `link_shared`, `story_shared`, `contacts_matched`, `qr_scanned`, `invite_pasted`, `friends_step_done`…
 - **Correctif de sécurité** : un utilisateur pouvait modifier lui-même son profil (et donc se déclarer « profil complet » sans vérification d'âge). Les profils ne sont plus modifiables que par les fonctions serveur.
+
+## Version 14.5 : harmonisation (audit complet)
+
+- **Écran « fondu. »** : la flaque (`components/Flaque.tsx`) remplit l'espace : la glace tombe cornet en l'air, la boule s'étale en flaque framboise, vermicelles citron. Masquée sur les petits écrans, immobile si « réduire les animations ».
+- **Onglet envoyés** : des cartes, plus une liste de texte. Vignette qui coule (`SentThumb`, « fondu » une fois lu), l'ami, et le statut en autocollants : « lu en 4,5 s » citron, la réaction reçue, « capture tentée » framboise. `listSent` et `listLinks` remontent l'aperçu flou de la photo envoyée.
+- **Vocabulaire** : « lu », plus « gratté », côté envoyeur (app et notifications : « dan a lu ton mot en 4,5 s. il a fondu. », sans pourcentage) ; « lu sans gratter » quand on a touché « lire sans gratter ».
+- **Tout en minuscules** : titres de section, badge « un passage », « caché sous ta photo », « étape 1 sur 2 ».
+- **Boutons** : nuit partout (aussi à l'inscription des amis et en sombre), texte nuit sur la framboise (contraste AA, 5,2:1), et ils disent la suite : « écrire le mot », « prendre mon premier sweet », « coche un ami ». Un fondu au-dessus de chaque barre du bas.
+- **Séries** : toujours le chiffre suivi de « j » (« 41j ») dans les listes.
+- **Correctifs** : le doigt d'aide disparaît après « lire sans gratter » ; icône « reprendre » visible en sombre ; coches lisibles sur citron ; QR code à la bonne framboise ; logo centré sur l'écran des amis.
+- **Widgets iOS et Android** : la carte de la vitrine (photo floutée, sucre, « gratte. », bas qui coule) sur le fond de l'écran, glace et bord qui coule tracés en SwiftUI (`targets/widget/BrandShapes.swift`, généré depuis les tracés de l'app), compteur citron, bouton nuit.
+- **Site** : `/f/` (lien privé) et `/u/` (invitation) refaits dans la DA : carte qui coule, autocollants, cœur nuit, le mot lu 10 s puis il fond en flaque ; plus de « secret ». Nouvelle image d'aperçu `og.png`. Polices de l'app servies par le site (`web/fonts/`), plus d'appel à Google Fonts. Pages légales : en-tête blanc, « flip » → « sweet », chemin de suppression du compte mis à jour.
+
+## Version 14 : écrans « Fondant » (vitrine façon BeReal, lecture, création, envoi)
+
+- **Navigation** : plus de barre d'onglets. La vitrine est l'accueil ; le déclencheur framboise en bas ouvre l'appareil photo en plein écran (anneau compte à rebours pendant le sweet hour), les amis s'ouvrent depuis le bouton en haut à gauche, le profil depuis l'avatar en haut à droite (`app/(tabs)/_layout.tsx`, dossier gardé pour ne casser aucun lien).
+- **Vitrine** : reçus / envoyés, bandeau « ton tour » (série en danger) ou sweet hour en citron, une grande carte puis la grille. Cartes `SweetCard` : photo floutée sous le sucre givré (`assets/sucre-givre.png`, tuile répétée), coins hauts arrondis, bas qui coule (`DripEdge`, forme dans `components/dripEdge.ts`).
+- **Lecture** : coque « gratte. » + « lire sans gratter », dessous le cœur framboise avec le mot en display nuit, réactions en autocollants (je fonds, mdrr, jpp, omg, encore ; l'emoji reste stocké côté serveur), écran « fondu. » avec la feuille « ça t'a fait quoi ? ».
+- **Création** : le dos de la carte est le cœur framboise (« caché sous ta photo »). **Envoi** : « à qui ? », séries à sauver en tête, jours de série en grand chiffre (`StreakNum` : un 6 ou un 9 seul en Funnel Sans).
+- **Couleur, net en grand et éclats en petit** : fond blanc (nuit en sombre), la photo porte la couleur ; le cœur (le mot caché) est nuit avec le mot en blanc (`colors.coeur`), comme le bandeau « ton tour », le record de série et l'écran « envoyé ». Le fun vient des éclats : framboise (déclencheur, pastilles, logo) et citron (autocollants, séries, sweet hour). Pas de pastel en aplat.
+- **Boutons** : l'action principale est nuit (blanche en sombre, nuit fixe sur la framboise) ; la framboise est réservée au déclencheur et à une action de marque par écran.
+- **Wording** : « flip » devient « sweet » partout (app, widget, notifications et messages des fonctions serveur, à redéployer).
+
+## Version 13 : « Fondant », le i est une glace
+
+Référence : le canvas de maquettes et le design system « Fondant » (artifacts claude.ai). Cette version en applique la marque à l'app ; la mise en page des écrans (cartes au bord qui coule, sucre givré, barre du haut en verre) reste à reprendre écran par écran.
+
+- **Logo** : le i de `sweetin` est une glace, la boule fait le point, le cornet fait le jambage ; lettres en Climate Crisis 1985 très grasses. Une seule goutte dans toute la marque, celle de la glace. Tracés sans masque dans `components/logoPath.ts` (`LOGO_WORD`, `LOGO_SCOOP`, `LOGO_CONE`). Hauteur minimum 24 pt, sinon la glace seule.
+- **Glace** : le cornet de 2014 réduit à trois formes (cercle coupé, une goutte, triangle), découpes déjà faites (`ICE_SCOOP`, `ICE_CONE`, versions `_MINI` sous 40 pt). C'est l'icône (boule blanche, cornet nuit sur framboise ; variantes sombre et teintée), le splash, le widget, l'icône de notification et le favicon.
+- **Couleurs** : framboise `#FF2E5B` à plat (fin du dégradé sorbet), nuit `#160F12`, citron `#E8FF5A` pour la pointe (compteurs, sweet hour), sucre `#FFE6EB` pour les fonds doux. Framboise texte `#C40E3B` (contraste AA sur blanc). Les noms historiques de `theme.ts` (`cerise`, `cacao`, `pistache`) pointent vers ces valeurs.
+- **Typo** : Climate Crisis (instances statiques 2008 et 1979, `SweetinDisplay*.ttf`) pour les titres, les chiffres et la story ; Funnel Sans 500/700/800 (`SweetinText-*.ttf`) pour tout le texte de l'interface. Climate Crisis est très large : `displayScale` (0,72) ramène les tailles pensées pour une fonte normale. Licences OFL dans `assets/fonts`.
+- **Lancement** (0,9 s) : la glace du splash natif se pose, glisse dans le mot à la place du i pendant que les lettres apparaissent, puis tout s'efface.
+- **Widgets** iOS et Android, Live Activity (citron sur la Dynamic Island), image de story, pages web `/u`, `/f` et pages légales, et 24 captures stores refaits dans cette DA.
+
+## Version 12 : « cœur fondant », retour à l'ADN de 2014
+
+Constat : les versions 9 à 11 cherchaient la nouveauté (menthe, police bulle, emojis 3D) et faisaient « cheap ». Les premiers visuels de Sweetin étaient meilleurs : minimalistes, un dégradé rouge, une glace blanche, des cartes blanches et un script. On repart de là, en plus épuré (comme Magnum : une évolution qui garde le capital de la marque plutôt qu'une révolution).
+
+- **L'idée** : comme un dessert, la photo est la coque et le message est le cœur fondant. Le message se révèle en italique framboise sur la photo givrée rosée ; après la lecture, la photo fond (« fondu. »).
+- **Dégradé sorbet** framboise `#FF2A68` → fraise `#FF4A33` pour les moments de marque (accueil, splash, célébration, bandeau de série, bouton principal). Interface blanche (nuit si le téléphone est en sombre), texte encre `#17090D`, framboise `#E0194D` pour le texte d'accent.
+- **Glace** : la glace blanche de 2014 redessinée, dôme au bord ondulé qui fond, une coulure qui glisse sur le cornet (`ICE_SCOOP`, `ICE_CONE` dans `components/logoPath.ts`). C'est l'icône (blanche sur dégradé), le splash, la pastille des écrans vides et le petit signe des séries.
+- **Typo** : Fraunces italique douce (SOFT 100, graisse 600, OFL), héritière du script de 2014, pour le logo, les titres et le texte des grands boutons ; police du système pour tout le reste.
+- **Réactions** en emoji du système ; plus d'emojis 3D, de couleurs néon ni de police bulle. Avatars sobres.
+- Icônes générées par `scratchpad/lg/gen7.py`. Pages web, pages légales, aperçu des liens, widgets, Live Activity et 24 captures stores refaits dans cette DA.
+
+## Version 11 : « frais », inspirée de Bump et BeReal (remplacée par la V12)
+
+- **Menthe glacée** `#3DFFC0` + noir + blanc. La menthe est toujours un aplat avec du texte noir (bouton principal, bandeau de série, accueil, splash), jamais du texte sur blanc. Fond blanc par défaut, noir pur si le téléphone est en sombre. Rose bonbon `#FF6FB5` pour le badge de la boîte, rouge `#E5193F` pour les alertes.
+- **Logo** « sweetin » en Bagel Fat One (police bulle, OFL) ; **icône** : un gros « s » noir sur menthe (sombre : menthe sur noir). Tracés dans `components/logoPath.ts`, icônes générées par `scratchpad/lg/gen6.py`. Splash : le « s » s'écrase comme une guimauve, rebondit, s'efface.
+- **Titres** en Inter Tight Black (net, comme BeReal), minuscules et point final ; texte courant en police système.
+- **Emojis 3D** (set Fluent de Microsoft, licence MIT, `assets/emoji/`) : les 5 réactions, la série (🍦, ⏳ quand elle va s'éteindre), et Fondue (👋 👀 🥳 🫠 😳 🥺 selon l'humeur). Composant `Emoji3D`.
+- **Avatars façon sticker** (contour blanc, ombre douce) sur une couleur sorbet par personne.
+- Pages web, pages légales, aperçu des liens, widgets iOS et Android, Live Activity et 24 captures stores refaits dans cette DA.
+- Les noms de jetons historiques restent (`cerise` = couleur de marque, `cacao` = noir, `vanille` = blanc) pour ne pas tout renommer ; `onBrand` = texte sur la menthe.
 
 ## Version 10 : identité resserrée, inspirée des apps de référence
 
@@ -314,15 +370,15 @@ L'aperçu web ne montre ni la caméra, ni les vibrations, ni l'écran verrouill�
 **2. Ce qu'il faut vérifier, sur 1 iPhone récent, 1 iPhone ancien (iOS 17) et 1 Android d'entrée de gamme**
 - Lancement : splash natif puis splash animé sans saut ; icône claire, sombre et teintée sur l'écran d'accueil (iOS 18+).
 - Caméra : prise de vue, flash, double tap pour retourner, galerie ; effet de développement du polaroid.
-- Lecture : grattage plein écran fluide (60 i/s), vibrations à chaque dixième, son et vibration « swee-ti-n » à la révélation, fonte après 10 s avec le « plic ».
+- Lecture : grattage plein écran fluide (60 i/s), vibrations à chaque dixième, son et vibration « swee-ti-n » à la révélation, fonte lettre par lettre après 10 s avec le « plic », puis la flaque.
 - Selfie : prise, recadrage, refus d'une photo inacceptable (modération), affichage chez un ami.
-- Notifications : flip reçu, Sweet Hour (Live Activity sur l'écran verrouillé et la Dynamic Island en iOS 17.2+, notification prioritaire sur Android), série en danger.
-- Widgets iOS et Android : logo, compteur, ouverture de la boîte.
+- Notifications : sweet reçu, Sweet Hour (Live Activity sur l'écran verrouillé et la Dynamic Island en iOS 17.2+, notification prioritaire sur Android), série en danger.
+- Widgets iOS et Android : la carte qui coule avec « gratte. », compteur citron, ouverture de la vitrine ; bouton « envoyer un sweet ».
 - Liens : `sweetin.app/f/…` et `/u/…` ouvrent l'app installée ; sinon la page web et son aperçu (WhatsApp, iMessage).
-- Accessibilité : VoiceOver/TalkBack révèlent le message sans gratter ; texte très grand lisible ; « Réduire les animations » coupe le splash animé et la fonte.
-- Demande de note : elle n'apparaît qu'après une réaction, à partir du 3e secret (TestFlight ne l'affiche pas : vérifier seulement que rien ne casse).
+- Accessibilité : « lire sans gratter » pour tout le monde, VoiceOver/TalkBack aussi ; texte très grand lisible ; « Réduire les animations » coupe le splash animé et la fonte.
+- Demande de note : elle n'apparaît qu'après une réaction, à partir du 3e sweet lu (TestFlight ne l'affiche pas : vérifier seulement que rien ne casse).
 
-**3. Bêta fermée (une à deux semaines)** : TestFlight externe + test fermé Google Play avec 20 à 50 amis, en mesurant la part de nouveaux inscrits qui envoient un premier secret et la part de secrets grattés.
+**3. Bêta fermée (une à deux semaines)** : TestFlight externe + test fermé Google Play avec 20 à 50 amis, en mesurant la part de nouveaux inscrits qui envoient un premier sweet et la part de sweets lus.
 
 ## 6. Ce que les stores vont exiger
 
@@ -330,7 +386,7 @@ L'aperçu web ne montre ni la caméra, ni les vibrations, ni l'écran verrouill�
 - [ ] **Textes des fiches**, questionnaires d'âge, étiquettes de confidentialité Apple, formulaire « Sécurité des données » Google et notes pour la revue Apple : prêts dans `store/fiches-stores.md`.
 - [ ] **Suppression du compte dans l'app** : fait (Réglages → Supprimer mon compte). La page web demandée par Google est dans `web/suppression-compte/`.
 - [ ] **Contenu créé par les utilisateurs** (Apple 1.2, Google UGC) : signalement et blocage faits ; il faut en plus des conditions d'utilisation qui interdisent les contenus abusifs, et quelqu'un qui traite la table `reports` sous 24 h.
-- [ ] **Âge** : l'app demande la date de naissance et refuse les moins de 16 ans (`min_age()` dans la migration v2). Là où une loi l'exige (Texas depuis le 4 juin 2026), la tranche d'âge déclarée au store est aussi lue (`lib/age.ts`). L'App Store ne permet pas d'exclure un seul État : soit cette vérification suffit (à faire valider par un juriste), soit ne pas sortir aux États-Unis au début. Déclare un classement 12+ (Apple) / Teen (Google) et fais valider (RGPD, DSA).
+- [ ] **Âge** : l'app demande la date de naissance et refuse les moins de 16 ans (`min_age()` dans la migration v2). Là où une loi l'exige (Texas depuis le 4 juin 2026), la tranche d'âge déclarée au store est aussi lue (`lib/age.ts`). L'App Store ne permet pas d'exclure un seul État : soit cette vérification suffit (à faire valider par un juriste), soit ne pas sortir aux États-Unis au début. Déclare un classement 16+ (Apple, comme dans `store/fiches-stores.md`) ; Google attribue le sien via le questionnaire IARC. Fais valider (RGPD, DSA).
 - [ ] **Android 16 sur tablettes et pliables** : l'orientation portrait n'y est plus imposée ; les écrans s'adaptent, à vérifier sur un pliable.
 - [ ] **Connexion Apple** obligatoire sur iOS dès qu'il y a Google : faite.
 - [ ] Captures d'écran (ordre et accroches proposés dans `store/fiches-stores.md`) ; l'icône est déjà dans `assets/`.

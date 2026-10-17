@@ -7,24 +7,22 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Bounce } from '../../components/Bounce';
 import { Icon, type IconName } from '../../components/Icon';
 import { Shimmer } from '../../components/Shimmer';
-import { DropGlyph } from '../../components/Logo';
+import { Mark } from '../../components/Logo';
 import { NativeMenu, type MenuItem } from '../../components/NativeMenu';
 import { useToast } from '../../components/Toast';
-import { Avatar, Button, Empty, IconButton, Pop, Row, Screen, SectionLabel, StreakPill, Title, TopBar } from '../../components/ui';
+import { Avatar, Button, Empty, IconButton, Pop, Row, Screen, SectionLabel, StreakNum, Title, Header } from '../../components/ui';
 import { t } from '../../i18n';
 import { addFriend, blockUser, report, listFriends, myLostStreaks, myStreaks, removeFriend, restoreStreak, type LostStreak, type Profile, type Streak } from '../../lib/api';
 import { draft } from '../../lib/draft';
 import { shareInviteLink } from '../../lib/invite';
 import { track } from '../../lib/monitoring';
-import { syncStreakReminder } from '../../lib/reminders';
 import { play } from '../../lib/sounds';
+import { syncStreakReminder } from '../../lib/reminders';
 import { useSession } from '../../lib/session';
-import { fonts, tx, useStyles, useTheme, type Palette } from '../../theme';
+import { colors, fonts, tx } from '../../theme';
 
 /** Tes potes : la plus longue série en vedette, les séries en danger en tête avec « flip ! », puis tout le monde. */
 export default function Contacts() {
-  const { colors } = useTheme();
-  const s = useStyles(themed);
   const toast = useToast();
   const { profile } = useSession();
   const me = profile?.username ?? '';
@@ -61,6 +59,8 @@ export default function Contacts() {
     }, [load]),
   );
 
+  const compact = (friends?.length ?? 0) >= 5;
+
   const { best, atRisk, others } = useMemo(() => {
     const list = friends ?? [];
     const days = (f: Profile) => streaks.get(f.id)?.days ?? 0;
@@ -90,18 +90,7 @@ export default function Contacts() {
 
   const flipTo = (f: Profile) => {
     draft.reset();
-    draft.replyTo = f.id;
-    draft.replyName = f.username;
-    router.navigate('/camera');
-  };
-
-  /** Série en danger : flip express en 2 taps (photo → envoi), message pré-rempli. */
-  const quickFlip = (f: Profile) => {
-    draft.reset();
-    draft.replyTo = f.id;
-    draft.replyName = f.username;
-    draft.quick = true;
-    track('streak_quick_flip', { days: streaks.get(f.id)?.days ?? 0 });
+    draft.setReply(f.id, f.username);
     router.navigate('/camera');
   };
 
@@ -145,7 +134,7 @@ export default function Contacts() {
             autoCorrect={false}
             onSubmitEditing={add}
             returnKeyType="done"
-            selectionColor={colors.cerise}
+            selectionColor={colors.ink}
             style={s.addInput}
             accessibilityLabel={t('contacts.addPlaceholder')}
           />
@@ -154,9 +143,9 @@ export default function Contacts() {
       )}
 
       {best ? (
-        <Pop bg={colors.cerise} radius={28} borderWidth={0} style={s.hero}>
+        <Pop bg={colors.coeur} radius={28} borderWidth={0} style={s.hero}>
           <View style={s.heroBadge}>
-            <DropGlyph size={30} color={colors.white} />
+            <Mark size={34} cone={colors.cacao} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.heroDays} allowFontScaling={false}>
@@ -169,15 +158,16 @@ export default function Contacts() {
         </Pop>
       ) : friends && friends.length > 0 ? (
         <Pop radius={20} style={s.tip}>
-          <Icon name="scoop" size={26} color={colors.cerise} />
+          <Icon name="scoop" size={24} color={colors.ceriseText} />
           <Text style={s.tipT}>{t('contacts.noStreak')}</Text>
         </Pop>
       ) : null}
 
+      {/* la liste prime : les tuiles d'ajout se compactent dès qu'on a une vraie bande */}
       <View style={s.tiles}>
-        <Tile icon="share" label={t('contacts.shareLink')} onPress={() => me && shareInviteLink(me)} />
-        <Tile icon="users" label={t('contacts.find')} onPress={() => router.push({ pathname: '/friends-setup', params: { from: 'contacts' } })} />
-        <Tile icon="scan" label={t('friends.scan')} onPress={() => router.push('/scan')} />
+        <Tile icon="share" label={t('contacts.shareLink')} compact={compact} onPress={() => me && shareInviteLink(me)} />
+        <Tile icon="users" label={t('contacts.find')} compact={compact} onPress={() => router.push({ pathname: '/friends-setup', params: { from: 'contacts' } })} />
+        <Tile icon="scan" label={t('friends.scan')} compact={compact} onPress={() => router.push('/scan')} />
       </View>
 
       {lost.map((l) => {
@@ -185,9 +175,7 @@ export default function Contacts() {
         if (!f) return null;
         return (
           <Row key={`lost-${f.id}`} style={s.lost}>
-            {/* la mascotte a fondu avec la série : elle se morfond à côté du bouton de sauvetage */}
-            <Fondue mood="melt" size={34} />
-            <Avatar name={f.username} uri={f.avatar_url} size={46} />
+            <Avatar name={f.username} uri={f.avatar_url} size={46} flavor />
             <View style={{ flex: 1 }}>
               <Text style={s.name}>{f.username}</Text>
               <Text style={s.lostSub}>{l.can_save ? `${t('streak.lost', { n: l.days })} · ${t('streak.saveHint')}` : t('streak.lost', { n: l.days })}</Text>
@@ -203,14 +191,14 @@ export default function Contacts() {
             const st = streaks.get(f.id)!;
             return (
               <Row key={f.id} style={s.risk}>
-                <Avatar name={f.username} uri={f.avatar_url} size={46} />
+                <Avatar name={f.username} uri={f.avatar_url} size={46} flavor />
                 <View style={{ flex: 1 }} accessible accessibilityLabel={t('streak.atRisk', { n: st.days, name: f.username })}>
                   <Text style={s.name}>
                     {f.username} · {t('contacts.daysShort', { n: st.days })}
                   </Text>
                   <Text style={s.riskSub}>{t('contacts.atRiskSub')}</Text>
                 </View>
-                <Button label={t('contacts.flipNow')} size="sm" tone="cerise" icon="snap" onPress={() => quickFlip(f)} />
+                <Button label={t('contacts.flipNow')} size="sm" tone="cerise" icon="snap" onPress={() => flipTo(f)} />
               </Row>
             );
           })}
@@ -223,12 +211,13 @@ export default function Contacts() {
 
   return (
     <Screen>
-      <TopBar
+      <Header
+        back
         right={
-          <>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
             <IconButton icon="userPlus" label={t('contacts.add')} onPress={() => setAdding((a) => !a)} />
             <IconButton icon="settings" label={t('contacts.settings')} onPress={() => router.push('/settings')} />
-          </>
+          </View>
         }
       />
       <FlatList
@@ -256,9 +245,9 @@ export default function Contacts() {
               <Row style={{ marginHorizontal: 0, paddingHorizontal: 4 }}>
                 {/* toucher la ligne : envoyer un flip ; le « … » ouvre le menu natif (pas de bouton dans un bouton) */}
                 <Pressable onPress={() => flipTo(item)} accessibilityRole="button" accessibilityLabel={`${item.username}. ${t('contacts.sendFlip')}`} style={({ pressed }) => [s.rowMain, pressed && { opacity: 0.7 }]}>
-                  <Avatar name={item.username} uri={item.avatar_url} size={46} />
+                  <Avatar name={item.username} uri={item.avatar_url} size={46} flavor />
                   <Text style={[s.name, { flex: 1 }]}>{item.username}</Text>
-                  {st ? <StreakPill days={st.days} /> : null}
+                  {st && st.days > 0 ? <StreakNum days={st.days} size={22} /> : null}
                 </Pressable>
                 <NativeMenu title={item.username} items={friendItems(item)} onSelect={(id) => onFriendAction(item, id)} label={t('read.more')}>
                   <View style={s.moreBtn}>
@@ -274,33 +263,32 @@ export default function Contacts() {
   );
 }
 
-function Tile({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
-  const s = useStyles(themed);
+function Tile({ icon, label, onPress, compact }: { icon: IconName; label: string; onPress: () => void; compact?: boolean }) {
   return (
-    <Bounce onPress={onPress} style={s.tile} accessibilityRole="button" accessibilityLabel={label} haptic="light" scaleTo={0.95}>
-      <Icon name={icon} size={18} />
-      <Text style={s.tileT} numberOfLines={1}>
+    <Bounce onPress={onPress} style={[s.tile, compact && s.tileCompact]} accessibilityRole="button" accessibilityLabel={label} haptic="light" scaleTo={0.95}>
+      <Icon name={icon} size={compact ? 16 : 18} />
+      <Text style={[s.tileT, compact && { fontSize: 12.5 }]} numberOfLines={1}>
         {label}
       </Text>
     </Bounce>
   );
 }
 
-const themed = (colors: Palette) =>
-  StyleSheet.create({
+const s = StyleSheet.create({
   rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
   moreBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   list: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 150 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   addInput: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.card, paddingHorizontal: 16, ...tx.bold, fontSize: 15, color: colors.ink },
   hero: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 16, overflow: 'hidden' },
-  heroBadge: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  heroDays: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 36, lineHeight: 40, letterSpacing: -1, color: colors.white },
-  heroSub: { ...tx.bold, fontSize: 14, color: 'rgba(255,255,255,0.88)' },
+  heroBadge: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+  heroDays: { fontFamily: fonts.displayHeavy, includeFontPadding: false, fontSize: 30, lineHeight: 34, color: colors.citron },
+  heroSub: { ...tx.bold, fontSize: 14, color: 'rgba(255,255,255,0.85)' },
   tip: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   tipT: { flex: 1, ...tx.bold, fontSize: 14, lineHeight: 19, color: colors.ink },
   tiles: { flexDirection: 'row', gap: 8 },
   tile: { flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8, borderRadius: 22, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line },
+  tileCompact: { height: 34, borderRadius: 17 },
   tileT: { ...tx.bold, fontSize: 13.5, color: colors.ink, flexShrink: 1 },
   risk: { backgroundColor: colors.riskBg, paddingVertical: 10 },
   lost: { backgroundColor: colors.card, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.dashed, paddingVertical: 10 },

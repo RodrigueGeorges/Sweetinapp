@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { t } from '../i18n';
-import { avatarColor, tx, useStyles, useTheme, type Palette } from '../theme';
+import { avatarColor, colors, tx } from '../theme';
 import { Icon } from './Icon';
 
 /** Prend un selfie (caméra avant) ou une photo de la galerie, recadrée en carré. Renvoie l'URI locale. */
@@ -30,8 +30,6 @@ export async function pickSelfie(): Promise<string | null> {
 
 /** Grand rond « ta photo » : vide (pointillés + appareil photo) ou le selfie, avec un badge pour le changer. */
 export function AvatarPicker({ uri, name, size = 112, onPick }: { uri?: string | null; name?: string; size?: number; onPick: (uri: string) => void }) {
-  const { colors } = useTheme();
-  const s = useStyles(themed);
   return (
     <Pressable
       onPress={async () => {
@@ -53,7 +51,7 @@ export function AvatarPicker({ uri, name, size = 112, onPick }: { uri?: string |
           </View>
         )}
         <View style={s.badge}>
-          <Icon name={uri ? 'retake' : 'snap'} size={15} color={colors.vanille} stroke={2.6} />
+          <Icon name={uri ? 'retake' : 'snap'} size={15} color={colors.onBrand} stroke={2.6} />
         </View>
       </View>
       <Text style={s.label}>{uri ? t('avatar.change') : t('avatar.add')}</Text>
@@ -61,9 +59,8 @@ export function AvatarPicker({ uri, name, size = 112, onPick }: { uri?: string |
   );
 }
 
-const themed = (colors: Palette) =>
-  StyleSheet.create({
-    empty: { borderWidth: 2, borderStyle: 'dashed', borderColor: colors.dashed, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
-    badge: { position: 'absolute', right: 0, bottom: 2, width: 34, height: 34, borderRadius: 17, backgroundColor: colors.cerise, borderWidth: 3, borderColor: colors.paper, alignItems: 'center', justifyContent: 'center' },
-    label: { ...tx.black, fontSize: 14, color: colors.ink },
-  });
+const s = StyleSheet.create({
+  empty: { borderWidth: 2, borderStyle: 'dashed', borderColor: colors.dashed, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', right: 0, bottom: 2, width: 34, height: 34, borderRadius: 17, backgroundColor: colors.cerise, borderWidth: 3, borderColor: colors.paper, alignItems: 'center', justifyContent: 'center' },
+  label: { ...tx.black, fontSize: 14, color: colors.ink },
+});

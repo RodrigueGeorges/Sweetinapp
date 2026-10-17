@@ -18,11 +18,11 @@ export function Glass({ children, style, interactive }: { children?: ReactNode; 
       </GlassView>
     );
   }
-  if (Platform.OS === 'web') return <View style={[style, { backgroundColor: 'rgba(26,10,14,0.42)' }]}>{children}</View>;
+  if (Platform.OS === 'web') return <View style={[style, { backgroundColor: 'rgba(22,15,18,0.42)' }]}>{children}</View>;
   return (
     <View style={[style, { overflow: 'hidden', borderRadius: flat.borderRadius }]}>
       <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(26,10,14,0.18)' }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(22,15,18,0.18)' }]} />
       {children}
     </View>
   );

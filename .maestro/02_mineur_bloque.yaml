@@ -1,22 +1,84 @@
-# Un compte de moins de 16 ans ne peut pas finir son profil.
-# maestro test -e EMAIL=... -e PASSWORD=... .maestro/02_mineur_bloque.yaml
-appId: app.sweetin.ios
+# Parcours invité complet : welcome → caméra → photo → mot → « à qui ? » → porte de compte.
+# Le produit se vend en 3 gestes, le compte n'est demandé qu'au tout dernier pas.
+# Prérequis : une image test indexée sur l'émulateur (assets/icon.png → /sdcard/Pictures).
+# La photo vient de la galerie : la capture caméra émulée (SwiftShader) prend >3 min.
+appId: host.exp.exponent
 ---
 - launchApp:
     clearState: true
-- tapOn: "Passer|Skip"
-- tapOn: "SIGNUP|INSCRIPTION|Signup|Inscription"
-- tapOn: "Email"
-- inputText: ${EMAIL}
-- tapOn: "Mot de passe|Password"
-- inputText: ${PASSWORD}
-- tapOn: "VALIDER|Valider|CONTINUE|Continue"
-- tapOn: "Pseudo|Username"
-- inputText: "trop_jeune"
-- tapOn: "JJ|DD"
-- inputText: "01"
-- inputText: "01"
-- inputText: "2015"
-- tapOn: "Continuer|Continue"
-- assertVisible: "Pas encore 🍦|Not yet 🍦"
-- assertVisible: "Supprimer mon compte|Delete my account"
+    permissions:
+      all: allow
+- runFlow: _ouvrir.yaml
+- extendedWaitUntil:
+    visible: "send my first sweet|envoyer mon premier sweet"
+    timeout: 60000
+- tapOn: "send my first sweet|envoyer mon premier sweet"
+# selon l'état de permission : viseur direct ou écran « camera first. »
+- extendedWaitUntil:
+    visible: "Take photo|Prendre la photo|allow camera|autoriser la caméra"
+    timeout: 30000
+- runFlow:
+    when:
+      visible: "allow camera|autoriser la caméra"
+    commands:
+      - tapOn: "allow camera|autoriser la caméra"
+# la dialog de permission scopée d'Expo Go met du temps et n'entre pas dans
+# l'arbre a11y pendant le poll : on tape la position d'ALLOW en boucle
+# (ignoré si le viseur est déjà là ; zone vide sinon — inoffensif)
+- runFlow:
+    when:
+      notVisible: "Take photo|Prendre la photo"
+    commands:
+      - tapOn:
+          point: "83%,58%"
+          repeat: 10
+          delay: 6000
+# dialogue système Android classique, si présent
+- runFlow:
+    when:
+      visible: "While using the app|WHILE USING THE APP"
+    commands:
+      - tapOn: "While using the app|WHILE USING THE APP"
+- extendedWaitUntil:
+    visible: "Take photo|Prendre la photo"
+    timeout: 30000
+# galerie plutôt que déclencheur : l'image test est déjà sur l'appareil
+- tapOn: "gallery|galerie"
+# sélecteur photo Android : la vignette porte « Photo taken on … » en content-desc
+# (le matching est un regex complet — d'où les .* d'encadrement)
+- extendedWaitUntil:
+    visible: ".*Photo taken.*|Photos|Albums|Recent"
+    timeout: 30000
+- runFlow:
+    when:
+      visible: ".*Photo taken.*"
+    commands:
+      - tapOn: ".*Photo taken.*"
+# fallback si le content-desc n'est pas exposé : 1re vignette de la grille ouverte
+- runFlow:
+    when:
+      visible: "Recent"
+    commands:
+      - tapOn:
+          point: "16%,33%"
+# si un écran de recadrage s'ouvre, on confirme
+- runFlow:
+    when:
+      visible: "Crop|Rogner|Done|Terminé|Save|Enregistrer"
+    commands:
+      - tapOn: "Crop|Rogner|Done|Terminé|Save|Enregistrer"
+# la carte s'ouvre : « celle-ci ? » puis on écrit le mot caché
+- extendedWaitUntil:
+    visible: "this one\\?|celle-ci \\?"
+    timeout: 60000
+- tapOn: "write the word|écrire le mot"
+- extendedWaitUntil:
+    visible: "write your word…|écris ton mot…"
+    timeout: 30000
+- tapOn: "write your word…|écris ton mot…"
+- inputText: "maestro was here"
+- tapOn: "choose who|choisir à qui"
+# invité : la porte du compte s'affiche en dernier, jamais avant
+- extendedWaitUntil:
+    visible: "one last step.|dernière étape."
+    timeout: 30000

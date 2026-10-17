@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
             const lang = asLang(r.lang);
             const ok = await startLiveActivity(r.token, {
               name: 'SweetHour',
-              props: { endsAt, title: copy.liveTitle(lang), sub: copy.liveSub(lang), cta: copy.liveCta(lang) },
+              props: { endsAt, title: copy.liveTitle(lang), sub: copy.liveSub(lang) },
               alert: { title: 'sweetin', body: copy.sweetHour(lang) },
               sound: 'sweethour.wav',
               staleAt: new Date(endsAt),

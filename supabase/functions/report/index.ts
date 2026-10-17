@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
 
   if (flip_id) {
     const { data: rec } = await db.from('flip_recipients').select('flips(sender_id)').eq('flip_id', flip_id).eq('recipient_id', user.id).maybeSingle();
-    if (!rec) return fail('Flip introuvable', 404);
+    if (!rec) return fail('Sweet introuvable', 404);
     // deno-lint-ignore no-explicit-any
     reported = (rec as any).flips?.sender_id ?? reported;
     const { data: s } = await db.from('flip_secrets').select('message').eq('flip_id', flip_id).maybeSingle();

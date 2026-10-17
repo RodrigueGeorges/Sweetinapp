@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Fondue } from '../components/Fondue';
 import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AvatarPicker } from '../components/AvatarPicker';
@@ -16,13 +16,11 @@ import { ageAt, isoDate, parseBirth } from '../lib/format';
 import { track } from '../lib/monitoring';
 import { consumePendingInvite, useSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
-import { tx, useStyles, useTheme, type Palette } from '../theme';
+import { colors, tx } from '../theme';
 import { MIN_AGE } from '../lib/constants';
 
 /** Pseudo + date de naissance, après la création du compte (email, Apple ou Google). */
 export default function ProfileSetup() {
-  const { colors } = useTheme();
-  const s = useStyles(themed);
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const { refreshProfile } = useSession();
@@ -84,10 +82,10 @@ export default function ProfileSetup() {
     router.replace('/welcome');
   };
 
-  const digits = (set: (v: string) => void, max: number, next?: () => void) => (v: string) => {
+  const digits = (set: (v: string) => void, max: number, next?: React.RefObject<TextInput | null>) => (v: string) => {
     const clean = v.replace(/\D/g, '').slice(0, max);
     set(clean);
-    if (clean.length === max) next?.();
+    if (clean.length === max) next?.current?.focus();
   };
 
   const box = (value: string, onChange: (v: string) => void, placeholder: string, width: number, ref?: React.Ref<TextInput>, extra?: object) => (
@@ -98,7 +96,7 @@ export default function ProfileSetup() {
       placeholder={placeholder}
       placeholderTextColor={colors.placeholder}
       keyboardType="number-pad"
-      selectionColor={colors.cerise}
+      selectionColor={colors.ink}
       style={[s.date, { width }]}
       accessibilityLabel={`${t('profile.birth')} ${placeholder}`}
       {...extra}
@@ -124,7 +122,7 @@ export default function ProfileSetup() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <View style={{ marginTop: insets.top + 10, alignItems: 'center' }}>
           <Logo size={26} color={colors.ink} />
         </View>
@@ -133,8 +131,9 @@ export default function ProfileSetup() {
             <SectionLabel>{t('profile.step')}</SectionLabel>
             <Title size={46}>{t('profile.title')}</Title>
           </View>
-          <View style={{ alignItems: 'center' }}>
+          <View style={{ alignItems: 'center', gap: 6 }}>
             <AvatarPicker uri={selfie} name={username || 'a'} onPick={setSelfie} />
+            <Text style={s.hint}>{t('profile.avatarHint')}</Text>
           </View>
           <Field
             label={t('profile.username')}
@@ -154,17 +153,19 @@ export default function ProfileSetup() {
           <View style={{ gap: 7 }}>
             <Text style={s.label}>{t('profile.birth')}</Text>
             <View style={s.dateRow}>
+              {/* eslint-disable react-hooks/refs -- les refs ne sont lues que dans le handler retourné par digits(), au changement de champ */}
               {monthFirst ? (
                 <>
-                  {box(m, digits(setM, 2, () => dRef.current?.focus()), t('profile.month'), 64, mRef, { maxLength: 2 })}
-                  {box(d, digits(setD, 2, () => yRef.current?.focus()), t('profile.day'), 64, dRef, { maxLength: 2 })}
+                  {box(m, digits(setM, 2, dRef), t('profile.month'), 64, mRef, { maxLength: 2 })}
+                  {box(d, digits(setD, 2, yRef), t('profile.day'), 64, dRef, { maxLength: 2 })}
                 </>
               ) : (
                 <>
-                  {box(d, digits(setD, 2, () => mRef.current?.focus()), t('profile.day'), 64, dRef, { maxLength: 2 })}
-                  {box(m, digits(setM, 2, () => yRef.current?.focus()), t('profile.month'), 64, mRef, { maxLength: 2 })}
+                  {box(d, digits(setD, 2, mRef), t('profile.day'), 64, dRef, { maxLength: 2 })}
+                  {box(m, digits(setM, 2, yRef), t('profile.month'), 64, mRef, { maxLength: 2 })}
                 </>
               )}
+              {/* eslint-enable react-hooks/refs */}
               {box(y, digits(setY, 4), t('profile.year'), 96, yRef, { maxLength: 4, onSubmitEditing: submit, returnKeyType: 'go' })}
             </View>
             <Text style={s.hint}>{t('profile.birthHint', { age: MIN_AGE })}</Text>
@@ -178,19 +179,17 @@ export default function ProfileSetup() {
   );
 }
 
-const themed = (colors: Palette) =>
-  StyleSheet.create({
-    form: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 24 },
-    label: { ...tx.bold, fontSize: 14, color: colors.ink },
-    hint: { ...tx.text, fontSize: 13, lineHeight: 18, color: colors.muted },
-    dateRow: { flexDirection: 'row', gap: 10 },
-    date: { height: 54, borderRadius: 18, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.card, textAlign: 'center', ...tx.black, fontSize: 18, color: colors.ink },
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 18 },
-    ok: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.pistache, alignItems: 'center', justifyContent: 'center' },
-  });
+const s = StyleSheet.create({
+  form: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 24 },
+  label: { ...tx.bold, fontSize: 14, color: colors.ink },
+  hint: { ...tx.text, fontSize: 13, lineHeight: 18, color: colors.muted },
+  dateRow: { flexDirection: 'row', gap: 10 },
+  date: { height: 54, borderRadius: 18, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.card, textAlign: 'center', ...tx.black, fontSize: 18, color: colors.ink },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 18 },
+  ok: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.pistache, alignItems: 'center', justifyContent: 'center' },
+});
 
 function OkDot() {
-  const s = useStyles(themed);
   return (
     <View style={s.ok}>
       <Icon name="check" size={13} stroke={3.4} />

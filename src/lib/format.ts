@@ -10,13 +10,15 @@ export function ago(iso: string, now = Date.now()) {
   return t('ago.day', { n: Math.floor(s / 86400) });
 }
 
-/** « 35 min », « 4 h »… temps restant avant qu'un flip ne fonde. */
-export function expireIn(iso: string, now = Date.now()) {
-  const ms = new Date(iso).getTime();
-  if (!Number.isFinite(ms)) return t('expire.hour', { n: 24 });
-  const s = Math.max(0, (ms - now) / 1000);
-  if (s < 3600) return t('expire.min', { n: Math.max(1, Math.floor(s / 60)) });
-  return t('expire.hour', { n: Math.floor(s / 3600) });
+/** Version courte pour les pastilles sur photo : « 2 min », « 5 h », « 3 j » (« à l'instant », « hier »). */
+export function agoShort(iso: string, now = Date.now()) {
+  const s = Math.max(0, (now - new Date(iso).getTime()) / 1000);
+  const fr = lang === 'fr';
+  if (s < 60) return fr ? 'à l’instant' : 'now';
+  if (s < 3600) return `${Math.floor(s / 60)} min`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h`;
+  if (s < 172800) return t('ago.yesterday');
+  return fr ? `${Math.floor(s / 86400)} j` : `${Math.floor(s / 86400)}d`;
 }
 
 /** Secondes avec une décimale, à la française (4,5) ou à l'anglaise (4.5). */

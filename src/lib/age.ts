@@ -1,6 +1,20 @@
-import * as AgeRange from 'expo-age-range';
 import { Platform } from 'react-native';
 import { MIN_AGE } from './constants';
+
+// expo-age-range n'est pas dans Expo Go : chargé à la demande, comme expo-notifications (lib/notif).
+type AgeRange = typeof import('expo-age-range');
+let cached: AgeRange | null | undefined;
+function ageRange(): AgeRange | null {
+  if (cached === undefined) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- chargement paresseux volontaire (Expo Go)
+      cached = require('expo-age-range') as AgeRange;
+    } catch {
+      cached = null;
+    }
+  }
+  return cached;
+}
 
 /**
  * Âge déclaré au store, là où une loi l'impose (Texas depuis juin 2026, puis d'autres États) :
@@ -10,6 +24,8 @@ import { MIN_AGE } from './constants';
  */
 export async function storeSaysUnderage(): Promise<boolean> {
   try {
+    const AgeRange = ageRange();
+    if (!AgeRange) return false;
     if (Platform.OS === 'ios') {
       // ne montre la feuille système qu'aux personnes concernées par une loi
       if ((await AgeRange.isEligibleForAgeFeaturesAsync()) !== true) return false;

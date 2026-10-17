@@ -22,12 +22,6 @@ const SessionContext = createContext<Ctx>({ session: null, profile: null, ready:
 /** Garde un pseudo d'invitation à traiter quand l'utilisateur aura un profil complet. */
 export const rememberInvite = (username: string, source: InviteSource = 'link') => AsyncStorage.setItem(PENDING_INVITE, `${username}|${source}`).catch(() => {});
 
-/** Pseudo de l'invitation en attente, sans la consommer (pour personnaliser l'accueil). */
-export async function peekPendingInvite(): Promise<string | null> {
-  const raw = await AsyncStorage.getItem(PENDING_INVITE).catch(() => null);
-  return raw?.split('|')[0] || null;
-}
-
 /** Ajoute l'ami de l'invitation en attente, s'il y en a une. Renvoie son pseudo. */
 export async function consumePendingInvite(): Promise<string | null> {
   const raw = await AsyncStorage.getItem(PENDING_INVITE).catch(() => null);

@@ -3,21 +3,27 @@ import type { ExpoConfig } from 'expo/config';
 // Identifiants à adapter avant la première publication (voir README).
 const BUNDLE_ID = process.env.APP_BUNDLE_ID ?? 'app.sweetin.ios';
 const PACKAGE = process.env.APP_PACKAGE ?? 'app.sweetin.android';
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '3f4fab34-ff2f-47eb-ab12-7341ee2925b5';
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '';
 // Domaine des liens d'invitation (https://sweetin.app/u/<pseudo>), voir web/.well-known
 const LINK_DOMAIN = process.env.APP_LINK_DOMAIN ?? 'sweetin.app';
 const APP_GROUP = `group.${BUNDLE_ID}`;
 
+// Garde-fou des builds de production : sans ces variables, l'app planterait au lancement (et serait refusée).
+// EAS définit EAS_BUILD_PROFILE pendant un build ; les valeurs viennent de l'environnement « production » d'EAS.
+if (process.env.EAS_BUILD_PROFILE === 'production') {
+  const missing = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'EAS_PROJECT_ID', ...(process.env.EAS_BUILD_PLATFORM === 'ios' ? ['APPLE_TEAM_ID'] : [])].filter((k) => !process.env[k]);
+  if (missing.length) throw new Error(`Build de production arrêté : variables manquantes dans l'environnement EAS « production » : ${missing.join(', ')} (voir MISE-EN-LIGNE.md).`);
+}
+
 const config: ExpoConfig = {
   name: 'Sweetin',
   slug: 'sweetin',
-  owner: 'rodrigueetifiers-team',
   scheme: 'sweetin',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
-  backgroundColor: '#FF2D5F',
+  backgroundColor: '#FFFFFF', // fond derrière les écrans (le lancement, lui, reste framboise)
   ios: {
     bundleIdentifier: BUNDLE_ID,
     // identifiant d'équipe Apple (developer.apple.com > Membership), requis pour signer le widget
@@ -35,12 +41,27 @@ const config: ExpoConfig = {
       'com.apple.developer.declared-age-range': true,
     },
     infoPlist: { UIBackgroundModes: ['remote-notification'], CFBundleAllowMixedLocalizations: true },
+    // manifeste de confidentialité : les API « à justifier » utilisées par l'app et ses dépendances
+    // (relevées dans les PrivacyInfo.xcprivacy de node_modules, qu'Apple ne lit pas toujours depuis les pods statiques)
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+      NSPrivacyAccessedAPITypes: [
+        // CA92.1 : réglages de l'app ; 1C8F.1 : groupe d'apps partagé avec le widget
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults', NSPrivacyAccessedAPITypeReasons: ['CA92.1', '1C8F.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp', NSPrivacyAccessedAPITypeReasons: ['C617.1', '0A2A.1', '3B52.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace', NSPrivacyAccessedAPITypeReasons: ['E174.1', '85F4.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime', NSPrivacyAccessedAPITypeReasons: ['35F9.1'] },
+      ],
+    },
   },
+  // invites système (caméra, photos, contacts) et nom de l'app traduits : fichiers dans locales/
+  locales: { fr: './locales/fr.json', en: './locales/en.json' },
   android: {
     package: PACKAGE,
     versionCode: 1,
     adaptiveIcon: {
-      backgroundColor: '#FF2D5F',
+      backgroundColor: '#FF2E5B',
       foregroundImage: './assets/android-icon-foreground.png',
       backgroundImage: './assets/android-icon-background.png',
       monochromeImage: './assets/android-icon-monochrome.png',
@@ -65,12 +86,20 @@ const config: ExpoConfig = {
     'expo-image',
     [
       'expo-splash-screen',
-      { image: './assets/splash-icon.png', imageWidth: 150, resizeMode: 'contain', backgroundColor: '#FF2D5F' },
+      {
+        image: './assets/splash-icon.png',
+        imageWidth: 150,
+        resizeMode: 'contain',
+        backgroundColor: '#FF2E5B',
+        // Android 12+ impose son splash : l'icône est posée dans un carré de 288 dp et coupée par un cercle de 192 dp.
+        // Image carrée dédiée, glace de 161 dp de haut centrée dans le cercle (rien n'est rogné) ; LaunchSplash part de la même taille.
+        android: { image: './assets/splash-icon-android.png', imageWidth: 288 },
+      },
     ],
     [
       'expo-camera',
       {
-        cameraPermission: 'Sweetin utilise la caméra pour prendre la photo de ton flip.',
+        cameraPermission: 'Sweetin uses the camera to take the photo for your sweet and to scan a friend’s QR code.',
         microphonePermission: false,
         recordAudioAndroid: false,
         barcodeScannerEnabled: true,
@@ -79,28 +108,29 @@ const config: ExpoConfig = {
     [
       'expo-image-picker',
       {
-        photosPermission: 'Sweetin accède à tes photos quand tu choisis une image pour ton flip.',
-        cameraPermission: 'Sweetin utilise la caméra pour prendre la photo de ton flip.',
+        photosPermission: 'Sweetin opens your photos when you pick an image for your sweet or your profile photo.',
+        cameraPermission: 'Sweetin uses the camera to take the photo for your sweet and to scan a friend’s QR code.',
         microphonePermission: false,
       },
     ],
     [
       'expo-notifications',
       {
-        // petite icône Android de la barre d'état : silhouette blanche du cornet (sinon un carré blanc)
+        // petite icône Android de la barre d'état : silhouette blanche de la glace (sinon un carré blanc)
         icon: './assets/notification-icon.png',
-        color: '#FF2D5F',
+        color: '#FF2E5B',
         sounds: ['./assets/sounds/sweet.wav', './assets/sounds/sweethour.wav', './assets/sounds/streak.wav'],
       },
     ],
     [
       'expo-contacts',
-      { contactsPermission: 'Sweetin compare des empreintes chiffrées des numéros de tes contacts pour te montrer ceux qui sont déjà sur Sweetin. Rien n’est conservé.' },
+      { contactsPermission: 'Sweetin compares encrypted fingerprints of your contacts’ numbers to show you who is already on Sweetin. Nothing is stored.' },
     ],
     'expo-apple-authentication',
     'expo-asset',
     'expo-web-browser',
     'expo-secure-store',
+    'expo-sharing',
     ['expo-localization', { supportedLocales: { ios: ['fr', 'en'], android: ['fr', 'en'] } }],
     // Live Activity du Sweet Hour (écran verrouillé, Dynamic Island), démarrable à distance : src/widgets
     ['expo-widgets', { enablePushNotifications: true, groupIdentifier: APP_GROUP, bundleIdentifier: `${BUNDLE_ID}.live`, widgets: [] }],
@@ -113,7 +143,7 @@ const config: ExpoConfig = {
           {
             name: 'Sweetin',
             label: 'Sweetin',
-            description: 'Tes flips à gratter, et un raccourci pour en envoyer un.',
+            description: 'Tes sweets à gratter, et un raccourci pour en envoyer un.',
             minWidth: '160dp',
             minHeight: '160dp',
             targetCellWidth: 2,
@@ -124,6 +154,8 @@ const config: ExpoConfig = {
         ],
       },
     ],
+    // work-runtime-ktx 2.7.x vs work-runtime 2.8.x : classes en double (plugins/with-android-deps.ts)
+    './plugins/with-android-deps',
     // envoi des symboles de débogage à Sentry, seulement si le projet est configuré
     ...(process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
       ? ([['@sentry/react-native/expo', { organization: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT }]] as ExpoConfig['plugins'] & object)

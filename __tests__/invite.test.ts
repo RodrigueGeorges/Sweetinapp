@@ -14,7 +14,7 @@ describe('lien d’invitation', () => {
 });
 
 describe('widget', () => {
-  const item = (name: string) => ({ flip_id: name, created_at: '', expires_at: '', mode: 'free' as const, opened: false, preview: 'QUJD', sender: { id: name, username: name } });
+  const item = (name: string) => ({ flip_id: name, created_at: '', mode: 'free' as const, opened: false, preview: 'QUJD', sender: { id: name, username: name } });
   it('n’expose qu’un compteur et un pseudo, jamais de contenu', () => {
     const s = widgetStateFrom([item('fabien'), item('loic')]);
     expect(s.count).toBe(2);

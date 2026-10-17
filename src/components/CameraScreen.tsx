@@ -1,15 +1,16 @@
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
-import Reanimated, { FadeOutUp, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
+import { useCallback, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import Reanimated, { Easing, FadeOutUp, useAnimatedProps, useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bounce } from '../components/Bounce';
 import { Glass } from '../components/Glass';
+import { Vignette } from '../components/Vignette';
 import { Icon } from '../components/Icon';
 import { Logo } from '../components/Logo';
 import { useToast } from '../components/Toast';
@@ -17,12 +18,15 @@ import { Chip, IconButton, Screen, Title } from '../components/ui';
 import { t } from '../i18n';
 import { draft } from '../lib/draft';
 import { useSweetHour } from '../lib/useSweetHour';
+import { play } from '../lib/sounds';
 import { colors, fonts, layout, tx } from '../theme';
 
 /**
  * La caméra plein écran, le déclencheur cerise, et le Sweet Hour quand il tombe.
  * `guest` : premier secret avant d'avoir un compte (pas de barre d'onglets, pas de Sweet Hour, retour à l'accueil).
  */
+const ZoomCamera = Reanimated.createAnimatedComponent(CameraView);
+
 export function CameraScreen({ guest = false }: { guest?: boolean }) {
   const insets = useSafeAreaInsets();
   const toast = useToast();
@@ -32,58 +36,72 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
   const [active, setActive] = useState(true);
   const [busy, setBusy] = useState(false);
   const cam = useRef<CameraView>(null);
-  const pulse = useRef(new Animated.Value(0)).current;
-  const reduce = useReducedMotion();
-  // zoom par pincement : 0 = grand-angle natif de l'appareil, 1 = zoom max
-  const [zoom, setZoom] = useState(0);
-  const zoomCur = useRef(0);
-  const zoomStart = useRef(0);
+  const paused = useRef(false);
+  const shooting = useRef(false);
   const sweet = useSweetHour(!guest);
   const [replyName, setReplyName] = useState<string | null>(draft.replyName);
-  const flash = useSharedValue(0);
-  const flashStyle = useAnimatedStyle(() => ({ opacity: flash.value }));
+  // déclenchement : un clin d'œil nuit très bref (pas de flash blanc), l'image se fige aussitôt
+  const blink = useSharedValue(0);
+  const blinkStyle = useAnimatedStyle(() => ({ opacity: blink.value }));
+  // pincement : zoom linéaire (0 = large, 1 = maximum de l'appareil)
+  const zoom = useSharedValue(0);
+  const zoomStart = useSharedValue(0);
+  const camProps = useAnimatedProps(() => ({ zoom: zoom.value }));
+  // la petite barre citron sur le bord droit dit où en est le zoom, sans chiffre fantaisiste
+  const zoomRailStyle = useAnimatedStyle(() => ({ opacity: zoom.value > 0.005 ? 1 : 0 }));
+  const zoomFillStyle = useAnimatedStyle(() => ({ height: 4 + zoom.value * 116 }));
 
   // la caméra ne tourne que quand l'onglet est affiché (batterie)
-  const syncDraft = useCallback(() => setReplyName(draft.replyName), [setReplyName]);
   useFocusEffect(
     useCallback(() => {
       setActive(true);
-      syncDraft();
+      setReplyName(draft.replyName);
+      // retour sur la caméra (« reprendre ») : l'aperçu figé repart
+      if (paused.current) {
+        paused.current = false;
+        cam.current?.resumePreview().catch(() => {});
+      }
       return () => setActive(false);
-    }, [syncDraft]),
+    }, []),
   );
 
-  useEffect(() => {
-    if (reduce) return;
-    const loop = Animated.loop(Animated.timing(pulse, { toValue: 1, duration: 2200, easing: Easing.out(Easing.quad), useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, [pulse, reduce]);
-
-  const go = (uri: string) => {
-    draft.uri = uri;
-    // série en danger : message pré-rempli, on file directement à l'envoi (2 taps)
-    draft.message = draft.quick ? t('streak.quick') : '';
+  const go = async (uri: string) => {
+    draft.setCameraPhoto(uri);
+    // l'image est déjà décodée quand la carte s'ouvre : pas d'écran vide entre les deux
+    await Image.prefetch(uri).catch(() => false);
     // la réponse reste attachée au brouillon jusqu'à l'envoi
-    router.push(draft.quick ? '/sendto' : '/create');
+    router.push('/create');
   };
 
   const shoot = async () => {
-    if (busy) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // ref synchrone : deux appuis dans la même frame passeraient le garde `busy` (state pas encore re-rendu)
+    if (busy || shooting.current) return;
     if (!perm?.granted) {
+      Haptics.selectionAsync();
       const r = await requestPerm();
       if (!r.granted) return toast(t('camera.permissionDenied'));
       return;
     }
     try {
+      shooting.current = true;
       setBusy(true);
-      flash.value = withSequence(withTiming(0.9, { duration: 60 }), withTiming(0, { duration: 380 }));
-      const photo = await cam.current?.takePictureAsync({ quality: 0.85, skipProcessing: false });
-      if (photo?.uri) go(photo.uri);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
+      play('tap', 0.7);
+      // eslint-disable-next-line react-hooks/immutability -- shared value Reanimated mutée volontairement dans le handler du déclencheur
+      blink.value = withSequence(withTiming(0.32, { duration: 70, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 220 }));
+      // la photo d'abord, l'aperçu figé ensuite : suspendre le viseur pendant la capture l'avorte sur certains appareils
+      const photo = await cam.current?.takePictureAsync({ quality: 0.82, shutterSound: false });
+      cam.current?.pausePreview().then(() => (paused.current = true)).catch(() => {});
+      if (photo?.uri) await go(photo.uri);
+      else throw new Error('no photo');
     } catch {
+      if (paused.current) {
+        paused.current = false;
+        cam.current?.resumePreview().catch(() => {});
+      }
       toast(t('camera.failed'));
     } finally {
+      shooting.current = false;
       setBusy(false);
     }
   };
@@ -92,53 +110,76 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
     Haptics.selectionAsync();
     setFacing((f) => (f === 'back' ? 'front' : 'back'));
   };
+  const close = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace(guest ? '/welcome' : '/inbox');
+  };
   const doubleTap = Gesture.Tap().numberOfTaps(2).runOnJS(true).onEnd(flipCam);
-  // pincer pour zoomer (comme dans l'appareil photo natif), double-tap pour retourner la caméra
   const pinch = Gesture.Pinch()
-    .runOnJS(true)
     .onStart(() => {
-      zoomStart.current = zoomCur.current;
+      zoomStart.value = zoom.value;
     })
     .onUpdate((e) => {
-      const z = Math.min(1, Math.max(0, zoomStart.current + (e.scale - 1) * 0.6));
-      zoomCur.current = z;
-      setZoom(z);
+      // eslint-disable-next-line react-hooks/immutability -- idem, multiplicatif sur la plage 0–1
+      zoom.value = Math.min(1, Math.max(0, zoomStart.value * e.scale));
     });
-  const camGestures = Gesture.Race(pinch, doubleTap);
+  // un vrai geste vers le bas referme la caméra (comme le déclencheur l'a ouverte)
+  const panDown = Gesture.Pan()
+    .runOnJS(true)
+    .activeOffsetY(60)
+    .failOffsetY(-25)
+    .onEnd((e) => {
+      if (e.velocityY > 400 && e.translationY > 80) close();
+    });
+  const camGestures = Gesture.Simultaneous(doubleTap, pinch, panDown);
 
   const pick = async () => {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9, allowsEditing: true, aspect: [3, 4] });
-    if (!r.canceled && r.assets[0]) go(r.assets[0].uri);
+    if (!r.canceled && r.assets[0]) await go(r.assets[0].uri);
   };
 
-  const ring = { transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.3] }) }], opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 0] }) };
   const mm = sweet !== null ? `${Math.floor(sweet / 60)}:${String(sweet % 60).padStart(2, '0')}` : '';
 
   return (
     <Screen tone="cacao">
-      {perm?.granted && active && <CameraView ref={cam} style={StyleSheet.absoluteFill} facing={facing} zoom={zoom} flash={torch ? 'on' : 'off'} animateShutter />}
-      {/* double tap = selfie, pincement = zoom */}
+      {perm?.granted && active && <ZoomCamera ref={cam} style={StyleSheet.absoluteFill} facing={facing} flash={torch ? 'on' : 'off'} animateShutter={false} animatedProps={camProps} />}
+      {/* vignette quasi imperceptible : assez pour détacher les contrôles, jamais un voile */}
+      {perm?.granted && active && <Vignette opacity={0.15} />}
+      {/* grille des tiers discrète pour composer */}
+      {perm?.granted && (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <View style={[s.gridV, { left: '33.33%' }]} />
+          <View style={[s.gridV, { left: '66.66%' }]} />
+          <View style={[s.gridH, { top: '33.33%' }]} />
+          <View style={[s.gridH, { top: '66.66%' }]} />
+        </View>
+      )}
+      {/* double tap : on change de caméra ; pincement : zoom ; balayé vers le bas : on referme */}
       <GestureDetector gesture={camGestures}>
         <View style={StyleSheet.absoluteFill} />
       </GestureDetector>
-      <LinearGradient colors={['rgba(26,10,14,0.7)', 'rgba(26,10,14,0)']} style={[s.shade, { height: 200 }]} pointerEvents="none" />
-      <LinearGradient colors={sweet !== null ? ['rgba(255,45,95,0)', 'rgba(255,45,95,0.75)'] : ['rgba(26,10,14,0)', 'rgba(26,10,14,0.65)']} style={[s.shade, { bottom: 0, height: 320 }]} pointerEvents="none" />
+      {/* le viseur reste nu : les contrôles en verre se lisent seuls, pas de voile */}
 
       <View style={[s.top, { marginTop: insets.top + 6 }]}>
         {guest ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <IconButton icon="back" label={t('common.back')} tone="cacao" filled onPress={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} />
+            <IconButton icon="back" label={t('common.back')} tone="cacao" filled onPress={close} />
             <Logo size={22} color={colors.white} />
           </View>
         ) : (
-          <Logo size={22} color={colors.white} />
+          // ouverte en plein écran depuis le déclencheur de la vitrine : on la referme vers la vitrine
+          <IconButton icon="close" label={t('common.close')} tone="cacao" filled onPress={close} />
+        )}
+        {!guest && (
+          <View style={s.logoMid} pointerEvents="none">
+            <Logo size={24} color={colors.white} />
+          </View>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         {replyName ? (
           <Pressable
             onPress={() => {
-              draft.replyTo = null;
-              draft.replyName = null;
+              draft.setReply(null, null);
               setReplyName(null);
             }}
             accessibilityRole="button"
@@ -186,19 +227,18 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
         </View>
       )}
 
-      <View style={[s.bottom, { bottom: (guest ? 40 : layout.tabBarHeight + 34) + Math.max(insets.bottom, 12) }]}>
+      <View style={[s.bottom, { bottom: (guest ? 40 : layout.shutterDock + 34) + Math.max(insets.bottom, 12) }]}>
         <View style={s.controls}>
           <Bounce onPress={pick} accessibilityRole="button" accessibilityLabel={t('camera.gallery')} scaleTo={0.88}>
             <Glass style={s.side}>
               <Icon name="gallery" size={24} color={colors.vanille} />
             </Glass>
           </Bounce>
-          <View style={s.btnWrap}>
-            <Animated.View pointerEvents="none" style={[s.pulse, ring]} />
-            <Bounce accessibilityRole="button" accessibilityLabel={perm?.granted ? t('camera.a11yShoot') : t('camera.allow')} onPress={shoot} style={s.shutter} scaleTo={0.9} haptic={false}>
-              <View style={s.shutterIn}>{!perm?.granted ? <Text style={s.allowT}>{t('camera.allow')}</Text> : null}</View>
-            </Bounce>
-          </View>
+          {/* même déclencheur que la vitrine (DA Fondant) : 84 pt de framboise, l'espace du fond, un anneau blanc sur la caméra */}
+          <Bounce accessibilityRole="button" accessibilityLabel={perm?.granted ? t('camera.a11yShoot') : t('camera.allow')} onPress={shoot} style={s.shutter} scaleTo={0.88} haptic={false} disabled={busy}>
+            <View style={s.ring} />
+            <View style={s.shutterIn}>{!perm?.granted ? <Text style={s.allowT}>{t('camera.allow')}</Text> : null}</View>
+          </Bounce>
           <Bounce accessibilityLabel={t('camera.switch')} accessibilityRole="button" hitSlop={10} onPress={flipCam} scaleTo={0.85}>
             <Glass style={s.side}>
               <Icon name="flipCam" size={24} color={colors.vanille} />
@@ -206,27 +246,35 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
           </Bounce>
         </View>
       </View>
-      <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.vanille }, flashStyle]} />
+      {/* jauge de zoom sur le bord droit */}
+      <Reanimated.View pointerEvents="none" style={[s.zoomRail, zoomRailStyle]}>
+        <Reanimated.View style={[s.zoomFill, zoomFillStyle]} />
+      </Reanimated.View>
+      <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.cacao }, blinkStyle]} />
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  shade: { position: 'absolute', left: 0, right: 0, top: 0 },
+  logoMid: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   top: { height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, gap: 12 },
   reply: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 200, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.pistache },
   replyT: { flexShrink: 1, ...tx.black, fontSize: 13, color: colors.cacao },
   sweet: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: 2 },
-  sweetT: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 88, lineHeight: 94, letterSpacing: -2.5, color: colors.vanille, marginTop: 4 },
-  sweetB: { ...tx.black, fontSize: 15, color: colors.vanille },
+  sweetT: { fontFamily: fonts.displayHeavy, includeFontPadding: false, fontSize: 64, lineHeight: 68, color: colors.onBrand, marginTop: 4 },
+  sweetB: { ...tx.black, fontSize: 15, color: colors.onBrand },
   permWrap: { position: 'absolute', top: '24%', left: 36, right: 36, alignItems: 'center', gap: 16 },
   bottom: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: 14 },
   permSub: { ...tx.bold, fontSize: 15, lineHeight: 21, color: colors.mutedOnDark, textAlign: 'center' },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 36 },
   side: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  btnWrap: { width: 100, height: 100, alignItems: 'center', justifyContent: 'center' },
-  pulse: { position: 'absolute', width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: colors.vanille },
-  shutter: { width: 96, height: 96, borderRadius: 48, borderWidth: 4, borderColor: colors.vanille, alignItems: 'center', justifyContent: 'center' },
-  shutterIn: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.cerise, borderWidth: 2.5, borderColor: colors.cacao, alignItems: 'center', justifyContent: 'center' },
+  // 84 de framboise + 6 d'espace + 3 d'anneau blanc (comme Shutter, en version sombre)
+  shutter: { width: 102, height: 102, alignItems: 'center', justifyContent: 'center' },
+  ring: { position: 'absolute', width: 102, height: 102, borderRadius: 51, borderWidth: 3, borderColor: colors.white },
+  shutterIn: { width: 84, height: 84, borderRadius: 42, backgroundColor: colors.cerise, alignItems: 'center', justifyContent: 'center' },
   allowT: { ...tx.black, fontSize: 11, lineHeight: 13, color: colors.vanille, textAlign: 'center', paddingHorizontal: 6 },
+  gridV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.14)' },
+  gridH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.14)' },
+  zoomRail: { position: 'absolute', right: 14, top: '38%', width: 4, height: 120, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', overflow: 'hidden', justifyContent: 'flex-end' },
+  zoomFill: { width: 4, borderRadius: 2, backgroundColor: colors.citron },
 });

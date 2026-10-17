@@ -18,7 +18,12 @@ Deno.serve(async (req) => {
   if (path.split('/')[0] !== user.id || path.includes('..')) return fail('Chemin invalide', 400, 'AVATAR_PATH');
 
   const url = db.storage.from('avatars').getPublicUrl(path).data.publicUrl;
-  const verdict = blockingCategory((await moderate('photo de profil', url)) ?? undefined);
+  const mod = await moderate('photo de profil', url);
+  if (mod === 'unavailable') {
+    await db.storage.from('avatars').remove([path]);
+    return fail('Le contrôle de sécurité ne répond pas, réessaie dans un instant', 503, 'MODERATION_UNAVAILABLE');
+  }
+  const verdict = blockingCategory(mod ?? undefined);
   if (verdict) {
     await db.storage.from('avatars').remove([path]);
     console.warn('avatar refusé', user.id, verdict);

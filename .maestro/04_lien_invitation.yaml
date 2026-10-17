@@ -1,8 +1,16 @@
-# Un lien d'invitation ouvre l'app et ajoute l'ami (compte connecté avec profil complet).
-# maestro test -e FRIEND=loic .maestro/04_lien_invitation.yaml
-appId: app.sweetin.ios
+# Lien profond invalide : /read sans id ne doit jamais afficher l'écran noir protégé.
+# L'app doit retomber sur la welcome (ou « page fondue »), jamais un shimmer infini.
+appId: host.exp.exponent
 ---
-- launchApp
-- openLink: sweetin://u/${FRIEND}
-- assertVisible: "${FRIEND}"
-- assertVisible: "Partager mon lien|Share my link"
+- launchApp:
+    clearState: true
+- runFlow: _ouvrir.yaml
+- extendedWaitUntil:
+    visible: "send my first sweet|envoyer mon premier sweet"
+    timeout: 60000
+# deep link tronqué vers la route de lecture
+- openLink: "exp://10.0.2.2:8082/--/read"
+- extendedWaitUntil:
+    visible: "send my first sweet|envoyer mon premier sweet|nothing to scratch here.|rien à gratter ici."
+    timeout: 20000
+- assertNotVisible: "read without scratching|lire sans gratter"

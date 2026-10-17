@@ -2,7 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { t } from '../i18n';
 import { report } from '../lib/monitoring';
-import { fonts, tx, useStyles, type Palette } from '../theme';
+import { colors, fonts, tx } from '../theme';
 
 type Props = { children: ReactNode };
 type State = { failed: boolean };
@@ -27,7 +27,6 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 function Crash({ onRetry }: { onRetry: () => void }) {
-  const s = useStyles(themed);
   return (
     <View style={s.wrap}>
       <Text style={s.title}>{t('crash.title')}</Text>
@@ -38,10 +37,9 @@ function Crash({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-const themed = (colors: Palette) =>
-  StyleSheet.create({
-    wrap: { flex: 1, backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center', padding: 32 },
-    title: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, color: colors.ink, textAlign: 'center' },
-    btn: { marginTop: 24, backgroundColor: colors.cerise, borderRadius: 999, paddingVertical: 14, paddingHorizontal: 28 },
-    btnText: { ...tx.black, fontSize: 16, color: colors.vanille },
-  });
+const s = StyleSheet.create({
+  wrap: { flex: 1, backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  title: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, color: colors.ink, textAlign: 'center' },
+  btn: { marginTop: 24, backgroundColor: colors.cerise, borderRadius: 999, paddingVertical: 14, paddingHorizontal: 28 },
+  btnText: { ...tx.black, fontSize: 16, color: colors.onBrand },
+});

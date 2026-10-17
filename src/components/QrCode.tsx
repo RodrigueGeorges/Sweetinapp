@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import Svg, { Path, Rect } from 'react-native-svg';
 
 /** QR code dessiné en vecteur (net à toutes les tailles), sans dépendance native. */
-export function QrCode({ value, size = 200, color = '#FF1A6C', background = '#FFFFFF' }: { value: string; size?: number; color?: string; background?: string }) {
+export function QrCode({ value, size = 200, color = '#FF2E5B', background = '#FFFFFF' }: { value: string; size?: number; color?: string; background?: string }) {
   const { d, n } = useMemo(() => {
     const qr = QRCode.create(value, { errorCorrectionLevel: 'M' });
     const count = qr.modules.size;

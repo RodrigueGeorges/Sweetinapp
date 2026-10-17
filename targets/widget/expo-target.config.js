@@ -5,18 +5,20 @@ module.exports = (config) => ({
   name: 'SweetinWidget',
   displayName: 'Sweetin',
   deploymentTarget: '17.0',
+  // DA « net + éclats » : fond de l'écran (blanc, nuit en sombre), framboise et citron en éclats
   colors: {
-    $widgetBackground: '#FF2D5F',
-    $accent: '#FF2D5F',
-    cerise: '#FF2D5F',
-    ceriseTop: '#FF4473',
-    ceriseBottom: '#EB1650',
-    cacao: '#1A0A0E',
-    vanille: '#FFF4E6',
-    pistache: '#C5EE6A',
+    $widgetBackground: { color: '#FFFFFF', darkColor: '#0E0B0C' },
+    $accent: '#FF2E5B',
+    paper: { color: '#FFFFFF', darkColor: '#0E0B0C' }, // le fond
+    ink: { color: '#160F12', darkColor: '#FFFFFF' }, // le texte et le bouton
+    cerise: '#FF2E5B', // framboise : la glace
+    cacao: '#160F12', // nuit fixe : texte sur citron, cornet sur photo
+    vanille: '#FFFFFF',
+    sucre: '#FFE6EB',
+    citron: '#E8FF5A', // le compteur
   },
-  // le logo qui fond (vanille), utilisé par Image("logo")
-  images: { logo: require('path').join(__dirname, '../../assets/widget-logo.png') },
+  // la glace est dessinée en SwiftUI (BrandShapes.swift) ; le sucre givré est une tuile qui se répète
+  images: { sucre: require('path').join(__dirname, '../../assets/sucre-givre.png') },
   entitlements: {
     'com.apple.security.application-groups': config.ios.entitlements['com.apple.security.application-groups'],
   },

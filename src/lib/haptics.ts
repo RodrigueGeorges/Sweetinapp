@@ -25,6 +25,15 @@ export function signature() {
   setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid), 240);
 }
 
+/** Les dernières secondes avant la fonte : la pression monte d'un cran à chaque tic. */
+export function heat(secondsLeft: number) {
+  if (Platform.OS === 'android') {
+    Haptics.performAndroidHapticsAsync(secondsLeft <= 1 ? Haptics.AndroidHaptics.Confirm : Haptics.AndroidHaptics.Clock_Tick).catch(() => {});
+    return;
+  }
+  Haptics.impactAsync(secondsLeft <= 1 ? Haptics.ImpactFeedbackStyle.Rigid : secondsLeft === 2 ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+}
+
 /** « ça fond » : trois touches qui ralentissent et s'adoucissent, comme des gouttes. */
 export function melt() {
   const steps: [number, Haptics.ImpactFeedbackStyle][] = [

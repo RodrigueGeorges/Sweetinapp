@@ -1,18 +1,17 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import { useTheme } from '../theme';
-import { DropGlyph } from './Logo';
+import { colors } from '../theme';
+import { Mark } from './Logo';
 
 export type FondueMood = 'happy' | 'melt' | 'shock' | 'wait' | 'party' | 'sad';
 
 /**
- * Fondue : la goutte de la marque, dans une pastille, qui bouge selon l'humeur.
- * Volontairement sobre (pas de visage dessiné en code) ; la version illustrée et animée (Rive) la remplacera
- * avec la même interface (mood, size, bg). Rien ne bouge si « réduire les animations ».
+ * Fondue : la glace de la marque dans une pastille framboise douce, qui bouge selon l'humeur
+ * (écrans vides, célébration, erreurs). Sobre, sans visage ; même interface (mood, size, bg) que la future version animée.
+ * Rien ne bouge si « réduire les animations ».
  */
-export function Fondue({ mood = 'happy', size = 120, bg }: { mood?: FondueMood; size?: number; bg?: string }) {
-  const { colors } = useTheme();
+export function Fondue({ mood = 'happy', size = 120, bg = colors.paper }: { mood?: FondueMood; size?: number; bg?: string }) {
   const reduce = useReducedMotion();
   const t = useSharedValue(0);
   useEffect(() => {
@@ -30,20 +29,21 @@ export function Fondue({ mood = 'happy', size = 120, bg }: { mood?: FondueMood; 
       case 'shock':
         return { transform: [{ translateX: (v - 0.5) * size * 0.04 }] };
       case 'sad':
-        return { transform: [{ rotate: '-14deg' }, { translateY: v * size * 0.015 }] };
+        return { transform: [{ rotate: `${-4 + v * 4}deg` }, { translateY: v * size * 0.015 }] };
       default:
         return { transform: [{ translateY: -v * size * 0.025 }] };
     }
   });
-  const onBrand = bg === colors.cerise;
+  const onBrand = bg === colors.cerise || bg === colors.coeur;
+  // boule framboise (ou blanche sur la marque), cornet nuit : les découpes sont dans le dessin
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: onBrand ? 'rgba(255,255,255,0.18)' : colors.riskBg }}
+      style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: onBrand ? 'rgba(255,255,255,0.1)' : colors.brandTint }}
     >
       <Animated.View style={move}>
-        <DropGlyph size={size * 0.46} color={onBrand ? colors.white : colors.cerise} />
+        <Mark size={size * 0.56} color={colors.cerise} cone={colors.cacao} />
       </Animated.View>
     </View>
   );

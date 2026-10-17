@@ -8,6 +8,7 @@ module.exports = defineConfig([
     ignores: [
       'dist/*',
       '.expo/*',
+      'amelioration/**', // paquet de patches livré à part : les fichiers sources sont dans le repo
       'supabase/**', // fonctions Deno — imports npm: et API Deno, pas du code app
       'targets/**', // extensions natives + config Node (__dirname)
       'web/**', // pages statiques hors bundle

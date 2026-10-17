@@ -29,7 +29,6 @@ type Event =
   | 'guest_started'
   | 'guest_signup'
   | 'streak_saved'
-  | 'streak_quick_flip'
   | 'contacts_more'
   | 'login'
   | 'flip_sent'
@@ -42,6 +41,8 @@ type Event =
   | 'friend_added'
   | 'screenshot_attempt'
   | 'send_failed'
+  | 'send_queued'
+  | 'send_queue_flushed'
   | 'intro_completed'
   | 'link_shared'
   | 'story_shared'
@@ -50,9 +51,7 @@ type Event =
   | 'qr_scanned'
   | 'phone_verified'
   | 'friends_step_done'
-  | 'invite_pasted'
-  | 'inbox_menu_used'
-  | 'sent_friends_cta';
+  | 'invite_pasted';
 
 /** Enregistre un événement anonyme (propriétés numériques ou booléennes seulement). */
 export function track(event: Event, props?: Record<string, number | boolean | string>) {

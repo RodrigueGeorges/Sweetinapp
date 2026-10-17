@@ -1,0 +1,20 @@
+# Le cœur du produit : gratter la démo de la welcome avec de vrais gestes.
+# Plusieurs balayages en zigzag couvrent assez la carte pour révéler le mot.
+appId: host.exp.exponent
+---
+- launchApp:
+    clearState: true
+- runFlow: _ouvrir.yaml
+- extendedWaitUntil:
+    visible: "scratch the photo with your finger|gratte la photo du doigt"
+    timeout: 60000
+# zigzags sur la carte démo (centre de l'écran, ~30–55 % de hauteur)
+- swipe: { start: "25%,30%", end: "75%,32%" }
+- swipe: { start: "75%,34%", end: "25%,36%" }
+- swipe: { start: "25%,38%", end: "75%,40%" }
+- swipe: { start: "75%,42%", end: "25%,44%" }
+- swipe: { start: "25%,46%", end: "75%,48%" }
+- swipe: { start: "75%,50%", end: "25%,52%" }
+- swipe: { start: "25%,54%", end: "75%,56%" }
+- swipe: { start: "50%,28%", end: "50%,58%" }
+- assertVisible: "that’s it. your turn.|voilà. à toi."

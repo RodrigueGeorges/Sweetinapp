@@ -1,7 +1,7 @@
-import { Blur, BlurMask, Canvas, createPicture, Group, Image as SkiaImage, Path, Picture, Rect, Skia, useClock, type SkImage } from '@shopify/react-native-skia';
+import { BlurMask, Canvas, createPicture, Group, Image as SkiaImage, Path, Picture, Skia, useClock, type SkImage } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -28,7 +28,7 @@ const ROWS = 32;
 const REVEAL_AT = 62;
 /** En plein écran, la surface est 2,5 fois plus grande : on révèle plus tôt, avec un doigt plus large. */
 const REVEAL_AT_FULL = 46;
-const SPARK_COLORS = ['#FFFFFF', '#FF8FB8', '#C6F36B', '#FFF1A8', '#BDEBFF'];
+const SPARK_COLORS = ['#FFFFFF', '#FFFFFF', '#FFE6EB', '#E8FF5A', '#FFF7F9']; // miettes de sucre givré
 
 type Spark = { x: number; y: number; vx: number; vy: number; t0: number; life: number; r: number; c: number; g: number };
 type Tilt = { x: SharedValue<number>; y: SharedValue<number> };
@@ -47,13 +47,20 @@ type Props = {
   onFirstTouch?: () => void;
   onProgress?: (percent: number) => void;
   onReveal: (percent: number, durationMs: number) => void;
+  /** « lire sans gratter » : passe à vrai pour révéler d'un coup (accessibilité, appui long). */
+  forceReveal?: boolean;
+  /** Le mot fond : chaque lettre coule et s'efface, en cascade (1,2 s). */
+  melting?: boolean;
+  /** Place prise en haut (en-tête) et en bas (réactions, compte à rebours, bouton) : le mot se centre entre les deux, sans jamais passer dessous. */
+  safeTop?: number;
+  safeBottom?: number;
 };
 
 /**
  * La photo est dessinée sur le GPU (Skia) au-dessus du dos de la carte, avec un reflet holographique qui suit l'inclinaison.
  * Le doigt efface la photo avec un pinceau doux et laisse des paillettes ; au moment où le message apparaît, la carte éclate en confettis.
  */
-export function ScratchCard({ photo, message, mode, width, height, radius = 16, showHint, tilt, onFirstTouch, onProgress, onReveal }: Props) {
+export function ScratchCard({ photo, message, mode, width, height, radius = 16, showHint, tilt, onFirstTouch, onProgress, onReveal, forceReveal, melting, safeTop = 0, safeBottom = 0 }: Props) {
   const reduce = useReducedMotion();
   const strokes = useRef<{ x: number; y: number }[][]>([]);
   const grid = useRef(new Uint8Array(COLS * ROWS));
@@ -65,6 +72,8 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   const moves = useRef(0);
   const [tick, setTick] = useState(0);
   const [touched, setTouched] = useState(false);
+  // doublon de `revealed.current` en état, pour les props d'accessibilité lues au rendu
+  const [revealedSt, setRevealedSt] = useState(false);
   const full = width >= 360;
   const brush = width * (full ? 0.24 : 0.2);
   const revealAt = full ? REVEAL_AT_FULL : REVEAL_AT;
@@ -74,6 +83,11 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   const msg = useSharedValue(0.9);
   const frontStyle = useAnimatedStyle(() => ({ opacity: front.value }));
   const msgStyle = useAnimatedStyle(() => ({ transform: [{ scale: msg.value }] }));
+  // fonte du mot, de 0 à 1
+  const meltP = useSharedValue(0);
+  useEffect(() => {
+    if (melting) meltP.value = withTiming(1, { duration: reduce ? 400 : 1200, easing: Easing.in(Easing.quad) });
+  }, [melting, meltP, reduce]);
 
   // paillettes et confettis, animés sur le thread UI
   const clock = useClock();
@@ -95,6 +109,9 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
     }),
   );
 
+  /* eslint-disable react-hooks/refs, react-hooks/immutability, react-hooks/purity --
+     section gestuelle impérative : les refs (traits, grille) et les shared values
+     Reanimated/Skia sont volontairement lus et mutés dans les callbacks, jamais au rendu */
   const spawn = (list: Omit<Spark, 't0'>[]) => {
     if (reduce) return;
     const now = clock.value;
@@ -103,14 +120,14 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   };
 
   const path = useMemo(() => {
-    const p = Skia.Path.Make();
+    const p = Skia.PathBuilder.Make();
     for (const s of strokes.current) {
       if (!s.length) continue;
       p.moveTo(s[0].x, s[0].y);
       p.lineTo(s[0].x + 0.1, s[0].y);
       for (let i = 1; i < s.length; i++) p.lineTo(s[i].x, s[i].y);
     }
-    return p;
+    return p.detach();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 
@@ -172,6 +189,8 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   const reveal = (forcedPct?: number) => {
     if (revealed.current) return;
     revealed.current = true;
+    setRevealedSt(true);
+    setTouched(true); // le doigt d'aide disparaît, y compris après « lire sans gratter »
     scratchLoop.stop();
     play('reveal');
     if (!startedAt.current) startedAt.current = Date.now();
@@ -197,6 +216,12 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
     );
     onReveal(pct, Date.now() - startedAt.current);
   };
+
+  // « lire sans gratter »
+  useEffect(() => {
+    if (forceReveal) reveal(100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceReveal]);
 
   const pan = Gesture.Pan()
     .runOnJS(true)
@@ -232,6 +257,7 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
       if (revealed.current || !startedAt.current) return;
       if (mode === 'once' || percent() >= revealAt) reveal();
     });
+  /* eslint-enable react-hooks/refs, react-hooks/immutability, react-hooks/purity */
 
   useEffect(
     () => () => {
@@ -242,19 +268,11 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   );
 
   return (
-    <View style={{ width, height, overflow: 'hidden', borderRadius: radius, backgroundColor: colors.vanille }}>
-      {/* dos de la carte : la photo givrée (floutée sur le GPU, sans fichier) + le message */}
-      <View style={StyleSheet.absoluteFill}>
-        <Canvas style={StyleSheet.absoluteFill}>
-          <SkiaImage image={photo} x={0} y={0} width={width} height={height} fit="cover">
-            <Blur blur={22} mode="clamp" />
-          </SkiaImage>
-          <Rect x={0} y={0} width={width} height={height} color="rgba(255,244,230,0.82)" />
-        </Canvas>
-        <Animated.View style={[s.msgWrap, msgStyle]} accessibilityElementsHidden={!revealed.current} importantForAccessibility={revealed.current ? 'auto' : 'no-hide-descendants'}>
-          <Text style={[s.msg, msgSize(message, width)]} maxFontSizeMultiplier={1.3}>
-            {message}
-          </Text>
+    <View style={{ width, height, overflow: 'hidden', borderRadius: radius, backgroundColor: colors.coeur }}>
+      {/* dos de la carte : le cœur (DA Fondant), nuit, le message en display blanc */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.coeur }]}>
+        <Animated.View style={[s.msgWrap, { paddingTop: safeTop, paddingBottom: safeBottom }, msgStyle]} accessibilityElementsHidden={!revealedSt} importantForAccessibility={revealedSt ? 'auto' : 'no-hide-descendants'}>
+          <MeltingWord text={message} style={[s.msg, msgSize(message, width, height - safeTop - safeBottom)]} melt={meltP} reduce={reduce} />
         </Animated.View>
       </View>
 
@@ -296,11 +314,64 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   );
 }
 
-/** Taille du message : grande sur une petite phrase, proportionnelle à la largeur de la carte. */
-function msgSize(message: string, width: number) {
-  const k = message.length > 60 ? 0.072 : message.length > 30 ? 0.088 : 0.108;
-  const size = Math.round(width * k);
-  return { fontSize: size, lineHeight: Math.round(size * 1.06), maxWidth: width * 0.84 };
+/**
+ * Le mot, lettre par lettre, pour pouvoir le faire fondre : chaque lettre coule vers le bas, s'étire et s'efface,
+ * en cascade de la première à la dernière. Le lecteur d'écran lit le mot entier.
+ */
+function MeltingWord({ text, style, melt, reduce }: { text: string; style: StyleProp<TextStyle>; melt: SharedValue<number>; reduce: boolean }) {
+  const words = text.split(/(\s+)/).filter((w) => w.length > 0);
+  const total = text.length;
+  // position de chaque mot dans le texte, pour la cascade de la fonte
+  const starts = words.map((_, wi) => words.slice(0, wi).reduce((n, x) => n + x.length, 0));
+  return (
+    <View style={s.word} accessible accessibilityLabel={text}>
+      {words.map((w, wi) =>
+        /^\s+$/.test(w) ? (
+          <Text key={`s${wi}`} style={style}>
+            {' '}
+          </Text>
+        ) : (
+          <View key={`w${wi}`} style={{ flexDirection: 'row' }}>
+            {Array.from(w).map((ch, ci) => (
+              <Letter key={ci} ch={ch} index={starts[wi] + ci} total={total} melt={melt} reduce={reduce} style={style} />
+            ))}
+          </View>
+        ),
+      )}
+    </View>
+  );
+}
+
+function Letter({ ch, index, total, melt, reduce, style }: { ch: string; index: number; total: number; melt: SharedValue<number>; reduce: boolean; style: StyleProp<TextStyle> }) {
+  const st = useAnimatedStyle(() => {
+    // chaque lettre part un peu après la précédente ; les dernières finissent en même temps que la fonte
+    const spread = 0.55;
+    const local = Math.min(1, Math.max(0, (melt.value * (1 + spread) - (index / Math.max(1, total)) * spread)));
+    if (reduce) return { opacity: 1 - melt.value };
+    return {
+      opacity: 1 - local * local,
+      transform: [{ translateY: local * local * 70 }, { scaleY: 1 + local * 0.9 }, { scaleX: 1 - local * 0.25 }],
+    };
+  });
+  return (
+    <Animated.Text style={[style, st, { transformOrigin: 'top' }]} allowFontScaling={false} importantForAccessibility="no">
+      {ch}
+    </Animated.Text>
+  );
+}
+
+/**
+ * Taille du message : grande sur une petite phrase, proportionnelle à la largeur de la carte,
+ * et plafonnée par la hauteur libre (petits écrans : le mot ne doit jamais passer sous les réactions).
+ */
+function msgSize(message: string, width: number, availH = Infinity) {
+  // Climate Crisis est très large : tailles plus petites qu'avec une fonte normale
+  const k = message.length > 60 ? 0.064 : message.length > 30 ? 0.078 : 0.094;
+  const maxW = width * 0.86;
+  // une lettre fait environ 0,8 em : lignes ≈ longueur × 0,8 × taille / largeur ; hauteur = lignes × 1,08 × taille
+  const byHeight = availH > 0 && Number.isFinite(availH) ? Math.sqrt((availH * 0.9 * maxW) / (Math.max(1, message.length) * 0.8 * 1.08)) : Infinity;
+  const size = Math.max(14, Math.round(Math.min(width * k, byHeight)));
+  return { fontSize: size, lineHeight: Math.round(size * 1.08), maxWidth: maxW };
 }
 
 /** Doigt fantôme qui montre le geste à la première ouverture. */
@@ -329,7 +400,9 @@ function GhostFinger({ width, height }: { width: number; height: number }) {
 }
 
 const s = StyleSheet.create({
-  msgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  msg: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 32, lineHeight: 34, letterSpacing: -0.6, color: colors.cacao, textAlign: 'center' },
+  word: { flexDirection: 'row', flexWrap: 'wrap', maxWidth: '100%' },
+  msgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 28 },
+  // le cœur : le message en Climate Crisis blanc sur nuit, calé à gauche
+  msg: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 24, lineHeight: 28, color: colors.onCoeur, textAlign: 'left' },
   ghost: { position: 'absolute', left: 0, top: 0, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 8, borderColor: 'rgba(255,255,255,0.4)', shadowColor: '#fff', shadowOpacity: 0.9, shadowRadius: 12 },
 });

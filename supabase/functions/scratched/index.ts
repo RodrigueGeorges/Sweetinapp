@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     .eq('flip_id', b.flip_id)
     .eq('recipient_id', user.id)
     .maybeSingle();
-  if (!rec) return fail('Flip introuvable', 404);
+  if (!rec) return fail('Sweet introuvable', 404);
   // deno-lint-ignore no-explicit-any
   const senderId: string = (rec as any).flips?.sender_id;
   const { data: me } = await db.from('profiles').select('username').eq('id', user.id).single();

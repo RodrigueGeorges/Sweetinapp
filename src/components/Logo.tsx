@@ -1,57 +1,52 @@
 import { View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { useTheme } from '../theme';
-import { DROP, LOGO_DROP, LOGO_VIEWBOX as V, LOGO_WORD, MARK_DROP, MARK_S, MARK_VIEWBOX as MV } from './logoPath';
+import { colors } from '../theme';
+import { ICE_CONE, ICE_CONE_MINI, ICE_SCOOP, ICE_SCOOP_MINI, ICE_VIEWBOX as IV, LOGO_CONE, LOGO_SCOOP, LOGO_VIEWBOX as V, LOGO_WORD } from './logoPath';
+
+/** Rapport largeur / hauteur du mot et de la glace. */
+export const LOGO_RATIO = V.w / V.h;
+export const ICE_RATIO = IV.w / IV.h;
 
 /**
- * Logo « sweetin. » : le nom en minuscules, le point final est une goutte (la glace qui fond, en un seul détail).
- * `size` ≈ hauteur des minuscules × 2 (équivalent taille de police). Goutte en `accent` (cerise si le nom est en encre).
+ * Logo « sweetin » (DA Fondant) : le i est une glace. `size` ≈ hauteur du logo en points (24 en tête d'écran).
+ * En dessous de 24 de haut le i devient une tache : utiliser la glace seule (`Mark`).
+ * `scoop` / `cone` : couleurs de la boule et du cornet du i (par défaut, celle du mot).
  */
-export function Logo({ size = 28, color, accent }: { size?: number; color?: string; accent?: string; mark?: boolean; drop?: string }) {
-  const { colors } = useTheme();
-  const h = size * 0.75;
-  const w = (h * V.w) / V.h;
-  const c = color ?? colors.ink;
-  const dropColor = accent ?? (c === colors.ink ? colors.cerise : c);
+export function Logo({ size = 24, color = colors.ink, scoop, cone }: { size?: number; color?: string; scoop?: string; cone?: string }) {
+  const h = Math.max(size, 24);
+  const w = h * LOGO_RATIO;
   return (
     <View accessible accessibilityRole="header" accessibilityLabel="Sweetin">
       <Svg width={w} height={h} viewBox={`${V.x} ${V.y} ${V.w} ${V.h}`}>
-        <Path d={LOGO_WORD} fill={c} />
-        <Path d={LOGO_DROP} fill={dropColor} />
+        <Path d={LOGO_WORD} fill={color} />
+        <Path d={LOGO_CONE} fill={cone ?? color} />
+        <Path d={LOGO_SCOOP} fill={scoop ?? color} />
       </Svg>
     </View>
   );
 }
 
-/** Le monogramme « s. » (icône de l'app), sans fond. `size` = hauteur. */
-export function Mark({ size = 40, color, accent }: { size?: number; color?: string; accent?: string }) {
-  const { colors } = useTheme();
-  const w = (size * MV.w) / MV.h;
+/**
+ * La glace de la marque : boule (cercle coupé + une goutte) et cornet (triangle), découpes déjà faites. `size` = hauteur.
+ * Sous 40 de haut, la version mini (découpes élargies). `color` = boule, `cone` = cornet (par défaut la même couleur).
+ */
+export function Mark({ size = 40, color = colors.white, cone }: { size?: number; color?: string; cone?: string; gap?: string; accent?: string }) {
+  const w = size * ICE_RATIO;
+  const mini = size < 40;
   return (
-    <Svg width={w} height={size} viewBox={`${MV.x} ${MV.y} ${MV.w} ${MV.h}`}>
-      <Path d={MARK_S} fill={color ?? colors.white} />
-      <Path d={MARK_DROP} fill={accent ?? color ?? colors.white} />
+    <Svg width={w} height={size} viewBox={`${IV.x} ${IV.y} ${IV.w} ${IV.h}`}>
+      <Path d={mini ? ICE_CONE_MINI : ICE_CONE} fill={cone ?? color} />
+      <Path d={mini ? ICE_SCOOP_MINI : ICE_SCOOP} fill={color} />
     </Svg>
   );
 }
 
-/** L'icône de l'app : « s. » blanc sur carré arrondi cerise. */
+/** L'icône de l'app : boule blanche et cornet nuit sur framboise. */
 export function AppIcon({ size = 64 }: { size?: number }) {
-  const { colors } = useTheme();
   return (
-    <View style={{ width: size, height: size, borderRadius: size * 0.225, backgroundColor: colors.cerise, alignItems: 'center', justifyContent: 'center' }}>
-      <Mark size={size * 0.46} />
+    <View style={{ width: size, height: size, borderRadius: size * 0.225, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cerise }}>
+      <Mark size={size * 0.625} color={colors.white} cone={colors.cacao} />
     </View>
-  );
-}
-
-/** La goutte seule. `size` = hauteur. */
-export function DropGlyph({ size = 24, color }: { size?: number; color?: string }) {
-  const { colors } = useTheme();
-  return (
-    <Svg width={(size * 2) / 2.95} height={size} viewBox="-1 -1.95 2 2.95">
-      <Path d={DROP} fill={color ?? colors.cerise} />
-    </Svg>
   );
 }
 
@@ -70,9 +65,8 @@ export function dripPath(W: number, depth: number, drips: { x: number; w: number
   return `${d} Q${cx / 2},${depth + wave} 0,${depth} Z`;
 }
 
-/** Le nappage qui coule (photo qui fond en lecture). */
-export function Drip({ width, depth, color, long = 1 }: { width: number; depth: number; color?: string; long?: number }) {
-  const { colors } = useTheme();
+/** Le coulis qui coule du haut de l'écran (le cœur fondant, quand la photo fond en lecture). */
+export function Drip({ width, depth, color = colors.cerise, long = 1 }: { width: number; depth: number; color?: string; long?: number }) {
   const drips = [
     { x: 0.13, w: 0.085, l: 70 * long },
     { x: 0.5, w: 0.105, l: 118 * long },
@@ -81,7 +75,7 @@ export function Drip({ width, depth, color, long = 1 }: { width: number; depth: 
   const h = depth + 130 * long;
   return (
     <Svg width={width} height={h} viewBox={`0 0 ${width} ${h}`} pointerEvents="none">
-      <Path d={dripPath(width, depth, drips, 14)} fill={color ?? colors.cerise} />
+      <Path d={dripPath(width, depth, drips, 14)} fill={color} />
     </Svg>
   );
 }

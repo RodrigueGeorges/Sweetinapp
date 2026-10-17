@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Loader } from '../../components/Loader';
 import { Mark } from '../../components/Logo';
 import { useToast } from '../../components/Toast';
 import { Screen, Title } from '../../components/ui';
@@ -42,11 +43,11 @@ export default function InviteLink() {
 
   return (
     <Screen tone="cerise" style={s.center}>
-      <Mark size={64} />
+      <Mark size={64} cone={colors.cacao} />
       <Title tone="cerise" size={34} style={{ textAlign: 'center' }}>
         {t('invite.adding', { name })}
       </Title>
-      <ActivityIndicator color={colors.white} />
+      <Loader size={34} />
     </Screen>
   );
 }

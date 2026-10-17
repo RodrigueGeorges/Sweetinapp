@@ -17,7 +17,7 @@ export const avatarUrl = (path: string | null | undefined) => (path ? supabase.s
 const prof = <T extends RawProfile>({ avatar_path, ...p }: T) => ({ ...p, avatar_url: avatarUrl(avatar_path) });
 export type Mode = 'free' | 'once';
 
-export type InboxItem = { flip_id: string; created_at: string; expires_at: string; mode: Mode; sender: Profile; opened: boolean; preview: string | null };
+export type InboxItem = { flip_id: string; created_at: string; mode: Mode; sender: Profile; opened: boolean; preview: string | null };
 export type LinkKind = 'single' | 'story';
 export type InviteSource = 'link' | 'flip' | 'story' | 'qr' | 'contacts' | 'username';
 
@@ -30,6 +30,8 @@ export type SentItem = {
   percent: number | null;
   duration_ms: number | null;
   reaction: string | null;
+  /** ThumbHash de la photo envoyée (vignette floue) */
+  preview?: string | null;
 };
 
 export type OpenedFlip = { id: string; sender_id: string; sender: string; sender_avatar?: string | null; preview?: string | null; mode: Mode; created_at: string; photo_url: string; message: string };
@@ -201,9 +203,9 @@ export async function listInbox(): Promise<InboxItem[]> {
     .gt('flips.expires_at', new Date().toISOString())
     .not('flips.photo_path', 'is', null);
   if (error) throw new ApiError(undefined, error.message, true);
-  type Row = { flip_id: string; opened_at: string | null; flips: { created_at: string; expires_at: string; mode: Mode; sender: RawProfile; preview: string | null } };
+  type Row = { flip_id: string; opened_at: string | null; flips: { created_at: string; mode: Mode; sender: RawProfile; preview: string | null } };
   return ((data ?? []) as unknown as Row[])
-    .map((r) => ({ flip_id: r.flip_id, created_at: r.flips.created_at, expires_at: r.flips.expires_at, mode: r.flips.mode, sender: prof(r.flips.sender), opened: !!r.opened_at, preview: r.flips.preview }))
+    .map((r) => ({ flip_id: r.flip_id, created_at: r.flips.created_at, mode: r.flips.mode, sender: prof(r.flips.sender), opened: !!r.opened_at, preview: r.flips.preview }))
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
@@ -211,12 +213,12 @@ export async function listSent(): Promise<SentItem[]> {
   const uid = await myId();
   const { data, error } = await supabase
     .from('flip_recipients')
-    .select('flip_id, scratched_at, screenshot_at, percent, duration_ms, reaction, recipient:profiles!flip_recipients_recipient_id_fkey(id, username, avatar_path), flips!inner(created_at, sender_id)')
+    .select('flip_id, scratched_at, screenshot_at, percent, duration_ms, reaction, recipient:profiles!flip_recipients_recipient_id_fkey(id, username, avatar_path), flips!inner(created_at, sender_id, preview)')
     .eq('flips.sender_id', uid)
     .limit(50);
   if (error) throw new ApiError(undefined, error.message, true);
-  type Row = Omit<SentItem, 'created_at'> & { flips: { created_at: string } };
-  return ((data ?? []) as unknown as Row[]).map(({ flips, ...r }) => ({ ...r, recipient: prof(r.recipient as RawProfile), created_at: flips.created_at })).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  type Row = Omit<SentItem, 'created_at'> & { flips: { created_at: string; preview: string | null } };
+  return ((data ?? []) as unknown as Row[]).map(({ flips, ...r }) => ({ ...r, recipient: prof(r.recipient as RawProfile), created_at: flips.created_at, preview: flips.preview })).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 // ---------- flips ----------
@@ -299,19 +301,19 @@ const INVITE_BASE = process.env.EXPO_PUBLIC_INVITE_BASE ?? 'https://sweetin.app/
 export const inviteUrl = (username: string) => `${INVITE_BASE}${encodeURIComponent(username)}`;
 
 // ---------- liens envoyés (lien privé, story) ----------
-export type SentLink = { token: string; kind: LinkKind; created_at: string; opened_at: string | null; scratched_at: string | null; percent: number | null; duration_ms: number | null; opens: number; scratches: number };
+export type SentLink = { token: string; kind: LinkKind; created_at: string; opened_at: string | null; scratched_at: string | null; percent: number | null; duration_ms: number | null; opens: number; scratches: number; preview?: string | null };
 
 export async function listLinks(): Promise<SentLink[]> {
   const uid = await myId();
   const { data, error } = await supabase
     .from('flip_links')
-    .select('token, kind, opened_at, scratched_at, percent, duration_ms, opens, scratches, flips!inner(created_at, sender_id)')
+    .select('token, kind, opened_at, scratched_at, percent, duration_ms, opens, scratches, flips!inner(created_at, sender_id, preview)')
     .eq('flips.sender_id', uid)
     .order('created_at', { ascending: false })
     .limit(30);
   if (error) throw new ApiError(undefined, error.message, true);
-  type Row = Omit<SentLink, 'created_at'> & { flips: { created_at: string } };
-  return ((data ?? []) as unknown as Row[]).map(({ flips, ...r }) => ({ ...r, created_at: flips.created_at }));
+  type Row = Omit<SentLink, 'created_at'> & { flips: { created_at: string; preview: string | null } };
+  return ((data ?? []) as unknown as Row[]).map(({ flips, ...r }) => ({ ...r, created_at: flips.created_at, preview: flips.preview }));
 }
 
 // ---------- séries ----------

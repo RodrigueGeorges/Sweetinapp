@@ -1,0 +1,33 @@
+# Sous-flow partagé : charge l'app dans Expo Go et passe les dev menus qui s'affichent.
+# Expo Go télécharge le bundle depuis Metro (~1-3 min après clearState) : on attend
+# la welcome OU un dev menu, puis on referme tous les menus possibles (ordre variable).
+appId: host.exp.exponent
+---
+- openLink: "exp://10.0.2.2:8082"
+- extendedWaitUntil:
+    visible:
+      text: "send my first sweet|envoyer mon premier sweet|Continue|Continuer|welcome back.|te revoilà.|à gratter.|Fast Refresh"
+    timeout: 300000
+# 1er menu : feuille « This is the developer menu » avec bouton Continue
+- runFlow:
+    when:
+      visible: "Continue|Continuer"
+    commands:
+      - tapOn: "Continue|Continuer"
+# 2e menu possible : dev menu complet (Reload / Go home / Fast Refresh) → back
+- runFlow:
+    when:
+      visible: "Fast Refresh"
+    commands:
+      - pressKey: back
+# au cas où l'ordre était inversé
+- runFlow:
+    when:
+      visible: "Continue|Continuer"
+    commands:
+      - tapOn: "Continue|Continuer"
+- runFlow:
+    when:
+      visible: "Fast Refresh"
+    commands:
+      - pressKey: back

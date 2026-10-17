@@ -23,11 +23,11 @@ Deno.serve(async (req) => {
   // deno-lint-ignore no-explicit-any
   const flip = (link as any)?.flips;
   if (!link || !flip) return fail('Lien introuvable', 404, 'NOT_FOUND');
-  if (!flip.photo_path || new Date(flip.expires_at) < new Date()) return fail('Ce flip a expiré', 410, 'EXPIRED');
+  if (!flip.photo_path || new Date(flip.expires_at) < new Date()) return fail('Ce sweet a fondu', 410, 'EXPIRED');
 
   // aperçu avant ouverture (pseudo + vignette floue), sans rien consommer
   if (peek) {
-    if (link.kind === 'single' && link.opened_at) return fail('Ce flip a déjà été ouvert', 410, 'ALREADY_OPENED');
+    if (link.kind === 'single' && link.opened_at) return fail('Ce sweet a déjà été gratté', 410, 'ALREADY_OPENED');
     const [{ data: sender }, { data: p }] = await Promise.all([
       db.from('profiles').select('username').eq('id', flip.sender_id).single(),
       db.from('flips').select('preview').eq('id', flip.id).single(),
@@ -39,11 +39,11 @@ Deno.serve(async (req) => {
   if (link.kind === 'single') {
     // ouverture unique, atomique
     const { data: claimed } = await db.from('flip_links').update({ opened_at: new Date().toISOString() }).eq('token', token).is('opened_at', null).select('token');
-    if (!claimed?.length) return fail('Ce flip a déjà été ouvert', 410, 'ALREADY_OPENED');
+    if (!claimed?.length) return fail('Ce sweet a déjà été gratté', 410, 'ALREADY_OPENED');
   } else {
     const { data } = await db.rpc('bump_story', { p_token: token, p_scratch: false });
     opens = (data as number) ?? 0;
-    if (opens > MAX_STORY_OPENS) return fail('Ce flip a expiré', 410, 'EXPIRED');
+    if (opens > MAX_STORY_OPENS) return fail('Ce sweet a fondu', 410, 'EXPIRED');
   }
 
   const [{ data: secret }, { data: sender }, signed] = await Promise.all([
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     db.from('profiles').select('username').eq('id', flip.sender_id).single(),
     db.storage.from('flips').createSignedUrl(flip.photo_path, 300),
   ]);
-  if (!secret || signed.error) return fail('Ce flip a expiré', 410, 'EXPIRED');
+  if (!secret || signed.error) return fail('Ce sweet a fondu', 410, 'EXPIRED');
 
   if (link.kind === 'single') {
     await sendPush(db, [flip.sender_id], (_u, lang) => ({ body: copy.linkOpened(lang), data: { screen: 'inbox' } }));

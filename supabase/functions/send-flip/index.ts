@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   // quota anti-spam (compteur atomique partagé, voir migration v7)
   if (!(await rateHit(db, user.id, 'send_flip', DAILY_LIMIT, 86_400))) {
     await dropPhoto();
-    return fail('Tu as envoyé beaucoup de flips aujourd’hui, réessaie demain', 429, 'RATE_LIMIT');
+    return fail('Tu as envoyé beaucoup de sweets aujourd’hui, réessaie demain', 429, 'RATE_LIMIT');
   }
 
   // uniquement des amis, et personne qui t'a bloqué
@@ -51,14 +51,19 @@ Deno.serve(async (req) => {
     return fail('Aucun destinataire valide', 400, 'NO_RECIPIENT');
   }
 
-  // modération de la photo et du message avant toute livraison
+  // modération de la photo et du message avant toute livraison (fail-closed : indisponible = refusé)
   const signed = await db.storage.from('flips').createSignedUrl(path, 120);
   if (signed.error) return fail('Photo introuvable, renvoie-la', 400, 'PHOTO_INVALID');
-  const verdict = blockingCategory((await moderate(message, signed.data.signedUrl)) ?? undefined);
+  const mod = await moderate(message, signed.data.signedUrl);
+  if (mod === 'unavailable') {
+    await dropPhoto();
+    return fail('Le contrôle de sécurité ne répond pas, réessaie dans un instant', 503, 'MODERATION_UNAVAILABLE');
+  }
+  const verdict = blockingCategory(mod ?? undefined);
   if (verdict) {
     await dropPhoto();
     console.warn('flip refusé par la modération', user.id, verdict);
-    return fail('Ce flip ne respecte pas les règles de Sweetin', 422, 'MODERATION');
+    return fail('Ce sweet ne respecte pas les règles de Sweetin', 422, 'MODERATION');
   }
 
   // envoyé pendant le Sweet Hour ?
@@ -91,7 +96,7 @@ Deno.serve(async (req) => {
     for (const m of milestones) {
       await sendPush(db, [m.rid], (_uid, lang) => ({ title: 'sweetin', body: copy.streakMilestone(lang, m.days, me.username), sound: 'streak.wav', channelId: 'streaks', data: { screen: 'contacts', kind: 'streak' } }));
     }
-    // wake : le flip réveille l'app en arrière-plan pour rafraîchir le widget et le badge
+    // wake : le sweet réveille l'app en arrière-plan pour rafraîchir le widget et le badge
     await sendPush(db, allowed, (_uid, lang) => ({
       title: 'sweetin',
       body: copy.flip(lang, me.username),

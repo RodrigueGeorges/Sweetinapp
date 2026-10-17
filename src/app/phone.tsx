@@ -1,23 +1,30 @@
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View, type TextInput } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View, type TextInput } from 'react-native';
 import { useToast } from '../components/Toast';
 import { Body, BottomCTA, Button, Field, Header, Screen, Title } from '../components/ui';
 import { t } from '../i18n';
 import { requestPhoneCode, verifyPhoneCode } from '../lib/api';
 import { toE164 } from '../lib/contacts';
 import { track } from '../lib/monitoring';
-import { tx, useStyles, type Palette } from '../theme';
+import { colors, tx } from '../theme';
 
 /** Ajout du numéro (vérifié par SMS) pour être retrouvé par ses amis. */
 export default function Phone() {
-  const s = useStyles(themed);
   const toast = useToast();
   const [raw, setRaw] = useState('');
   const [e164, setE164] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const codeRef = useRef<TextInput>(null);
+
+  // le renvoi a un tempo : un SMS toutes les 30 s maximum
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const iv = setTimeout(() => setCooldown((n) => n - 1), 1000);
+    return () => clearTimeout(iv);
+  }, [cooldown]);
 
   const send = async () => {
     const n = toE164(raw);
@@ -26,6 +33,8 @@ export default function Phone() {
     try {
       await requestPhoneCode(n);
       setE164(n);
+      setCode('');
+      setCooldown(30);
       setTimeout(() => codeRef.current?.focus(), 200);
     } catch (e) {
       toast((e as Error).message);
@@ -34,8 +43,8 @@ export default function Phone() {
     }
   };
 
-  const verify = async () => {
-    if (!e164 || code.length < 4) return;
+  const verify = useCallback(async () => {
+    if (!e164 || code.length < 4 || busy) return;
     setBusy(true);
     try {
       await verifyPhoneCode(e164, code);
@@ -48,11 +57,24 @@ export default function Phone() {
     } finally {
       setBusy(false);
     }
-  };
+  }, [e164, code, busy, toast]);
+
+  // 6 chiffres tapés : on vérifie sans attendre le bouton (une seule tentative par saisie)
+  const tried = useRef(false);
+  useEffect(() => {
+    if (code.length < 6) {
+      tried.current = false;
+      return;
+    }
+    if (!tried.current && e164 && !busy) {
+      tried.current = true;
+      verify();
+    }
+  }, [code, e164, busy, verify]);
 
   return (
     <Screen>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <Header back />
         <View style={s.form}>
           <Title size={48}>{t('phone.title')}</Title>
@@ -84,8 +106,8 @@ export default function Phone() {
                 style={s.code}
                 onSubmitEditing={verify}
               />
-              <Pressable onPress={send} hitSlop={8} accessibilityRole="button">
-                <Text style={s.resend}>{t('phone.resend')}</Text>
+              <Pressable onPress={send} hitSlop={8} accessibilityRole="button" disabled={cooldown > 0 || busy}>
+                <Text style={[s.resend, (cooldown > 0 || busy) && { color: colors.muted, textDecorationLine: 'none' }]}>{cooldown > 0 ? t('phone.resendIn', { n: cooldown }) : t('phone.resend')}</Text>
               </Pressable>
             </View>
           ) : null}
@@ -98,9 +120,8 @@ export default function Phone() {
   );
 }
 
-const themed = (colors: Palette) =>
-  StyleSheet.create({
-    form: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 20 },
-    code: { letterSpacing: 10, textAlign: 'center', ...tx.black, fontSize: 22 },
-    resend: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
-  });
+const s = StyleSheet.create({
+  form: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 20 },
+  code: { letterSpacing: 10, textAlign: 'center', ...tx.black, fontSize: 22 },
+  resend: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
+});

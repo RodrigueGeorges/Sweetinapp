@@ -20,6 +20,17 @@ jobs:
       - run: npx eslint .
       - run: npx jest --ci
 
+      # Fonctions Edge (Supabase/Deno) : exclues du tsconfig de l'app, vérifiées ici
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/*/index.ts
+      - run: deno test --allow-env supabase/functions/
+
+      # Placeholders de mise en ligne : informatif tant que les identifiants stores n'existent pas
+      - run: node scripts/mise-en-ligne.mjs --check
+        continue-on-error: true
+
   # Aperçu natif (iOS + Android) sur demande : Actions > ci > Run workflow
   build:
     if: github.event_name == 'workflow_dispatch'

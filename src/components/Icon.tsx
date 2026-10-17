@@ -1,8 +1,8 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Platform } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { DROP } from './logoPath';
-import { colors, useTheme } from '../theme';
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import { ICE_CONE_MINI, ICE_SCOOP_MINI, ICE_VIEWBOX } from './logoPath';
+import { colors } from '../theme';
 
 /** Icônes au trait de la DA : trait épais et rond, jamais d'emoji en guise d'icône. */
 export type IconName =
@@ -83,9 +83,7 @@ const SYMBOLS: Partial<Record<IconName, { ios: string; android: string }>> = {
   message: { ios: 'bubble.left.fill', android: 'chat_bubble' },
 };
 
-export function Icon({ name, size = 22, color, stroke = 2.4 }: Props) {
-  const { colors } = useTheme();
-  const c = color ?? colors.ink;
+export function Icon({ name, size = 22, color = colors.ink, stroke = 2.4 }: Props) {
   const sym = Platform.OS !== 'web' ? SYMBOLS[name] : undefined;
   if (sym) {
     const weight = stroke >= 2.6 ? 'bold' : stroke >= 2.2 ? 'semibold' : 'medium';
@@ -93,20 +91,18 @@ export function Icon({ name, size = 22, color, stroke = 2.4 }: Props) {
       <SymbolView
         name={sym as unknown as SymbolViewProps['name']}
         size={size}
-        tintColor={c}
+        tintColor={color}
         weight={weight}
         resizeMode="scaleAspectFit"
-        fallback={<SvgIcon name={name} size={size} color={c} stroke={stroke} />}
+        fallback={<SvgIcon name={name} size={size} color={color} stroke={stroke} />}
       />
     );
   }
-  return <SvgIcon name={name} size={size} color={c} stroke={stroke} />;
+  return <SvgIcon name={name} size={size} color={color} stroke={stroke} />;
 }
 
 /** Le dessin maison : web, icônes de marque, et repli si un symbole manque. */
-function SvgIcon({ name, size = 22, color: prop, stroke = 2.4 }: Props) {
-  const { colors } = useTheme();
-  const color = prop ?? colors.ink;
+function SvgIcon({ name, size = 22, color = colors.ink, stroke = 2.4 }: Props) {
   const p = { stroke: color, strokeWidth: stroke, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   const body = (() => {
     switch (name) {
@@ -180,10 +176,15 @@ function SvgIcon({ name, size = 22, color: prop, stroke = 2.4 }: Props) {
         );
       case 'hourglass':
         return <Path {...p} d="M6.5 3h11M6.5 21h11M7.5 3c0 5 9 5 9 9s-9 4-9 9M16.5 3c0 5-9 5-9 9s9 4 9 9" />;
-      // la goutte de la marque (même dessin que le point du logo)
+      // la glace de la marque (même dessin que l'icône de l'app)
       case 'scoop':
       case 'melt':
-        return <Path d={DROP} fill={color} transform="translate(12 14.6) scale(6.6)" />;
+        return (
+          <G transform={`translate(12 12) scale(${21 / ICE_VIEWBOX.h}) translate(${-(ICE_VIEWBOX.x + ICE_VIEWBOX.w / 2)} ${-(ICE_VIEWBOX.y + ICE_VIEWBOX.h / 2)})`}>
+            <Path d={ICE_CONE_MINI} fill={color} />
+            <Path d={ICE_SCOOP_MINI} fill={color} />
+          </G>
+        );
       case 'flame':
         return (
           <>

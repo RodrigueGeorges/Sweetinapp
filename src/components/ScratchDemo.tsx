@@ -41,10 +41,10 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     return out;
   }, [pw, ph]);
   const autoPath = useMemo(() => {
-    const p = Skia.Path.Make();
+    const p = Skia.PathBuilder.Make();
     p.moveTo(pts[0][0], pts[0][1]);
     for (const [x, y] of pts.slice(1)) p.lineTo(x, y);
-    return p;
+    return p.detach();
   }, [pts]);
   const cum = useMemo(() => {
     const c = [0];
@@ -84,15 +84,18 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
   const pop = useSharedValue(1);
   const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
 
+  /* eslint-disable react-hooks/refs, react-hooks/immutability --
+     section gestuelle impérative : les refs (traits, grille) et les shared values
+     Reanimated/Skia sont volontairement lus et mutés dans les callbacks, jamais au rendu */
   const userPath = useMemo(() => {
-    const p = Skia.Path.Make();
+    const p = Skia.PathBuilder.Make();
     for (const s of strokes.current) {
       if (!s.length) continue;
       p.moveTo(s[0].x, s[0].y);
       p.lineTo(s[0].x + 0.1, s[0].y);
       for (let i = 1; i < s.length; i++) p.lineTo(s[i].x, s[i].y);
     }
-    return p;
+    return p.detach();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 
@@ -159,6 +162,7 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
       redraw();
     })
     .onFinalize(() => scratchLoop.stop());
+  /* eslint-enable react-hooks/refs, react-hooks/immutability */
 
   useEffect(() => () => scratchLoop.stop(), []);
 
@@ -171,7 +175,7 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
       <Rect x={pw * 0.2} y={ph * 0.6} width={pw * 0.07} height={ph * 0.14} color="#3B1E3A" />
       <Rect x={pw * 0.29} y={ph * 0.63} width={pw * 0.06} height={ph * 0.11} color="#3B1E3A" />
       <Rect x={0} y={0} width={pw} height={ph} opacity={0.35}>
-        <LinearGradient start={vec(0, 0)} end={vec(pw, ph * 0.75)} colors={['#FFC8E400', '#FFC8E4', '#BDEBFF', '#FFF1A8', '#D5C6FF00']} positions={[0.2, 0.38, 0.48, 0.58, 0.75]} />
+        <LinearGradient start={vec(0, 0)} end={vec(pw, ph * 0.75)} colors={['#FFFFFF00', '#FFFFFF', '#FFE6EB', '#FFF7F9', '#FFFFFF00']} positions={[0.2, 0.38, 0.48, 0.58, 0.75]} />
       </Rect>
     </>
   );
@@ -180,9 +184,9 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     <View style={{ width, transform: [{ rotate: '-3deg' }] }} accessible accessibilityRole="image" accessibilityLabel={message}>
       <View style={s.card}>
         <GestureDetector gesture={pan}>
-          <View style={{ width: pw, height: ph, borderRadius: 28, overflow: 'hidden', backgroundColor: colors.white }}>
+          <View style={{ width: pw, height: ph, borderRadius: 28, overflow: 'hidden', backgroundColor: colors.coeur, borderWidth: 5, borderColor: colors.white }}>
             <Animated.View style={[StyleSheet.absoluteFill, s.msgWrap, popStyle]}>
-              <Text style={[s.msg, { fontSize: pw * 0.115, lineHeight: pw * 0.125 }]}>{message}</Text>
+              <Text style={[s.msg, { fontSize: pw * 0.088, lineHeight: pw * 0.096 }]}>{message}</Text>
             </Animated.View>
             {!full && (
               <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -213,7 +217,8 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
 const s = StyleSheet.create({
   // carte photo nette, ombre douce (pas de contour ni d'ombre dure)
   card: { borderRadius: 28, backgroundColor: colors.white, shadowColor: '#000', shadowOpacity: 0.22, shadowRadius: 28, shadowOffset: { width: 0, height: 14 }, elevation: 14 },
-  msgWrap: { alignItems: 'center', justifyContent: 'center', padding: 18 },
-  msg: { fontFamily: fonts.display, includeFontPadding: false, color: colors.cacao, textAlign: 'center', letterSpacing: -0.6 },
+  msgWrap: { alignItems: 'flex-start', justifyContent: 'center', padding: 18 },
+  // le cœur (DA Fondant) : message en display blanc sur nuit
+  msg: { fontFamily: fonts.display, includeFontPadding: false, color: colors.onCoeur, textAlign: 'left' },
   finger: { position: 'absolute', left: 0, top: 0, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.92)', borderWidth: 7, borderColor: 'rgba(255,255,255,0.45)', shadowColor: '#fff', shadowOpacity: 0.9, shadowRadius: 10 },
 });

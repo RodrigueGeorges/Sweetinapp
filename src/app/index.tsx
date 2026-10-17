@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { draft } from '../lib/draft';
 import { useSession } from '../lib/session';
 
-/** Aiguillage : bienvenue → profil à compléter → (premier secret à envoyer) → appareil photo. */
+/** Aiguillage : bienvenue → profil à compléter → (premier sweet à envoyer) → vitrine. */
 export default function Index() {
   const { session, profile } = useSession();
   const [pending, setPending] = useState<boolean | null>(draft.pending || null);
@@ -14,5 +14,5 @@ export default function Index() {
   if (!profile?.onboarded) return <Redirect href="/profile-setup" />;
   if (pending === null) return null;
   if (pending) return <Redirect href="/sendto" />;
-  return <Redirect href="/camera" />;
+  return <Redirect href="/inbox" />;
 }

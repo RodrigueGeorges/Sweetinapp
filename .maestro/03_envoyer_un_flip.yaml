@@ -1,17 +1,27 @@
-# Envoie un flip depuis la galerie à un ami existant (compte déjà connecté, au moins un ami et une photo dans la galerie).
-# maestro test -e FRIEND=loic .maestro/03_envoyer_un_flip.yaml
-appId: app.sweetin.ios
+# Connexion : welcome → « j'ai déjà un compte » → écran auth → toggle inscription.
+# Déterministe : tout est local, aucun appel réseau n'est nécessaire.
+appId: host.exp.exponent
 ---
-- launchApp
-- tapOn: "Choisir dans la galerie|Pick from gallery"
-- tapOn:
-    index: 0
-    id: ".*PXGGridLayout.*|.*photo.*"
-    optional: true
-- tapOn: "Choose|Choisir"
-- tapOn: "Valider la photo et écrire le message|Use this photo and write the message"
-- inputText: "Test Maestro 🍦"
-- tapOn: "Suivant|Next"
-- tapOn: ${FRIEND}
-- tapOn: "Envoyer !|Send!"
-- assertVisible: "Flip envoyé !|Flip sent!"
+- launchApp:
+    clearState: true
+- runFlow: _ouvrir.yaml
+- extendedWaitUntil:
+    visible: "send my first sweet|envoyer mon premier sweet"
+    timeout: 60000
+- tapOn: "i already have an account|j'ai déjà un compte|j’ai déjà un compte"
+- extendedWaitUntil:
+    visible: "welcome back.|te revoilà."
+    timeout: 30000
+- assertVisible: "your sweets are waiting.|tes sweets t’attendent.|tes sweets t'attendent."
+# le bouton reste inactif tant que le formulaire est invalide : pas de toast sans saisie
+- tapOn: "let me in|entrer"
+- assertNotVisible: "that email looks off.|cet email a l’air bizarre."
+# bascule vers l'inscription puis retour connexion : le toggle fonctionne dans les 2 sens
+- tapOn: "create an account|créer un compte"
+- extendedWaitUntil:
+    visible: "a minute, tops.|une minute, pas plus."
+    timeout: 30000
+- tapOn: "i already have an account|j'ai déjà un compte|j’ai déjà un compte"
+- extendedWaitUntil:
+    visible: "welcome back.|te revoilà."
+    timeout: 30000

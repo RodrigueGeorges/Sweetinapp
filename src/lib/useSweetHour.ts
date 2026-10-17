@@ -10,7 +10,7 @@ import { ensureSweetHourActivity } from './live';
  */
 export function useSweetHour(enabled = true) {
   const [endsAt, setEndsAt] = useState<number | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   const check = useCallback(() => {
     if (!enabled) return;

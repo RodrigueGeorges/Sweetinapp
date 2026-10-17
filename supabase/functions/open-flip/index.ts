@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
 
   const db = admin();
   // anti-énumération : 300 ouvertures par jour et par compte suffisent largement
-  if (!(await rateHit(db, user.id, 'open_flip', 300, 86_400))) return fail('Tu as ouvert beaucoup de flips, réessaie demain', 429, 'RATE_LIMIT');
+  if (!(await rateHit(db, user.id, 'open_flip', 300, 86_400))) return fail('Tu as ouvert beaucoup de sweets, réessaie demain', 429, 'RATE_LIMIT');
   const { data: rec } = await db
     .from('flip_recipients')
     .select('opened_at, scratched_at, flips(id, sender_id, photo_path, mode, expires_at, created_at, preview)')
@@ -21,16 +21,16 @@ Deno.serve(async (req) => {
 
   // deno-lint-ignore no-explicit-any
   const flip = (rec as any)?.flips;
-  if (!rec || !flip) return fail('Flip introuvable', 404, 'NOT_FOUND');
+  if (!rec || !flip) return fail('Sweet introuvable', 404, 'NOT_FOUND');
   if (rec.scratched_at) return fail('Déjà gratté, il n’en reste rien', 410, 'ALREADY_SCRATCHED');
-  if (!flip.photo_path || new Date(flip.expires_at) < new Date()) return fail('Ce flip a expiré', 410, 'EXPIRED');
+  if (!flip.photo_path || new Date(flip.expires_at) < new Date()) return fail('Ce sweet a fondu', 410, 'EXPIRED');
 
   const [{ data: secret }, { data: sender }, signed] = await Promise.all([
     db.from('flip_secrets').select('message').eq('flip_id', flip_id).single(),
     db.from('profiles').select('username, avatar_path').eq('id', flip.sender_id).single(),
     db.storage.from('flips').createSignedUrl(flip.photo_path, 120),
   ]);
-  if (!secret || signed.error) return fail('Flip indisponible', 410, 'EXPIRED');
+  if (!secret || signed.error) return fail('Sweet indisponible', 410, 'EXPIRED');
 
   if (!rec.opened_at) {
     await db.from('flip_recipients').update({ opened_at: new Date().toISOString() }).eq('flip_id', flip_id).eq('recipient_id', user.id);

@@ -33,7 +33,7 @@ describe('traductions', () => {
   });
 
   it('couvrent tous les codes d’erreur renvoyés par les fonctions serveur', () => {
-    const codes = ['USERNAME_INVALID', 'USERNAME_TAKEN', 'AGE_INVALID', 'UNDERAGE', 'USER_NOT_FOUND', 'SELF', 'PROFILE_INCOMPLETE', 'NOT_FOUND', 'ALREADY_SCRATCHED', 'EXPIRED', 'MODERATION', 'RATE_LIMIT', 'NO_RECIPIENT', 'MESSAGE_LENGTH', 'PHOTO_INVALID'];
+    const codes = ['USERNAME_INVALID', 'USERNAME_TAKEN', 'AGE_INVALID', 'UNDERAGE', 'USER_NOT_FOUND', 'SELF', 'PROFILE_INCOMPLETE', 'NOT_FOUND', 'ALREADY_SCRATCHED', 'EXPIRED', 'MODERATION', 'MODERATION_UNAVAILABLE', 'RATE_LIMIT', 'NO_RECIPIENT', 'MESSAGE_LENGTH', 'PHOTO_INVALID'];
     for (const c of codes) expect(`err.${c}` in fr).toBe(true);
   });
 });

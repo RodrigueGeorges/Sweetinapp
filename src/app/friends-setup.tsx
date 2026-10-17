@@ -19,7 +19,7 @@ import { registerForPush, shouldAskPush } from '../lib/push';
 import { parseInvite, shareInviteLink } from '../lib/invite';
 import { track } from '../lib/monitoring';
 import { useSession } from '../lib/session';
-import { tx, useStyles, useTheme, type Palette } from '../theme';
+import { colors, tx } from '../theme';
 
 const GOAL = 3;
 
@@ -28,8 +28,6 @@ const GOAL = 3;
  * Carnet d'adresses, lien, QR code, lien d'invitation copié depuis le web.
  */
 export default function FriendsSetup() {
-  const { colors } = useTheme();
-  const s = useStyles(themed);
   const { from } = useLocalSearchParams<{ from?: string }>();
   const fromContacts = from === 'contacts';
   const insets = useSafeAreaInsets();
@@ -121,7 +119,11 @@ export default function FriendsSetup() {
     <Screen>
       <View style={[s.top, { paddingTop: insets.top + 6 }]}>
         <View style={s.topRow}>
-          {fromContacts ? <BackButton /> : <Logo size={24} color={colors.ink} />}
+          {fromContacts ? <BackButton /> : <View style={{ width: 40 }} />}
+          {/* logo centré, comme sur les autres écrans */}
+          <View style={s.logo} pointerEvents="none">
+            <Logo size={24} color={colors.ink} />
+          </View>
           <Text style={s.progressT} accessibilityLabel={t('friends.progress', { n: Math.min(count, GOAL) })}>
             {t('friends.progress', { n: Math.min(count, GOAL) })}
           </Text>
@@ -148,7 +150,7 @@ export default function FriendsSetup() {
             </View>
             <Text style={s.hint}>{t('friends.contactsHint')}</Text>
             {found === null ? (
-              <Button label={t('friends.contactsBtn')} tone="cacao" size="md" loading={searching} onPress={() => searchContacts()} style={{ marginTop: 6 }} />
+              <Button label={t('friends.contactsBtn')} size="md" loading={searching} onPress={() => searchContacts()} style={{ marginTop: 6 }} />
             ) : found.length === 0 ? (
               <Text style={s.empty}>{t('friends.contactsNone')}</Text>
             ) : (
@@ -158,9 +160,9 @@ export default function FriendsSetup() {
                   const on = added.has(p.id);
                   return (
                     <View key={p.id} style={s.row}>
-                      <Avatar name={p.username} uri={p.avatar_url} />
+                      <Avatar name={p.username} uri={p.avatar_url} flavor />
                       <Text style={s.name}>{p.username}</Text>
-                      <Button size="sm" tone={on ? 'vanille' : 'cacao'} icon={on ? 'check' : undefined} label={on ? t('friends.added') : t('friends.add')} onPress={() => !on && add(p)} accessibilityLabel={`${t('friends.add')} ${p.username}`} />
+                      <Button size="sm" tone={on ? 'white' : 'nuit'} icon={on ? 'check' : undefined} label={on ? t('friends.added') : t('friends.add')} onPress={() => !on && add(p)} accessibilityLabel={`${t('friends.add')} ${p.username}`} />
                     </View>
                   );
                 })}
@@ -174,7 +176,7 @@ export default function FriendsSetup() {
             ) : null}
             {denied ? <Text style={s.empty}>{t('friends.contactsDenied')}</Text> : null}
             <Pressable onPress={() => router.push('/phone')} style={s.link} accessibilityRole="button" disabled={hasPhone}>
-              <Icon name={hasPhone ? 'check' : 'phone'} size={17} color={hasPhone ? colors.muted : colors.cerise} />
+              <Icon name={hasPhone ? 'check' : 'phone'} size={17} color={hasPhone ? colors.muted : colors.ink} />
               <Text style={[s.linkT, hasPhone && { color: colors.muted }]}>{hasPhone ? t('friends.phoneDone') : t('friends.phone')}</Text>
             </Pressable>
           </Pop>
@@ -215,8 +217,8 @@ export default function FriendsSetup() {
               acceptedContentTypes={['url', 'plain-text']}
               displayMode="iconAndLabel"
               cornerStyle="capsule"
-              backgroundColor={colors.cacao}
-              foregroundColor={colors.vanille}
+              backgroundColor={colors.card}
+              foregroundColor={colors.ink}
               style={s.pasteNative}
             />
           ) : (
@@ -226,7 +228,7 @@ export default function FriendsSetup() {
       </ScrollView>
 
       <BottomCTA>
-        <Button label={count >= GOAL ? t('friends.continue') : t('friends.later')} tone={count >= GOAL ? 'cerise' : 'vanille'} arrow={count >= GOAL} onPress={finish} />
+        <Button label={count >= GOAL ? (fromContacts ? t('friends.done') : draft.pending ? t('friends.goSend') : t('friends.goCamera')) : t('friends.later')} tone={count >= GOAL ? 'nuit' : 'white'} arrow={count >= GOAL} onPress={finish} />
       </BottomCTA>
 
       <Modal visible={qr} transparent animationType="fade" onRequestClose={() => setQr(false)}>
@@ -245,17 +247,14 @@ export default function FriendsSetup() {
 }
 
 function Slot({ on }: { on: boolean }) {
-  const { colors } = useTheme();
-  const s = useStyles(themed);
   return (
     <Animated.View key={on ? 'on' : 'off'} entering={on ? ZoomIn.springify().damping(9) : undefined} style={[s.slot, on && { backgroundColor: colors.pistache, borderStyle: 'solid', borderColor: colors.pistache }]}>
-      {on ? <Icon name="check" size={22} stroke={3} /> : <Icon name="userPlus" size={20} color={colors.muted} />}
+      {on ? <Icon name="check" size={22} stroke={3} color={colors.cacao} /> : <Icon name="userPlus" size={20} color={colors.muted} />}
     </Animated.View>
   );
 }
 
 function Tile({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
-  const s = useStyles(themed);
   return (
     <Bounce onPress={onPress} style={s.action} accessibilityRole="button" haptic="light">
       <Icon name={icon} size={24} />
@@ -264,10 +263,10 @@ function Tile({ icon, label, onPress }: { icon: IconName; label: string; onPress
   );
 }
 
-const themed = (colors: Palette) =>
-  StyleSheet.create({
+const s = StyleSheet.create({
   top: { paddingHorizontal: 22, paddingBottom: 6, gap: 8 },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, minHeight: 40 },
+  logo: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   sub: { ...tx.text, fontSize: 15, lineHeight: 21, color: colors.ink },
   slots: { flexDirection: 'row', gap: 10, marginTop: 6 },
   slot: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: colors.dashed, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
@@ -285,11 +284,11 @@ const themed = (colors: Palette) =>
   empty: { ...tx.text, fontSize: 13, lineHeight: 19, color: colors.muted, marginTop: 4 },
   limited: { gap: 8, marginTop: 4 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 10 },
-  linkT: { flex: 1, ...tx.bold, fontSize: 13, color: colors.cerise },
+  linkT: { flex: 1, ...tx.bold, fontSize: 13, color: colors.ink, textDecorationLine: 'underline' },
   actions: { flexDirection: 'row', gap: 8, marginTop: 6 },
   action: { flex: 1, alignItems: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 16, backgroundColor: colors.ghost },
   actionT: { ...tx.bold, fontSize: 11.5, color: colors.ink, textAlign: 'center' },
-  modalBg: { flex: 1, backgroundColor: 'rgba(26,10,14,0.6)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modalBg: { flex: 1, backgroundColor: 'rgba(22,15,18,0.6)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   qrCard: { padding: 24, alignItems: 'center', gap: 16 },
   qrBox: { padding: 10, borderRadius: 18, backgroundColor: colors.white },
 });

@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>sweetin · le mot qui fond.</title>
+<meta name="description" content="cache un mot sous une photo. ton pote gratte pour le lire. 10 secondes plus tard, il fond. gratuit sur android.">
+<meta property="og:title" content="sweetin · le mot qui fond.">
+<meta property="og:description" content="cache un mot sous une photo. ton pote gratte pour le lire. 10 secondes plus tard, il fond.">
+<meta property="og:image" content="https://sweetin.app/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E0B0C" media="(prefers-color-scheme: dark)">
+<!-- adresse des fonctions Supabase (même valeur que dans f/index.html) : utilisée par la liste d'attente iPhone -->
+<meta name="sweetin-api" content="https://nvtcbwyzalpidgwmagtd.supabase.co/functions/v1">
+<link rel="icon" href="/img/icone.png">
+<link rel="preload" href="/fonts/SweetinDisplay.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  /* DA Fondant : fond blanc net, encre nuit, éclats framboise et citron, tout en minuscules. Mêmes polices que l'app. */
+  @font-face { font-family: 'Sweetin Display'; src: url(/fonts/SweetinDisplay.woff2) format('woff2'); font-display: swap; }
+  @font-face { font-family: 'Sweetin Text'; src: url(/fonts/SweetinText-Medium.woff2) format('woff2'); font-weight: 500; font-display: swap; }
+  @font-face { font-family: 'Sweetin Text'; src: url(/fonts/SweetinText-Bold.woff2) format('woff2'); font-weight: 700; font-display: swap; }
+  @font-face { font-family: 'Sweetin Text'; src: url(/fonts/SweetinText-ExtraBold.woff2) format('woff2'); font-weight: 800; font-display: swap; }
+  :root { --paper:#FFFFFF; --ink:#160F12; --muted:rgba(22,15,18,.6); --card:#F4F0F1; --fr:#FF2E5B; --ci:#E8FF5A; --sucre:#FFE6EB; --nuit:#160F12; --heart:#160F12; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root { --paper:#0E0B0C; --ink:#FFFFFF; --muted:rgba(255,255,255,.62); --card:#1C1618; --sucre:rgba(255,46,91,.16); --heart:#241C1F; } }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Sweetin Text', system-ui, -apple-system, sans-serif; font-weight: 700; overflow-x: hidden; }
+  .d { font-family: 'Sweetin Display', 'Arial Black', sans-serif; font-weight: 400; }
+  a { color: inherit; }
+  .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  [hidden] { display: none !important; }
+
+  /* en-tête */
+  header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  header .wrap { height: 64px; display: flex; align-items: center; justify-content: space-between; padding-top: env(safe-area-inset-top); }
+  .logo { display: block; height: 24px; width: auto; color: var(--ink); }
+  .pill { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border-radius: 20px; background: var(--ink); color: var(--paper); text-decoration: none; font-weight: 800; font-size: 14px; }
+
+  /* héros */
+  .hero { display: grid; gap: 36px; align-items: center; padding-top: 28px; padding-bottom: 56px; }
+  .hero h1 { font-size: clamp(56px, 15vw, 112px); line-height: .94; margin: 0; letter-spacing: 0; }
+  .hero h1 em { font-style: normal; color: var(--fr); }
+  .lead { font-size: 18px; line-height: 1.45; color: var(--muted); margin: 18px 0 26px; max-width: 440px; font-weight: 700; }
+  .stores { display: flex; flex-direction: column; gap: 12px; max-width: 380px; }
+  .play { display: inline-block; align-self: flex-start; line-height: 0; border-radius: 10px; }
+  .play img { display: block; height: 56px; width: auto; }
+  .play:focus-visible { outline: 3px solid var(--fr); outline-offset: 3px; }
+  .play:active { transform: scale(.97); }
+  .ios { font-size: 14px; color: var(--muted); }
+  .ios a { font-weight: 800; color: var(--ink); }
+
+  /* la carte de démo à gratter (même rendu que l'app et la page /f/) */
+  .demo { position: relative; width: min(330px, 78vw); margin: 0 auto; }
+  .card { position: relative; width: 100%; aspect-ratio: 3 / 4; border-radius: 28px 28px 0 0; overflow: hidden; transform: rotate(-2deg); background: var(--heart); touch-action: none; box-shadow: 0 30px 60px rgba(22,15,18,.18); }
+  .back { position: absolute; inset: 0; background: var(--heart); display: flex; align-items: center; padding: 26px 24px calc(15.6% + 8px); }
+  .msg { font-family: 'Sweetin Display', 'Arial Black', sans-serif; color: #fff; font-size: 34px; line-height: 1.08; margin: 0; }
+  .msg .w { display: inline-block; white-space: nowrap; }
+  .msg span { display: inline-block; transform-origin: 50% 0; }
+  .melt .msg span { animation: melt 1.2s cubic-bezier(.55,0,1,.45) both; }
+  @keyframes melt { to { transform: translateY(70px) scaleY(1.9) scaleX(.75); opacity: 0; } }
+  .card canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+  .cover { position: absolute; left: 0; right: 0; top: 30%; text-align: center; color: #fff; pointer-events: none; transition: opacity .25s; }
+  .cover .d { font-size: 54px; text-shadow: 0 2px 22px rgba(22,15,18,.35); }
+  .cover p { margin: 4px 0 0; font-size: 14px; text-shadow: 0 1px 10px rgba(22,15,18,.5); }
+  .drip { position: absolute; left: 0; bottom: -1px; width: 100%; height: 20.5%; pointer-events: none; }
+  .drip path { fill: var(--paper); }
+  .status { position: absolute; left: 50%; bottom: calc(20.5% + 6px); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; font-size: 13px; white-space: nowrap; pointer-events: none; }
+  .bar { width: 70px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.25); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 100%; background: var(--ci); transition: width 1s linear; }
+  .stk { position: absolute; z-index: 2; font-family: 'Sweetin Display', 'Arial Black', sans-serif; font-size: 17px; padding: 9px 16px; border-radius: 999px; border: 3px solid #fff; color: var(--nuit); white-space: nowrap; box-shadow: 0 3px 10px rgba(22,15,18,.22); pointer-events: none; }
+  .stk { transition: opacity .3s; } .demo.on .stk { opacity: 0; }
+  .gone { position: absolute; left: 0; right: 0; top: 32%; text-align: center; color: #fff; opacity: 0; transition: opacity .5s; pointer-events: none; font: 400 46px/1 'Sweetin Display', 'Arial Black', sans-serif; }
+  .gone small { display: block; margin-top: 8px; font: 700 15px 'Sweetin Text', system-ui; color: rgba(255,255,255,.7); }
+  .melt .gone { opacity: 1; transition-delay: 1.1s; }
+  .s1 { background: var(--ci); top: -16px; right: -18px; transform: rotate(7deg); }
+  .s2 { background: var(--fr); bottom: 30%; left: -26px; transform: rotate(-6deg); }
+  .again { display: block; margin: 18px auto 0; height: 44px; padding: 0 20px; border-radius: 22px; border: 0; background: var(--card); color: var(--ink); font: 800 15px 'Sweetin Text', system-ui; cursor: pointer; }
+  .flaque { display: block; width: 72%; margin: 18% auto 0; }
+
+  /* sections */
+  section { padding: 56px 0; }
+  h2 { font-size: clamp(36px, 8vw, 56px); line-height: 1; margin: 0 0 28px; }
+  .steps { display: grid; gap: 14px; counter-reset: s; }
+  .step { position: relative; padding: 22px 22px 22px 84px; border-radius: 26px; background: var(--card); min-height: 92px; }
+  .step::before { counter-increment: s; content: counter(s); position: absolute; left: 20px; top: 20px; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 400 24px 'Sweetin Display', 'Arial Black', sans-serif; color: var(--nuit); background: var(--ci); border: 3px solid #fff; box-shadow: 0 3px 10px rgba(22,15,18,.15); }
+  .step:nth-child(2)::before { background: var(--fr); }
+  .step:nth-child(3)::before { background: var(--sucre); }
+  .step h3 { margin: 0 0 4px; font: 400 24px/1.1 'Sweetin Display', 'Arial Black', sans-serif; }
+  .step p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.4; }
+
+  .uses { display: grid; gap: 16px; }
+  .use { position: relative; border-radius: 28px 28px 0 0; overflow: hidden; aspect-ratio: 4 / 5; background: var(--heart); }
+  .use img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .use .veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(22,15,18,0) 30%, rgba(22,15,18,.82) 100%); }
+  .use .txt { position: absolute; left: 22px; right: 22px; bottom: calc(20.5% + 2px); color: #fff; }
+  .use .tag { display: inline-block; margin-bottom: 10px; padding: 6px 12px; border-radius: 999px; font: 400 14px 'Sweetin Display', 'Arial Black', sans-serif; color: var(--nuit); border: 3px solid #fff; }
+  .use q { display: block; font: 400 28px/1.08 'Sweetin Display', 'Arial Black', sans-serif; quotes: none; }
+
+  .promise { display: grid; gap: 12px; }
+  .promise div { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border-radius: 22px; border: 2px solid var(--card); }
+  .promise b { font: 400 20px/1.15 'Sweetin Display', 'Arial Black', sans-serif; display: block; margin-bottom: 2px; }
+  .promise span { color: var(--muted); font-size: 15px; line-height: 1.4; }
+  .promise svg { flex: none; margin-top: 2px; }
+
+  .final { background: var(--fr); color: #fff; text-align: center; padding: 72px 0 80px; position: relative; }
+  .final .logo { width: min(300px, 80%); height: auto; margin: 0 auto 18px; color: #fff; }
+  .final h2 { margin-bottom: 26px; }
+  .final .play { align-self: center; }
+  .final .ios, .final .ios a { color: rgba(255,255,255,.88); }
+  .final .stores { margin: 0 auto; align-items: center; }
+
+  footer { padding: 28px 0 calc(28px + env(safe-area-inset-bottom)); font-size: 13px; color: var(--muted); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: space-between; }
+  footer nav { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+
+  /* liste d'attente iPhone (waitlist.js) dans la bande framboise */
+  .final .wl h2 { color: #fff; } .final .wl p { color: rgba(255,255,255,.88); } .final .wl .ok { color: #fff; }
+  .final .wl input { background: rgba(255,255,255,.22); color: #fff; } .final .wl input::placeholder { color: rgba(255,255,255,.75); }
+  .final .wl button { background: #fff; color: var(--nuit); }
+
+  @media (min-width: 860px) {
+    .hero { grid-template-columns: 1.15fr .85fr; padding-top: 56px; padding-bottom: 80px; }
+    .steps { grid-template-columns: repeat(3, 1fr); }
+    .uses { grid-template-columns: repeat(3, 1fr); }
+    .promise { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) { .melt .msg span { animation: none; opacity: 0; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <a href="/" aria-label="sweetin"><svg viewBox="11 -699 5615 728" height="26" role="img" aria-label="sweetin" class="logo"><path fill="currentColor" d="M23 -422Q23 -475 53 -514.5Q83 -554 135.5 -581Q188 -608 255 -621.5Q322 -635 395 -635Q482 -635 557.5 -619.5Q633 -604 696 -578V-373Q670 -391 628.5 -404.5Q587 -418 541.5 -425Q496 -432 455 -432Q424 -432 398.5 -428Q373 -424 357.5 -414.5Q342 -405 342 -391Q342 -382 347.5 -377.5Q353 -373 363 -370.5Q373 -368 386 -368Q411 -368 431.5 -368Q452 -368 476 -368Q525 -368 573 -361.5Q621 -355 660 -337Q699 -319 722.5 -285Q746 -251 746 -197Q746 -140 714.5 -99.5Q683 -59 628.5 -34Q574 -9 506.5 3Q439 15 366 15Q284 15 203 -0.5Q122 -16 64 -45V-261Q87 -237 129 -221.5Q171 -206 220.5 -198.5Q270 -191 312 -191Q346 -192 371.5 -197Q397 -202 411.5 -212Q426 -222 426 -235Q426 -242 422.5 -246.5Q419 -251 411.5 -254Q404 -257 392 -257Q374 -257 355.5 -257Q337 -257 322 -257Q286 -257 245 -259.5Q204 -262 165 -271Q126 -280 93.5 -298Q61 -316 42 -346.5Q23 -377 23 -422ZM1906 -607Q1884 -508 1860.5 -409Q1837 -310 1813.5 -211.5Q1790 -113 1768 -13H1399L1346 -278Q1344 -287 1341 -292Q1338 -297 1334.5 -299Q1331 -301 1327 -299.5Q1323 -298 1320.5 -294Q1318 -290 1316 -282L1265 -13H915Q892 -114 870 -213.5Q848 -313 826 -411.5Q804 -510 779 -607H1083Q1092 -516 1103 -427.5Q1114 -339 1124 -250Q1124 -240 1127 -234.5Q1130 -229 1134.5 -227Q1139 -225 1143 -225.5Q1147 -226 1150.5 -229.5Q1154 -233 1155 -239L1216 -607H1485L1541 -236Q1541 -230 1544.5 -226.5Q1548 -223 1552.5 -222Q1557 -221 1562 -222.5Q1567 -224 1570 -228Q1573 -232 1573 -238Q1581 -300 1588 -362Q1595 -424 1602.5 -485.5Q1610 -547 1617 -607ZM2375 -210Q2429 -210 2460.5 -229.5Q2492 -249 2496 -280L2769 -190Q2752 -133 2697 -86Q2642 -39 2558.5 -11Q2475 17 2373 17Q2282 17 2203.5 -4.5Q2125 -26 2065.5 -68.5Q2006 -111 1971.5 -173Q1937 -235 1935 -316Q1933 -397 1967 -457.5Q2001 -518 2061 -558Q2121 -598 2201 -617.5Q2281 -637 2371 -637Q2466 -637 2543.5 -615.5Q2621 -594 2676.5 -551.5Q2732 -509 2761.5 -446Q2791 -383 2791 -299H2263Q2258 -299 2255.5 -297Q2253 -295 2252 -293.5Q2251 -292 2251 -289Q2251 -272 2260.5 -257.5Q2270 -243 2286 -232.5Q2302 -222 2324.5 -216Q2347 -210 2375 -210ZM2369 -412Q2316 -412 2282.5 -393Q2249 -374 2249 -339Q2249 -334 2251 -331.5Q2253 -329 2255.5 -327.5Q2258 -326 2261 -326Q2264 -326 2264 -326H2487Q2489 -326 2490.5 -329Q2492 -332 2492 -335Q2492 -350 2484 -364.5Q2476 -379 2460.5 -389.5Q2445 -400 2422 -406Q2399 -412 2369 -412ZM3264 -210Q3318 -210 3349.5 -229.5Q3381 -249 3385 -280L3658 -190Q3641 -133 3586 -86Q3531 -39 3447.5 -11Q3364 17 3262 17Q3171 17 3092.5 -4.5Q3014 -26 2954.5 -68.5Q2895 -111 2860.5 -173Q2826 -235 2824 -316Q2822 -397 2856 -457.5Q2890 -518 2950 -558Q3010 -598 3090 -617.5Q3170 -637 3260 -637Q3355 -637 3432.5 -615.5Q3510 -594 3565.5 -551.5Q3621 -509 3650.5 -446Q3680 -383 3680 -299H3152Q3147 -299 3144.5 -297Q3142 -295 3141 -293.5Q3140 -292 3140 -289Q3140 -272 3149.5 -257.5Q3159 -243 3175 -232.5Q3191 -222 3213.5 -216Q3236 -210 3264 -210ZM3258 -412Q3205 -412 3171.5 -393Q3138 -374 3138 -339Q3138 -334 3140 -331.5Q3142 -329 3144.5 -327.5Q3147 -326 3150 -326Q3153 -326 3153 -326H3376Q3378 -326 3379.5 -329Q3381 -332 3381 -335Q3381 -350 3373 -364.5Q3365 -379 3349.5 -389.5Q3334 -400 3311 -406Q3288 -412 3258 -412ZM4065 -359Q4079 -401 4091.5 -443Q4104 -485 4115.5 -527.5Q4127 -570 4137 -611H4311V-359ZM3725 -263Q3725 -346 3725 -438Q3725 -530 3725 -612L4041 -687Q4040 -642 4039.5 -595Q4039 -548 4039 -501Q4039 -465 4040 -430Q4041 -395 4043 -361Q4041 -359 4040 -356Q4039 -353 4039 -348Q4039 -327 4047.5 -310.5Q4056 -294 4071.5 -282Q4087 -270 4108 -263Q4129 -256 4156 -256Q4182 -256 4209 -264Q4236 -272 4258 -286Q4280 -300 4290 -319V-50Q4250 -19 4188 -4.5Q4126 10 4064 10Q3968 10 3891 -21.5Q3814 -53 3769.5 -114Q3725 -175 3725 -263ZM5293 -13Q5295 -85 5297.5 -161Q5300 -237 5300 -316Q5300 -347 5286.5 -361.5Q5273 -376 5253.5 -379Q5234 -382 5217.5 -378Q5201 -374 5196 -368L5266 -596Q5300 -611 5338.5 -618.5Q5377 -626 5414 -626Q5467 -626 5512.5 -608.5Q5558 -591 5586 -554Q5614 -517 5614 -456V-13ZM4841 -13Q4840 -74 4841 -135.5Q4842 -197 4843 -259.5Q4844 -322 4844 -384Q4844 -440 4843.5 -495.5Q4843 -551 4840 -607Q4893 -607 4947 -607Q5001 -607 5055 -607Q5109 -607 5159 -607Q5159 -574 5159.5 -542Q5160 -510 5160.5 -479Q5161 -448 5161.5 -417Q5162 -386 5164 -354Q5162 -343 5161 -329Q5160 -315 5160 -299Q5160 -229 5161 -154.5Q5162 -80 5164 -13Z M4430.6 -290.0 L4425.8 -289.2 L4423.2 -287.0 L4422.5 -283.2 L4423.8 -278.0 L4566.5 -12.4 L4570.7 -3.7 L4576.3 5.2 L4582.7 11.3 L4588.3 13.3 L4591.8 12.9 L4594.6 11.7 L4601.0 6.0 L4606.6 -2.4 L4695.1 -167.9 L4683.6 -163.2 L4672.5 -160.7 L4660.3 -160.1 L4648.9 -161.5 L4637.2 -165.0 L4627.0 -170.1 L4617.2 -177.4 L4609.3 -185.7 L4603.6 -194.0 L4599.6 -201.9 L4596.3 -211.5 L4594.5 -221.5 L4594.1 -231.1 L4594.6 -254.2 L4597.9 -290.0Z M4794.8 -430.1 L4792.8 -450.2 L4788.8 -470.1 L4783.0 -489.4 L4775.2 -508.1 L4765.7 -525.9 L4754.5 -542.7 L4741.6 -558.3 L4727.3 -572.6 L4711.7 -585.5 L4694.9 -596.7 L4677.1 -606.2 L4658.4 -614.0 L4639.1 -619.8 L4619.2 -623.8 L4599.1 -625.8 L4578.9 -625.8 L4558.8 -623.8 L4538.9 -619.8 L4519.6 -614.0 L4500.9 -606.2 L4483.1 -596.7 L4466.3 -585.5 L4450.7 -572.6 L4436.4 -558.3 L4423.5 -542.7 L4412.3 -525.9 L4402.8 -508.1 L4395.0 -489.4 L4389.2 -470.1 L4385.2 -450.2 L4383.2 -430.1 L4383.2 -409.9 L4386.0 -384.8 L4391.9 -360.2 L4400.7 -336.5 L4410.0 -318.0 L4621.4 -318.0 L4623.3 -313.0 L4624.0 -302.6 L4623.7 -286.1 L4621.0 -260.0 L4620.2 -238.9 L4620.3 -224.7 L4622.6 -214.4 L4625.2 -208.7 L4628.5 -203.3 L4632.7 -198.6 L4639.2 -193.2 L4646.6 -189.3 L4652.6 -187.3 L4658.8 -186.2 L4665.1 -186.1 L4671.4 -186.8 L4677.5 -188.5 L4683.2 -191.1 L4690.2 -195.7 L4694.8 -200.1 L4698.7 -205.1 L4701.8 -210.6 L4704.1 -216.4 L4705.8 -226.8 L4705.7 -244.1 L4704.8 -262.0 L4702.3 -285.2 L4702.0 -300.6 L4702.6 -312.3 L4704.6 -318.0 L4768.0 -318.0 L4770.7 -322.9 L4781.2 -345.9 L4786.1 -360.2 L4790.0 -374.9 L4792.8 -389.8 L4794.4 -404.8Z"/></svg></a>
+  <a class="pill" href="#telecharger">télécharger</a>
+</div></header>
+
+<main>
+  <div class="wrap hero">
+    <div>
+      <h1 class="d">le mot<br>qui <em>fond.</em></h1>
+      <p class="lead">cache un mot sous une photo. ton pote gratte pour le lire. 10 secondes plus tard, il fond. sans trace.</p>
+      <div class="stores" id="stores-top">
+        <a class="play" href="https://play.google.com/store/apps/details?id=app.sweetin.android&referrer=utm_source%3Dsite" data-store><img src="/img/google-play-fr.svg" alt="Disponible sur Google Play" width="189" height="56"></a>
+        <span class="ios">sur iphone ? <a href="#telecharger">bientôt. préviens-moi →</a></span>
+      </div>
+    </div>
+
+    <div>
+      <div class="demo" id="demo">
+        <span class="stk s1">gratte-moi</span>
+        <span class="stk s2">mot caché</span>
+        <div class="card" id="card">
+          <div class="back"><p class="msg" id="msg" aria-label="tu me plais. voilà, c’est dit."></p></div>
+          <canvas id="scratch" aria-label="photo à gratter : glisse le doigt dessus"></canvas>
+          <div class="gone" aria-hidden="true">fondu.<small>sans trace. comme promis.</small></div>
+          <div class="cover" id="cover"><div class="d">gratte.</div><p>glisse le doigt sur la photo.</p></div>
+          <div class="status" id="status" hidden><span id="left">il fond dans 10 s</span><span class="bar"><i id="bar"></i></span></div>
+          <svg class="drip" viewBox="0 0 400 82" preserveAspectRatio="none" aria-hidden="true"><path d="M400.0 0.0 L399.3 0.0 L400.0 1.4 L400.0 0.0ZM0.0 82.0 L400.0 82.0 L400.0 25.1 L399.0 26.4 L397.1 27.0 L393.2 27.9 L387.2 28.7 L383.0 28.9 L376.6 28.7 L354.3 26.7 L343.3 26.3 L334.8 27.0 L326.2 28.8 L320.8 29.6 L320.1 32.0 L320.0 36.9 L320.3 36.3 L320.8 36.2 L321.5 37.4 L322.0 40.7 L321.9 43.8 L320.9 48.8 L318.8 53.5 L317.2 55.8 L315.3 57.8 L313.1 59.6 L310.8 61.2 L308.3 62.4 L305.6 63.3 L302.9 63.8 L300.1 64.0 L297.3 63.8 L294.6 63.3 L291.9 62.5 L289.4 61.3 L287.0 59.8 L284.9 58.0 L281.6 54.1 L280.2 51.6 L279.2 49.1 L278.4 46.4 L278.1 43.6 L278.1 40.1 L278.4 37.7 L278.7 36.8 L279.3 36.2 L279.8 36.3 L280.0 36.9 L279.7 31.0 L279.3 29.7 L278.8 29.1 L277.2 28.3 L275.5 28.1 L271.3 28.4 L266.9 29.0 L256.0 31.1 L247.5 31.7 L236.8 31.1 L213.3 28.0 L202.7 27.2 L196.3 27.3 L185.4 28.6 L176.5 29.0 L167.8 28.7 L148.6 27.2 L140.2 26.8 L131.8 27.0 L125.6 27.7 L119.4 29.0 L115.3 30.2 L115.1 32.5 L115.0 37.3 L116.3 40.5 L116.9 42.7 L117.2 46.3 L117.2 51.5 L116.8 54.8 L115.9 57.9 L114.6 61.0 L112.7 64.3 L111.0 66.4 L108.7 68.7 L106.0 70.7 L103.7 72.1 L101.2 73.3 L98.0 74.3 L95.3 74.8 L92.1 75.0 L88.2 74.7 L85.0 74.0 L81.9 72.9 L79.0 71.4 L75.8 69.2 L73.5 66.9 L71.4 64.4 L69.6 61.6 L67.6 56.5 L66.9 53.2 L66.7 50.5 L66.8 46.5 L67.1 42.9 L67.7 40.6 L69.0 37.4 L68.9 32.6 L68.6 29.9 L62.1 29.3 L55.7 29.2 L49.2 29.6 L42.2 30.5 L34.9 30.8 L28.0 30.4 L15.0 29.0 L9.0 28.7 L3.5 29.1 L0.0 30.0 L0.0 27.9 L0.0 82.0Z"/></svg>
+        </div>
+        <button class="again" id="again" hidden>regratter</button>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <h2 class="d">comment ça marche.</h2>
+      <div class="steps">
+        <div class="step"><h3>prends une photo.</h3><p>n’importe laquelle : ta soirée, ton chat, ton café.</p></div>
+        <div class="step"><h3>cache un mot dessous.</h3><p>une déclaration, un plan, un aveu. il reste invisible jusqu’au grattage.</p></div>
+        <div class="step"><h3>il gratte. il lit. ça fond.</h3><p>10 secondes pour le lire, puis plus de photo, plus de mot. et tu sais quand il l’a lu.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 class="d">pour dire quoi ?</h2>
+      <div class="uses">
+        <div class="use"><img src="/img/coeur.jpg" alt="" loading="lazy"><div class="veil"></div><div class="txt"><span class="tag" style="background:var(--fr)">le crush</span><q>tu me plais. voilà, c’est dit.</q></div><svg class="drip" viewBox="0 0 400 82" preserveAspectRatio="none" aria-hidden="true"><path d="M400.0 0.0 L399.3 0.0 L400.0 1.4 L400.0 0.0ZM0.0 82.0 L400.0 82.0 L400.0 25.1 L399.0 26.4 L397.1 27.0 L393.2 27.9 L387.2 28.7 L383.0 28.9 L376.6 28.7 L354.3 26.7 L343.3 26.3 L334.8 27.0 L326.2 28.8 L320.8 29.6 L320.1 32.0 L320.0 36.9 L320.3 36.3 L320.8 36.2 L321.5 37.4 L322.0 40.7 L321.9 43.8 L320.9 48.8 L318.8 53.5 L317.2 55.8 L315.3 57.8 L313.1 59.6 L310.8 61.2 L308.3 62.4 L305.6 63.3 L302.9 63.8 L300.1 64.0 L297.3 63.8 L294.6 63.3 L291.9 62.5 L289.4 61.3 L287.0 59.8 L284.9 58.0 L281.6 54.1 L280.2 51.6 L279.2 49.1 L278.4 46.4 L278.1 43.6 L278.1 40.1 L278.4 37.7 L278.7 36.8 L279.3 36.2 L279.8 36.3 L280.0 36.9 L279.7 31.0 L279.3 29.7 L278.8 29.1 L277.2 28.3 L275.5 28.1 L271.3 28.4 L266.9 29.0 L256.0 31.1 L247.5 31.7 L236.8 31.1 L213.3 28.0 L202.7 27.2 L196.3 27.3 L185.4 28.6 L176.5 29.0 L167.8 28.7 L148.6 27.2 L140.2 26.8 L131.8 27.0 L125.6 27.7 L119.4 29.0 L115.3 30.2 L115.1 32.5 L115.0 37.3 L116.3 40.5 L116.9 42.7 L117.2 46.3 L117.2 51.5 L116.8 54.8 L115.9 57.9 L114.6 61.0 L112.7 64.3 L111.0 66.4 L108.7 68.7 L106.0 70.7 L103.7 72.1 L101.2 73.3 L98.0 74.3 L95.3 74.8 L92.1 75.0 L88.2 74.7 L85.0 74.0 L81.9 72.9 L79.0 71.4 L75.8 69.2 L73.5 66.9 L71.4 64.4 L69.6 61.6 L67.6 56.5 L66.9 53.2 L66.7 50.5 L66.8 46.5 L67.1 42.9 L67.7 40.6 L69.0 37.4 L68.9 32.6 L68.6 29.9 L62.1 29.3 L55.7 29.2 L49.2 29.6 L42.2 30.5 L34.9 30.8 L28.0 30.4 L15.0 29.0 L9.0 28.7 L3.5 29.1 L0.0 30.0 L0.0 27.9 L0.0 82.0Z"/></svg></div>
+        <div class="use"><img src="/img/soiree.jpg" alt="" loading="lazy" style="object-position:45% center"><div class="veil"></div><div class="txt"><span class="tag" style="background:var(--ci)">le plan</span><q>samedi chez moi. ramène juste toi.</q></div><svg class="drip" viewBox="0 0 400 82" preserveAspectRatio="none" aria-hidden="true"><path d="M400.0 0.0 L399.3 0.0 L400.0 1.4 L400.0 0.0ZM0.0 82.0 L400.0 82.0 L400.0 25.1 L399.0 26.4 L397.1 27.0 L393.2 27.9 L387.2 28.7 L383.0 28.9 L376.6 28.7 L354.3 26.7 L343.3 26.3 L334.8 27.0 L326.2 28.8 L320.8 29.6 L320.1 32.0 L320.0 36.9 L320.3 36.3 L320.8 36.2 L321.5 37.4 L322.0 40.7 L321.9 43.8 L320.9 48.8 L318.8 53.5 L317.2 55.8 L315.3 57.8 L313.1 59.6 L310.8 61.2 L308.3 62.4 L305.6 63.3 L302.9 63.8 L300.1 64.0 L297.3 63.8 L294.6 63.3 L291.9 62.5 L289.4 61.3 L287.0 59.8 L284.9 58.0 L281.6 54.1 L280.2 51.6 L279.2 49.1 L278.4 46.4 L278.1 43.6 L278.1 40.1 L278.4 37.7 L278.7 36.8 L279.3 36.2 L279.8 36.3 L280.0 36.9 L279.7 31.0 L279.3 29.7 L278.8 29.1 L277.2 28.3 L275.5 28.1 L271.3 28.4 L266.9 29.0 L256.0 31.1 L247.5 31.7 L236.8 31.1 L213.3 28.0 L202.7 27.2 L196.3 27.3 L185.4 28.6 L176.5 29.0 L167.8 28.7 L148.6 27.2 L140.2 26.8 L131.8 27.0 L125.6 27.7 L119.4 29.0 L115.3 30.2 L115.1 32.5 L115.0 37.3 L116.3 40.5 L116.9 42.7 L117.2 46.3 L117.2 51.5 L116.8 54.8 L115.9 57.9 L114.6 61.0 L112.7 64.3 L111.0 66.4 L108.7 68.7 L106.0 70.7 L103.7 72.1 L101.2 73.3 L98.0 74.3 L95.3 74.8 L92.1 75.0 L88.2 74.7 L85.0 74.0 L81.9 72.9 L79.0 71.4 L75.8 69.2 L73.5 66.9 L71.4 64.4 L69.6 61.6 L67.6 56.5 L66.9 53.2 L66.7 50.5 L66.8 46.5 L67.1 42.9 L67.7 40.6 L69.0 37.4 L68.9 32.6 L68.6 29.9 L62.1 29.3 L55.7 29.2 L49.2 29.6 L42.2 30.5 L34.9 30.8 L28.0 30.4 L15.0 29.0 L9.0 28.7 L3.5 29.1 L0.0 30.0 L0.0 27.9 L0.0 82.0Z"/></svg></div>
+        <div class="use"><img src="/img/collegue.jpg" alt="" loading="lazy" style="object-position:center 30%"><div class="veil"></div><div class="txt"><span class="tag" style="background:var(--sucre)">le secret</span><q>c’est moi qui ai mangé ton tupperware.</q></div><svg class="drip" viewBox="0 0 400 82" preserveAspectRatio="none" aria-hidden="true"><path d="M400.0 0.0 L399.3 0.0 L400.0 1.4 L400.0 0.0ZM0.0 82.0 L400.0 82.0 L400.0 25.1 L399.0 26.4 L397.1 27.0 L393.2 27.9 L387.2 28.7 L383.0 28.9 L376.6 28.7 L354.3 26.7 L343.3 26.3 L334.8 27.0 L326.2 28.8 L320.8 29.6 L320.1 32.0 L320.0 36.9 L320.3 36.3 L320.8 36.2 L321.5 37.4 L322.0 40.7 L321.9 43.8 L320.9 48.8 L318.8 53.5 L317.2 55.8 L315.3 57.8 L313.1 59.6 L310.8 61.2 L308.3 62.4 L305.6 63.3 L302.9 63.8 L300.1 64.0 L297.3 63.8 L294.6 63.3 L291.9 62.5 L289.4 61.3 L287.0 59.8 L284.9 58.0 L281.6 54.1 L280.2 51.6 L279.2 49.1 L278.4 46.4 L278.1 43.6 L278.1 40.1 L278.4 37.7 L278.7 36.8 L279.3 36.2 L279.8 36.3 L280.0 36.9 L279.7 31.0 L279.3 29.7 L278.8 29.1 L277.2 28.3 L275.5 28.1 L271.3 28.4 L266.9 29.0 L256.0 31.1 L247.5 31.7 L236.8 31.1 L213.3 28.0 L202.7 27.2 L196.3 27.3 L185.4 28.6 L176.5 29.0 L167.8 28.7 L148.6 27.2 L140.2 26.8 L131.8 27.0 L125.6 27.7 L119.4 29.0 L115.3 30.2 L115.1 32.5 L115.0 37.3 L116.3 40.5 L116.9 42.7 L117.2 46.3 L117.2 51.5 L116.8 54.8 L115.9 57.9 L114.6 61.0 L112.7 64.3 L111.0 66.4 L108.7 68.7 L106.0 70.7 L103.7 72.1 L101.2 73.3 L98.0 74.3 L95.3 74.8 L92.1 75.0 L88.2 74.7 L85.0 74.0 L81.9 72.9 L79.0 71.4 L75.8 69.2 L73.5 66.9 L71.4 64.4 L69.6 61.6 L67.6 56.5 L66.9 53.2 L66.7 50.5 L66.8 46.5 L67.1 42.9 L67.7 40.6 L69.0 37.4 L68.9 32.6 L68.6 29.9 L62.1 29.3 L55.7 29.2 L49.2 29.6 L42.2 30.5 L34.9 30.8 L28.0 30.4 L15.0 29.0 L9.0 28.7 L3.5 29.1 L0.0 30.0 L0.0 27.9 L0.0 82.0Z"/></svg></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 class="d">promis.</h2>
+      <div class="promise">
+        <div><svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10a5 5 0 0 1 10 0v4c0 1-1 1-1 2v3a1 1 0 0 1-2 0v-2c0-1-1-1-1 0v4a1 1 0 0 1-2 0v-5c0-1-1-1-1 0v1a1 1 0 0 1-2 0z"/></svg><p style="margin:0"><b>lu une fois, puis fondu.</b><span>la photo et le mot sont effacés de nos serveurs dès qu’ils ont été grattés.</span></p></div>
+        <div><svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><p style="margin:0"><b>tu sais quand il l’a lu.</b><span>« tom a lu ton mot en 2,1 s. » et sa réaction, sans voir son visage.</span></p></div>
+        <div><svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><p style="margin:0"><b>pas de pub, pas de revente.</b><span>tes mots ne servent qu’à être lus. rien n’est vendu à personne.</span></p></div>
+        <div><svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M12 4v16"/><circle cx="12" cy="12" r="9"/></svg><p style="margin:0"><b>gratuit.</b><span>pas besoin que ton pote ait l’app : il peut gratter ton mot depuis un lien.</span></p></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="final" id="telecharger">
+    <div class="wrap">
+      <svg viewBox="11 -699 5615 728" height="54" role="img" aria-label="sweetin" class="logo" style="margin:0 auto 18px;display:block"><path fill="currentColor" d="M23 -422Q23 -475 53 -514.5Q83 -554 135.5 -581Q188 -608 255 -621.5Q322 -635 395 -635Q482 -635 557.5 -619.5Q633 -604 696 -578V-373Q670 -391 628.5 -404.5Q587 -418 541.5 -425Q496 -432 455 -432Q424 -432 398.5 -428Q373 -424 357.5 -414.5Q342 -405 342 -391Q342 -382 347.5 -377.5Q353 -373 363 -370.5Q373 -368 386 -368Q411 -368 431.5 -368Q452 -368 476 -368Q525 -368 573 -361.5Q621 -355 660 -337Q699 -319 722.5 -285Q746 -251 746 -197Q746 -140 714.5 -99.5Q683 -59 628.5 -34Q574 -9 506.5 3Q439 15 366 15Q284 15 203 -0.5Q122 -16 64 -45V-261Q87 -237 129 -221.5Q171 -206 220.5 -198.5Q270 -191 312 -191Q346 -192 371.5 -197Q397 -202 411.5 -212Q426 -222 426 -235Q426 -242 422.5 -246.5Q419 -251 411.5 -254Q404 -257 392 -257Q374 -257 355.5 -257Q337 -257 322 -257Q286 -257 245 -259.5Q204 -262 165 -271Q126 -280 93.5 -298Q61 -316 42 -346.5Q23 -377 23 -422ZM1906 -607Q1884 -508 1860.5 -409Q1837 -310 1813.5 -211.5Q1790 -113 1768 -13H1399L1346 -278Q1344 -287 1341 -292Q1338 -297 1334.5 -299Q1331 -301 1327 -299.5Q1323 -298 1320.5 -294Q1318 -290 1316 -282L1265 -13H915Q892 -114 870 -213.5Q848 -313 826 -411.5Q804 -510 779 -607H1083Q1092 -516 1103 -427.5Q1114 -339 1124 -250Q1124 -240 1127 -234.5Q1130 -229 1134.5 -227Q1139 -225 1143 -225.5Q1147 -226 1150.5 -229.5Q1154 -233 1155 -239L1216 -607H1485L1541 -236Q1541 -230 1544.5 -226.5Q1548 -223 1552.5 -222Q1557 -221 1562 -222.5Q1567 -224 1570 -228Q1573 -232 1573 -238Q1581 -300 1588 -362Q1595 -424 1602.5 -485.5Q1610 -547 1617 -607ZM2375 -210Q2429 -210 2460.5 -229.5Q2492 -249 2496 -280L2769 -190Q2752 -133 2697 -86Q2642 -39 2558.5 -11Q2475 17 2373 17Q2282 17 2203.5 -4.5Q2125 -26 2065.5 -68.5Q2006 -111 1971.5 -173Q1937 -235 1935 -316Q1933 -397 1967 -457.5Q2001 -518 2061 -558Q2121 -598 2201 -617.5Q2281 -637 2371 -637Q2466 -637 2543.5 -615.5Q2621 -594 2676.5 -551.5Q2732 -509 2761.5 -446Q2791 -383 2791 -299H2263Q2258 -299 2255.5 -297Q2253 -295 2252 -293.5Q2251 -292 2251 -289Q2251 -272 2260.5 -257.5Q2270 -243 2286 -232.5Q2302 -222 2324.5 -216Q2347 -210 2375 -210ZM2369 -412Q2316 -412 2282.5 -393Q2249 -374 2249 -339Q2249 -334 2251 -331.5Q2253 -329 2255.5 -327.5Q2258 -326 2261 -326Q2264 -326 2264 -326H2487Q2489 -326 2490.5 -329Q2492 -332 2492 -335Q2492 -350 2484 -364.5Q2476 -379 2460.5 -389.5Q2445 -400 2422 -406Q2399 -412 2369 -412ZM3264 -210Q3318 -210 3349.5 -229.5Q3381 -249 3385 -280L3658 -190Q3641 -133 3586 -86Q3531 -39 3447.5 -11Q3364 17 3262 17Q3171 17 3092.5 -4.5Q3014 -26 2954.5 -68.5Q2895 -111 2860.5 -173Q2826 -235 2824 -316Q2822 -397 2856 -457.5Q2890 -518 2950 -558Q3010 -598 3090 -617.5Q3170 -637 3260 -637Q3355 -637 3432.5 -615.5Q3510 -594 3565.5 -551.5Q3621 -509 3650.5 -446Q3680 -383 3680 -299H3152Q3147 -299 3144.5 -297Q3142 -295 3141 -293.5Q3140 -292 3140 -289Q3140 -272 3149.5 -257.5Q3159 -243 3175 -232.5Q3191 -222 3213.5 -216Q3236 -210 3264 -210ZM3258 -412Q3205 -412 3171.5 -393Q3138 -374 3138 -339Q3138 -334 3140 -331.5Q3142 -329 3144.5 -327.5Q3147 -326 3150 -326Q3153 -326 3153 -326H3376Q3378 -326 3379.5 -329Q3381 -332 3381 -335Q3381 -350 3373 -364.5Q3365 -379 3349.5 -389.5Q3334 -400 3311 -406Q3288 -412 3258 -412ZM4065 -359Q4079 -401 4091.5 -443Q4104 -485 4115.5 -527.5Q4127 -570 4137 -611H4311V-359ZM3725 -263Q3725 -346 3725 -438Q3725 -530 3725 -612L4041 -687Q4040 -642 4039.5 -595Q4039 -548 4039 -501Q4039 -465 4040 -430Q4041 -395 4043 -361Q4041 -359 4040 -356Q4039 -353 4039 -348Q4039 -327 4047.5 -310.5Q4056 -294 4071.5 -282Q4087 -270 4108 -263Q4129 -256 4156 -256Q4182 -256 4209 -264Q4236 -272 4258 -286Q4280 -300 4290 -319V-50Q4250 -19 4188 -4.5Q4126 10 4064 10Q3968 10 3891 -21.5Q3814 -53 3769.5 -114Q3725 -175 3725 -263ZM5293 -13Q5295 -85 5297.5 -161Q5300 -237 5300 -316Q5300 -347 5286.5 -361.5Q5273 -376 5253.5 -379Q5234 -382 5217.5 -378Q5201 -374 5196 -368L5266 -596Q5300 -611 5338.5 -618.5Q5377 -626 5414 -626Q5467 -626 5512.5 -608.5Q5558 -591 5586 -554Q5614 -517 5614 -456V-13ZM4841 -13Q4840 -74 4841 -135.5Q4842 -197 4843 -259.5Q4844 -322 4844 -384Q4844 -440 4843.5 -495.5Q4843 -551 4840 -607Q4893 -607 4947 -607Q5001 -607 5055 -607Q5109 -607 5159 -607Q5159 -574 5159.5 -542Q5160 -510 5160.5 -479Q5161 -448 5161.5 -417Q5162 -386 5164 -354Q5162 -343 5161 -329Q5160 -315 5160 -299Q5160 -229 5161 -154.5Q5162 -80 5164 -13Z M4430.6 -290.0 L4425.8 -289.2 L4423.2 -287.0 L4422.5 -283.2 L4423.8 -278.0 L4566.5 -12.4 L4570.7 -3.7 L4576.3 5.2 L4582.7 11.3 L4588.3 13.3 L4591.8 12.9 L4594.6 11.7 L4601.0 6.0 L4606.6 -2.4 L4695.1 -167.9 L4683.6 -163.2 L4672.5 -160.7 L4660.3 -160.1 L4648.9 -161.5 L4637.2 -165.0 L4627.0 -170.1 L4617.2 -177.4 L4609.3 -185.7 L4603.6 -194.0 L4599.6 -201.9 L4596.3 -211.5 L4594.5 -221.5 L4594.1 -231.1 L4594.6 -254.2 L4597.9 -290.0Z M4794.8 -430.1 L4792.8 -450.2 L4788.8 -470.1 L4783.0 -489.4 L4775.2 -508.1 L4765.7 -525.9 L4754.5 -542.7 L4741.6 -558.3 L4727.3 -572.6 L4711.7 -585.5 L4694.9 -596.7 L4677.1 -606.2 L4658.4 -614.0 L4639.1 -619.8 L4619.2 -623.8 L4599.1 -625.8 L4578.9 -625.8 L4558.8 -623.8 L4538.9 -619.8 L4519.6 -614.0 L4500.9 -606.2 L4483.1 -596.7 L4466.3 -585.5 L4450.7 -572.6 L4436.4 -558.3 L4423.5 -542.7 L4412.3 -525.9 L4402.8 -508.1 L4395.0 -489.4 L4389.2 -470.1 L4385.2 -450.2 L4383.2 -430.1 L4383.2 -409.9 L4386.0 -384.8 L4391.9 -360.2 L4400.7 -336.5 L4410.0 -318.0 L4621.4 -318.0 L4623.3 -313.0 L4624.0 -302.6 L4623.7 -286.1 L4621.0 -260.0 L4620.2 -238.9 L4620.3 -224.7 L4622.6 -214.4 L4625.2 -208.7 L4628.5 -203.3 L4632.7 -198.6 L4639.2 -193.2 L4646.6 -189.3 L4652.6 -187.3 L4658.8 -186.2 L4665.1 -186.1 L4671.4 -186.8 L4677.5 -188.5 L4683.2 -191.1 L4690.2 -195.7 L4694.8 -200.1 L4698.7 -205.1 L4701.8 -210.6 L4704.1 -216.4 L4705.8 -226.8 L4705.7 -244.1 L4704.8 -262.0 L4702.3 -285.2 L4702.0 -300.6 L4702.6 -312.3 L4704.6 -318.0 L4768.0 -318.0 L4770.7 -322.9 L4781.2 -345.9 L4786.1 -360.2 L4790.0 -374.9 L4792.8 -389.8 L4794.4 -404.8Z"/></svg>
+      <h2 class="d">à toi de cacher un mot.</h2>
+      <div class="stores">
+        <a class="play" href="https://play.google.com/store/apps/details?id=app.sweetin.android&referrer=utm_source%3Dsite" data-store><img src="/img/google-play-fr.svg" alt="Disponible sur Google Play" width="189" height="56"></a>
+        <span class="ios" id="ios-final">sur iphone : bientôt.</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer><div class="wrap">
+  <span>© sweetin · le mot qui fond.</span>
+  <nav>
+    <a href="/conditions/">conditions</a>
+    <a href="/confidentialite/">confidentialité</a>
+    <a href="/securite-enfants/">sécurité</a>
+    <a href="/suppression-compte/">supprimer mon compte</a>
+    <a href="mailto:team@sweetin.app">nous écrire</a>
+  </nav>
+</div></footer>
+
+<script src="/waitlist.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // iPhone : la liste d'attente dans la bande finale (tant que l'app iOS n'est pas sortie)
+  var api = (document.querySelector('meta[name="sweetin-api"]') || {}).content || '';
+  var iosEl = $('ios-final');
+  if (iosEl && window.sweetinWaitlist) {
+    var holder = document.createElement('div'); iosEl.after(holder); iosEl.hidden = true;
+    sweetinWaitlist(holder, { api: api, src: 'site', fr: true });
+  }
+
+  // ---------- démo : gratter, lire 10 s, fondre (comme dans l'app) ----------
+  var MESSAGE = 'tu me plais. voilà, c’est dit.', MELT_S = 10;
+  var card = $('card'), canvas = $('scratch'), ctx, W, H, dpr, img = new Image(), sugar = new Image();
+  var COLS = 18, ROWS = 24, grid, covered = 0, revealed = false, down = false, last = null, timer = null;
+  img.src = '/img/coeur.jpg'; sugar.src = '/sucre-givre.png';
+
+  function buildMessage() {
+    var msg = $('msg'); msg.textContent = ''; var i = 0, total = MESSAGE.length;
+    MESSAGE.split(/(\s+)/).forEach(function (part) {
+      if (!part) return;
+      if (/^\s+$/.test(part)) { msg.appendChild(document.createTextNode(' ')); i += part.length; return; }
+      var w = document.createElement('b'); w.className = 'w';
+      Array.from(part).forEach(function (ch) { var s = document.createElement('span'); s.textContent = ch; s.style.animationDelay = ((i++ / total) * 0.55 * 1.2).toFixed(3) + 's'; w.appendChild(s); });
+      msg.appendChild(w);
+    });
+  }
+  function paint() {
+    var r = card.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 3); W = card.offsetWidth; H = card.offsetHeight;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalCompositeOperation = 'source-over';
+    var s = Math.max(W / img.naturalWidth, H / img.naturalHeight), w = img.naturalWidth * s, h = img.naturalHeight * s;
+    ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(0, 0, W, H);
+    if (sugar.naturalWidth) { ctx.globalAlpha = .55; for (var x = 0; x < W; x += 128) for (var y = 0; y < H; y += 128) ctx.drawImage(sugar, x, y, 128, 128); ctx.globalAlpha = 1; }
+    ctx.globalCompositeOperation = 'destination-out'; ctx.lineCap = ctx.lineJoin = 'round'; ctx.lineWidth = W * 0.2;
+    grid = new Uint8Array(COLS * ROWS); covered = 0;
+  }
+  function reset() {
+    clearInterval(timer); card.classList.remove('melt'); $('demo').classList.remove('on'); revealed = false;
+    $('status').hidden = true; $('again').hidden = true; $('cover').style.opacity = 1; canvas.style.opacity = 1; canvas.style.transition = '';
+    buildMessage(); paint();
+  }
+  function pos(e) { var r = canvas.getBoundingClientRect(), t = e.touches ? e.touches[0] : e; return { x: t.clientX - r.left, y: t.clientY - r.top }; }
+  function mark(p) {
+    var rr = W * 0.1, cw = W / COLS, ch = H / ROWS;
+    for (var row = Math.max(0, Math.floor((p.y - rr) / ch)); row <= Math.min(ROWS - 1, Math.floor((p.y + rr) / ch)); row++)
+      for (var col = Math.max(0, Math.floor((p.x - rr) / cw)); col <= Math.min(COLS - 1, Math.floor((p.x + rr) / cw)); col++) {
+        var cx = (col + .5) * cw, cy = (row + .5) * ch;
+        if ((cx - p.x) * (cx - p.x) + (cy - p.y) * (cy - p.y) <= rr * rr && !grid[row * COLS + col]) { grid[row * COLS + col] = 1; covered++; }
+      }
+  }
+  function stroke(p) {
+    ctx.beginPath(); ctx.moveTo((last || p).x, (last || p).y); ctx.lineTo(p.x, p.y); ctx.stroke(); last = p; mark(p);
+    $('cover').style.opacity = 0;
+    if (!revealed && covered / (COLS * ROWS) > 0.5) reveal();
+  }
+  function reveal() {
+    revealed = true; down = false; $('demo').classList.add('on');
+    canvas.style.transition = 'opacity .42s ease-out'; canvas.style.opacity = 0;
+    var left = MELT_S; $('left').textContent = 'il fond dans ' + left + ' s'; $('status').hidden = false;
+    $('bar').style.transition = 'none'; $('bar').style.width = '100%';
+    requestAnimationFrame(function () { $('bar').style.transition = 'width ' + MELT_S + 's linear'; $('bar').style.width = '0%'; });
+    timer = setInterval(function () {
+      left--; $('left').textContent = 'il fond dans ' + Math.max(0, left) + ' s';
+      if (left <= 0) { clearInterval(timer); $('status').hidden = true; card.classList.add('melt'); setTimeout(function () { $('again').hidden = false; }, 1400); }
+    }, 1000);
+  }
+  canvas.addEventListener('pointerdown', function (e) { if (revealed) return; down = true; last = null; canvas.setPointerCapture(e.pointerId); stroke(pos(e)); });
+  canvas.addEventListener('pointermove', function (e) { if (down && !revealed) stroke(pos(e)); });
+  ['pointerup', 'pointercancel'].forEach(function (t) { canvas.addEventListener(t, function () { down = false; last = null; }); });
+  $('again').addEventListener('click', reset);
+  if (reduce) { /* lecture directe, sans animation */ }
+  Promise.all([img.decode().catch(function () {}), sugar.decode().catch(function () {}), document.fonts.ready]).then(reset);
+  window.addEventListener('resize', function () { if (!revealed) paint(); });
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupportedStorage } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { AppState } from 'react-native';
-import type { Database } from './database.types';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -31,7 +30,7 @@ const storage: SupportedStorage = {
   },
 };
 
-export const supabase = createClient<Database>(url, key, {
+export const supabase = createClient(url, key, {
   auth: {
     storage,
     autoRefreshToken: true,

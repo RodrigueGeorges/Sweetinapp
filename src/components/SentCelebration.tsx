@@ -1,9 +1,8 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { t } from '../i18n';
-import { fonts, tx, useStyles, useTheme, type Palette } from '../theme';
+import { colors, fonts, tx } from '../theme';
 import { Confetti } from './Confetti';
 import { Fondue } from './Fondue';
 import { Button, Chip, Pop } from './ui';
@@ -17,22 +16,18 @@ type Props = {
   streak?: number;
   /** Proposer les notifications (jamais demandées) : « sois prévenu quand il le gratte ». */
   ask?: { onAllow: () => void; onLater: () => void };
-  /** Envoyé par lien sans ami dans l'app : « il manque quelqu'un pour le gratter ». */
-  cta?: { label: string; onPress: () => void; onDismiss: () => void };
 };
 
 /** Moment de célébration après l'envoi : la glace tombe, les confettis partent, « envoyé. ». */
-export function SentCelebration({ to, sweet, streak, ask, cta }: Props) {
-  const { colors, isDark } = useTheme();
-  const s = useStyles(themed);
+export function SentCelebration({ to, sweet, streak, ask }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const milestone = !!streak && STREAK_MILESTONES.includes(streak);
   return (
     <Animated.View entering={FadeIn.duration(160)} style={StyleSheet.absoluteFill} accessibilityLiveRegion="assertive" accessibilityLabel={`${t('send.sent')} ${t('send.sentTo', { to })}`}>
-      <LinearGradient colors={isDark ? ['#A01B44', '#7A1330', '#4A0B1D'] : ['#FF4473', colors.cerise, '#EB1650']} locations={[0, 0.45, 1]} style={[StyleSheet.absoluteFill, s.center]}>
+      <View style={[StyleSheet.absoluteFill, s.center, { backgroundColor: colors.coeur }]}>
         <Animated.View entering={ZoomIn.springify().damping(9).stiffness(160)}>
-          <Fondue mood="party" size={170} bg={colors.cerise} />
+          <Fondue mood="party" size={170} bg={colors.coeur} />
         </Animated.View>
         <Animated.Text entering={FadeInDown.delay(160).springify()} style={s.title}>
           {t('send.sent')}
@@ -52,21 +47,13 @@ export function SentCelebration({ to, sweet, streak, ask, cta }: Props) {
             </Animated.View>
           )}
         </View>
-        {cta && (
-          <Animated.View entering={FadeInDown.delay(560).springify()} style={{ marginTop: 10, alignItems: 'center', gap: 4 }}>
-            <Button label={cta.label} tone="snow" size="md" icon="userPlus" onPress={cta.onPress} />
-            <Pressable onPress={cta.onDismiss} accessibilityRole="button" hitSlop={8} style={s.later}>
-              <Text style={[s.laterT, { color: colors.vanille }]}>{t('notif.later')}</Text>
-            </Pressable>
-          </Animated.View>
-        )}
-      </LinearGradient>
+      </View>
       <Confetti width={width} height={height} originY={0.36} />
       {ask && (
         <Animated.View entering={FadeInDown.delay(700).springify()} style={[s.ask, { bottom: Math.max(insets.bottom, 16) + 8 }]}>
           <Pop radius={24} style={s.askCard}>
             <Text style={s.askT}>{t('notif.ask', { to })}</Text>
-            <Button label={t('notif.allow')} tone="cerise" size="md" icon="message" onPress={ask.onAllow} />
+            <Button label={t('notif.allow')} size="md" icon="message" onPress={ask.onAllow} />
             <Pressable onPress={ask.onLater} accessibilityRole="button" hitSlop={8} style={s.later}>
               <Text style={s.laterT}>{t('notif.later')}</Text>
             </Pressable>
@@ -77,11 +64,10 @@ export function SentCelebration({ to, sweet, streak, ask, cta }: Props) {
   );
 }
 
-const themed = (colors: Palette) =>
-  StyleSheet.create({
-    center: { alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 28 },
-  title: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 68, lineHeight: 74, letterSpacing: -2, color: colors.vanille },
-  sub: { ...tx.black, fontSize: 17, color: colors.cacao, textAlign: 'center' },
+const s = StyleSheet.create({
+  center: { alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 28 },
+  title: { fontFamily: fonts.displayHeavy, includeFontPadding: false, fontSize: 50, lineHeight: 54, color: colors.white },
+  sub: { ...tx.black, fontSize: 17, color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
   chips: { flexDirection: 'row', gap: 10, marginTop: 8 },
   ask: { position: 'absolute', left: 20, right: 20 },
   askCard: { padding: 18, gap: 12 },

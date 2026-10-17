@@ -1,6 +1,6 @@
-import * as Notifications from 'expo-notifications';
 import { t } from '../i18n';
 import { listFriends, myStreaks } from './api';
+import { notif } from './notif';
 
 const ID = 'sweetin.streakReminder';
 /** Heure locale du rappel : assez tard pour l'effet de rareté, assez tôt pour agir. */
@@ -14,9 +14,11 @@ const HOUR = 20;
  */
 export async function syncStreakReminder() {
   try {
-    const [perm, scheduled] = await Promise.all([Notifications.getPermissionsAsync(), Notifications.getAllScheduledNotificationsAsync()]);
+    const N = notif();
+    if (!N) return;
+    const [perm, scheduled] = await Promise.all([N.getPermissionsAsync(), N.getAllScheduledNotificationsAsync()]);
     for (const n of scheduled) {
-      if (n.identifier === ID) await Notifications.cancelScheduledNotificationAsync(n.identifier).catch(() => {});
+      if (n.identifier === ID) await N.cancelScheduledNotificationAsync(n.identifier).catch(() => {});
     }
     if (!perm.granted) return;
 
@@ -30,7 +32,7 @@ export async function syncStreakReminder() {
     risk.sort((a, b) => b.days - a.days);
     if (!risk.length) return;
 
-    await Notifications.scheduleNotificationAsync({
+    await N.scheduleNotificationAsync({
       identifier: ID,
       content: {
         title: t('streak.reminderTitle'),
@@ -38,7 +40,7 @@ export async function syncStreakReminder() {
         sound: 'streak.wav',
         data: { screen: 'contacts', kind: 'streak-local' },
       },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at, channelId: 'streaks' },
+      trigger: { type: N.SchedulableTriggerInputTypes.DATE, date: at, channelId: 'streaks' },
     });
   } catch {
     // notifications indisponibles (Expo Go, web) : rien à faire

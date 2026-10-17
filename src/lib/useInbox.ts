@@ -1,7 +1,7 @@
-import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { listInbox, type InboxItem } from './api';
+import { notif } from './notif';
 import { supabase } from './supabase';
 import { useSession } from './session';
 import { updateWidget } from './widget';
@@ -13,7 +13,7 @@ export function useInbox() {
   const [loading, setLoading] = useState(true);
   // un nom de canal par instance : la barre d'onglets et l'écran Boîte écoutent en même temps,
   // et supabase renvoie le canal existant (déjà abonné) si deux instances partagent le même nom
-  const tag = useId();
+  const [tag] = useState(() => Math.random().toString(36).slice(2, 8));
 
   const refresh = useCallback(async () => {
     if (!session) return;
@@ -22,7 +22,7 @@ export function useInbox() {
       setItems(list);
       updateWidget(list);
       // pastille sur l'icône de l'app = nombre de secrets à gratter
-      Notifications.setBadgeCountAsync(list.length).catch(() => {});
+      notif()?.setBadgeCountAsync(list.length).catch(() => {});
     } catch {
       // hors ligne : on garde la liste actuelle
     } finally {

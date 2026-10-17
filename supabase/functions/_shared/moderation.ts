@@ -1,7 +1,11 @@
 // Modération automatique avant livraison d'un flip (API de modération OpenAI, gratuite).
-// Sans clé OPENAI_API_KEY, la modération est désactivée et tout passe : à configurer avant le lancement.
+// Fail-closed : sans clé OPENAI_API_KEY ou si l'API ne répond pas, l'envoi est refusé ('unavailable').
+// Développement seulement : MODERATION_OPTIONAL=1 laisse tout passer quand la clé n'est pas configurée.
 
 export type ModerationResult = { flagged: boolean; categories: Record<string, boolean>; category_scores?: Record<string, number> };
+
+/** 'unavailable' = la modération n'a pas pu répondre : l'appelant doit refuser l'envoi. null = modération désactivée en dev. */
+export type Moderation = ModerationResult | 'unavailable' | null;
 
 /** Catégories qui bloquent l'envoi. Le harcèlement léger n'est pas bloqué (faux positifs fréquents entre amis). */
 const BLOCKING = ['sexual', 'sexual/minors', 'violence/graphic', 'self-harm', 'self-harm/intent', 'self-harm/instructions', 'hate/threatening', 'harassment/threatening', 'illicit/violent'];
@@ -15,10 +19,17 @@ export function blockingCategory(r: ModerationResult | undefined): string | null
   return null;
 }
 
-/** Envoie le texte et l'image à la modération. Renvoie null si la modération n'est pas configurée ou indisponible. */
-export async function moderate(text: string, imageUrl: string): Promise<ModerationResult | null> {
+/** Envoie le texte et l'image à la modération. 'unavailable' si la modération est indisponible, null si désactivée en dev. */
+export async function moderate(text: string, imageUrl: string): Promise<Moderation> {
   const key = Deno.env.get('OPENAI_API_KEY');
-  if (!key) return null;
+  if (!key) {
+    if (Deno.env.get('MODERATION_OPTIONAL') === '1') {
+      console.warn('modération désactivée (MODERATION_OPTIONAL=1) : tout passe');
+      return null;
+    }
+    console.error('OPENAI_API_KEY absente : envoi refusé (fail-closed)');
+    return 'unavailable';
+  }
   try {
     const res = await fetch('https://api.openai.com/v1/moderations', {
       method: 'POST',
@@ -33,12 +44,12 @@ export async function moderate(text: string, imageUrl: string): Promise<Moderati
     });
     if (!res.ok) {
       console.error('moderation http', res.status, await res.text());
-      return null;
+      return 'unavailable';
     }
     const body = await res.json();
-    return body.results?.[0] ?? null;
+    return body.results?.[0] ?? 'unavailable';
   } catch (e) {
     console.error('moderation failed', e);
-    return null;
+    return 'unavailable';
   }
 }

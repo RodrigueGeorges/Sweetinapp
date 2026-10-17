@@ -26,6 +26,7 @@ export function Bounce({ style, children, scaleTo = 0.94, haptic = 'selection', 
       disabled={disabled}
       style={[style, anim]}
       onPressIn={(e) => {
+        // eslint-disable-next-line react-hooks/immutability -- une shared value Reanimated se mute dans les callbacks
         if (!reduce) s.value = withSpring(scaleTo, motion.press);
         if (haptic === 'selection') Haptics.selectionAsync();
         else if (haptic === 'light') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -33,6 +34,7 @@ export function Bounce({ style, children, scaleTo = 0.94, haptic = 'selection', 
         onPressIn?.(e);
       }}
       onPressOut={(e) => {
+        // eslint-disable-next-line react-hooks/immutability -- idem
         s.value = withSpring(1, motion.pop);
         onPressOut?.(e);
       }}

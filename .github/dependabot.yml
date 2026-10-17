@@ -1,0 +1,16 @@
+# Suivi des dépendances. Les montées de versions Expo doivent rester alignées
+# sur le SDK : vérifier `npx expo install --check` après fusion d'une PR dependabot.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      expo:
+        patterns: ['expo*', '@expo/*', 'react-native*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

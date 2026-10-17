@@ -1,4 +1,4 @@
-import { HStack, Image, Link, Spacer, Text, VStack } from '@expo/ui/swift-ui';
+import { HStack, Image, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import { activityBackgroundTint, font, foregroundStyle, monospacedDigit, multilineTextAlignment, padding } from '@expo/ui/swift-ui/modifiers';
 import { createLiveActivity, type LiveActivityEnvironment } from 'expo-widgets';
 
@@ -13,17 +13,15 @@ export type SweetHourProps = {
   endsAt: number;
   title: string;
   sub: string;
-  /** Libellé du bouton qui ouvre la caméra (Dynamic Island dépliée). */
-  cta: string;
 };
 
 const SweetHour = (props: SweetHourProps, env: LiveActivityEnvironment) => {
   'widget';
   // couleurs de la DA (le composant ne voit rien hors de lui-même)
-  const CERISE = '#FF2D5F';
-  const VANILLE = '#FFF4E6';
-  const CACAO = '#1A0A0E';
-  const PISTACHE = '#C6F36B';
+  const CERISE = '#FF2E5B'; // framboise (DA Fondant)
+  const VANILLE = '#FFFFFF';
+  const CACAO = '#160F12'; // nuit
+  const PISTACHE = '#E8FF5A'; // citron : la sweet hour
   const end = new Date(props.endsAt);
   const range = { lower: new Date(Math.min(Date.now(), props.endsAt)), upper: end };
   const dim = env.isLuminanceReduced === true;
@@ -38,7 +36,7 @@ const SweetHour = (props: SweetHourProps, env: LiveActivityEnvironment) => {
           <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle(dim ? VANILLE : CACAO)]}>{props.sub}</Text>
         </VStack>
         <Spacer />
-        {timer(40, dim ? PISTACHE : VANILLE)}
+        {timer(40, VANILLE)}
       </HStack>
     ),
     compactLeading: <Image systemName="sparkles" color={PISTACHE} />,
@@ -50,16 +48,7 @@ const SweetHour = (props: SweetHourProps, env: LiveActivityEnvironment) => {
       </VStack>
     ),
     expandedTrailing: timer(28, VANILLE),
-    expandedBottom: (
-      <HStack spacing={12}>
-        <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle(VANILLE)]}>{props.sub}</Text>
-        <Spacer />
-        {/* iOS 26 : lien natif vers la caméra, un tap depuis la Dynamic Island dépliée */}
-        <Link destination="sweetin://camera" modifiers={[font({ size: 14, weight: 'black' }), foregroundStyle(PISTACHE)]}>
-          <Text>{props.cta}</Text>
-        </Link>
-      </HStack>
-    ),
+    expandedBottom: <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle(VANILLE)]}>{props.sub}</Text>,
   };
 };
 

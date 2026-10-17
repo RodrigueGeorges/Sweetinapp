@@ -1,30 +1,17 @@
-# Parcours de bout en bout sur un simulateur ou un téléphone : maestro test .maestro
-# Variables : EMAIL (adresse neuve), PASSWORD, USERNAME (pseudo libre). Exemple :
-#   maestro test -e EMAIL=test+1@sweetin.app -e PASSWORD=motdepasse123 -e USERNAME=test_1 .maestro/01_intro_et_inscription.yaml
-appId: app.sweetin.ios
+# Régression « écran noir » : au lancement l'app doit afficher la welcome Fondant,
+# jamais l'écran de lecture sans id (FLAG_SECURE + shimmer infini).
+# Expo Go : maestro test .maestro/01_intro_et_inscription.yaml
+# Dev build natif : remplacer appId par app.sweetin.android et adapter _ouvrir.yaml.
+appId: host.exp.exponent
 ---
-- clearState
-- launchApp
-- assertVisible: "Prends une photo|Take a photo"
-- tapOn: "Suivant|Next"
-- tapOn: "Suivant|Next"
-- tapOn: "C’est parti|Let’s go"
-- tapOn: "SIGNUP|INSCRIPTION|Signup|Inscription"
-- tapOn: "Email"
-- inputText: ${EMAIL}
-- tapOn: "Mot de passe|Password"
-- inputText: ${PASSWORD}
-- tapOn: "VALIDER|Valider|CONTINUE|Continue"
-# si la confirmation par email est active, confirmer puis se connecter avant de continuer
-- runFlow:
-    when:
-      visible: "Pseudo|Username"
-    commands:
-      - tapOn: "Pseudo|Username"
-      - inputText: ${USERNAME}
-      - tapOn: "JJ|DD"
-      - inputText: "15"
-      - inputText: "06"
-      - inputText: "1998"
-      - tapOn: "Continuer|Continue"
-      - assertVisible: "Envoyer un flip|Send a flip"
+- launchApp:
+    clearState: true
+- runFlow: _ouvrir.yaml
+# la welcome Fondant : démo à gratter, stickers, promesse — aucun voile noir
+- extendedWaitUntil:
+    visible: "send my first sweet|envoyer mon premier sweet"
+    timeout: 60000
+- assertVisible: "scratch me|gratte-moi"
+- assertVisible: "i’m melting|je fonds"
+# le bouton « Fermer » de l'écran de lecture ne doit pas apparaître
+- assertNotVisible: "Close|Fermer"

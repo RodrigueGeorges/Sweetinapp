@@ -7,13 +7,15 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import Svg, { Path } from 'react-native-svg';
 import { useToast } from '../components/Toast';
 import { Icon } from '../components/Icon';
+import { Sticker } from '../components/Reactions';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Body, BottomCTA, Button, Field, Header, Pop, Screen, Title } from '../components/ui';
 import { legal } from '../lib/legal';
 import { t } from '../i18n';
 import { signInWithApple, signInWithGoogle } from '../lib/api';
 import { track } from '../lib/monitoring';
 import { supabase } from '../lib/supabase';
-import { tx, useStyles, useTheme, type Palette } from '../theme';
+import { colors, tx } from '../theme';
 
 /**
  * Connexion ou inscription : Apple, Google, ou email et mot de passe.
@@ -21,14 +23,12 @@ import { tx, useStyles, useTheme, type Palette } from '../theme';
  * pour que la connexion Apple ou Google passe par le même chemin.
  */
 export default function Auth() {
-  const { colors } = useTheme();
-  const s = useStyles(themed);
-  const { mode, next } = useLocalSearchParams<{ mode?: string; next?: string }>();
+  const { mode, next, mail } = useLocalSearchParams<{ mode?: string; next?: string; mail?: string }>();
   const signup = mode === 'signup';
   // arrivé ici depuis un premier secret écrit sans compte
   const sending = next === 'send';
   const toast = useToast();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(mail ?? '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -96,9 +96,21 @@ export default function Auth() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <Header back logo />
         <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
+          {/* trois autocollants de réaction : on reconnaît l'app avant même de lire */}
+          <View style={s.stickers} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Animated.View entering={ZoomIn.delay(120).springify().damping(10)}>
+              <Sticker kind="melt" />
+            </Animated.View>
+            <Animated.View entering={ZoomIn.delay(200).springify().damping(10)} style={{ marginTop: 18 }}>
+              <Sticker kind="shock" />
+            </Animated.View>
+            <Animated.View entering={ZoomIn.delay(280).springify().damping(10)}>
+              <Sticker kind="lol" />
+            </Animated.View>
+          </View>
           <View style={{ gap: 6 }}>
             <Title size={48}>{sending ? t('auth.titleSend') : signup ? t('auth.titleSignup') : t('auth.titleLogin')}</Title>
             <Body>{sending ? t('auth.subSend') : signup ? t('auth.subSignup') : t('auth.subLogin')}</Body>
@@ -184,7 +196,10 @@ export default function Auth() {
             {t('auth.sent')}
           </Title>
           <Body style={{ textAlign: 'center', color: colors.muted }}>{t('auth.sentSub')}</Body>
-          <Button label={t('auth.confirmed')} tone="cerise" onPress={() => router.replace({ pathname: '/auth', params: { mode: 'login', ...(next ? { next } : {}) } })} />
+          <Button label={t('auth.confirmed')} onPress={() => router.replace({ pathname: '/auth', params: { mode: 'login', mail: email.trim().toLowerCase(), ...(next ? { next } : {}) } })} />
+          <Pressable onPress={() => setSent(false)} hitSlop={8} accessibilityRole="button" style={{ marginTop: 6 }}>
+            <Text style={s.forgot}>{t('auth.wrongMail')}</Text>
+          </Pressable>
         </View>
       )}
     </Screen>
@@ -192,7 +207,6 @@ export default function Auth() {
 }
 
 function OkDot() {
-  const s = useStyles(themed);
   return (
     <View style={s.ok}>
       <Icon name="check" size={13} stroke={3.4} />
@@ -211,8 +225,8 @@ function GoogleG() {
   );
 }
 
-const themed = (colors: Palette) =>
-  StyleSheet.create({
+const s = StyleSheet.create({
+  stickers: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', marginBottom: 4 },
   form: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 20, gap: 20 },
   socials: { gap: 12 },
   apple: { height: 54, width: '100%' },

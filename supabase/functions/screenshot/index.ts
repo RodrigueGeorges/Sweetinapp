@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     .eq('flip_id', flip_id)
     .eq('recipient_id', user.id)
     .maybeSingle();
-  if (!rec) return fail('Flip introuvable', 404, 'NOT_FOUND');
+  if (!rec) return fail('Sweet introuvable', 404, 'NOT_FOUND');
   if (rec.screenshot_at) return json({ ok: true });
 
   await db.from('flip_recipients').update({ screenshot_at: new Date().toISOString() }).eq('flip_id', flip_id).eq('recipient_id', user.id);
