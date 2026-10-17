@@ -40,7 +40,10 @@ async function saveQueue(list: QueuedSend[]) {
 export async function queueSend(input: Omit<QueuedSend, 'queued_at'>) {
   const list = await pendingSends();
   list.push({ ...input, queued_at: Date.now() });
-  await saveQueue(list.slice(-MAX));
+  // file pleine : les plus vieux sortent, leur photo de cache est nettoyée au passage
+  const evicted = list.splice(0, Math.max(0, list.length - MAX));
+  await saveQueue(list);
+  for (const q of evicted) forgetLocalPhoto(q.localUri);
 }
 
 /** Appui long sur la ligne « en attente » de la vitrine : on retire le sweet de la file sans l'envoyer. */
@@ -58,7 +61,10 @@ export async function flushSendQueue(): Promise<number> {
   if (flushing) return 0;
   flushing = true;
   try {
-    const list = (await pendingSends()).filter((q) => Date.now() - q.queued_at < TTL_MS);
+    const all = await pendingSends();
+    const expired = all.filter((q) => Date.now() - q.queued_at >= TTL_MS);
+    const list = all.filter((q) => Date.now() - q.queued_at < TTL_MS);
+    for (const q of expired) forgetLocalPhoto(q.localUri);
     let sent = 0;
     const rest: QueuedSend[] = [];
     for (let i = 0; i < list.length; i++) {
@@ -68,8 +74,9 @@ export async function flushSendQueue(): Promise<number> {
         sent++;
       } catch (e) {
         const code = e instanceof ApiError ? e.code : undefined;
-        // un refus définitif (modération, mode) ne retente pas ; le reste reste en file
+        // un refus définitif (modération, mode) ne retente pas : la photo de cache part avec
         if (!(e instanceof ApiError) || e.retryable) rest.push(q);
+        else forgetLocalPhoto(q.localUri);
         // plus de réseau ou pas encore connecté : on garde toute la suite et on réessaiera plus tard
         if (code === 'OFFLINE' || code === 'NOT_AUTHENTICATED') {
           rest.push(...list.slice(i + 1));

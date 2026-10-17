@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { flushSendQueue, pendingSends, queueSend } from '../src/lib/sendQueue';
-import { ApiError, sendFlip } from '../src/lib/api';
+import { ApiError, forgetLocalPhoto, sendFlip } from '../src/lib/api';
 
 jest.mock('../src/lib/api', () => {
   class ApiError extends Error {
@@ -12,15 +12,17 @@ jest.mock('../src/lib/api', () => {
       this.retryable = retryable;
     }
   }
-  return { ApiError, sendFlip: jest.fn() };
+  return { ApiError, sendFlip: jest.fn(), forgetLocalPhoto: jest.fn() };
 });
 
 const send = { localUri: 'file:///cache/a.jpg', message: 'coucou', mode: 'free' as const, recipients: ['u1'], preview: null };
 const mockedSend = sendFlip as jest.MockedFunction<typeof sendFlip>;
+const mockedForget = forgetLocalPhoto as jest.MockedFunction<typeof forgetLocalPhoto>;
 
 beforeEach(async () => {
   await AsyncStorage.clear();
   mockedSend.mockReset();
+  mockedForget.mockReset();
 });
 
 test('un sweet hors connexion attend dans la file', async () => {
@@ -49,6 +51,7 @@ test('un refus définitif ne retente pas indéfiniment', async () => {
   mockedSend.mockRejectedValue(new ApiError('MESSAGE_REFUSED', undefined, false));
   expect(await flushSendQueue()).toBe(0);
   expect(await pendingSends()).toHaveLength(0);
+  expect(mockedForget).toHaveBeenCalledWith(send.localUri);
 });
 
 test('une panne serveur garde le sweet et continue la file', async () => {
@@ -64,4 +67,13 @@ test('un sweet trop vieux est abandonné', async () => {
   await AsyncStorage.setItem('sweetin.sendQueue', JSON.stringify([{ ...send, queued_at: Date.now() - 8 * 24 * 3600 * 1000 }]));
   expect(await flushSendQueue()).toBe(0);
   expect(await pendingSends()).toHaveLength(0);
+  expect(mockedForget).toHaveBeenCalledWith(send.localUri);
+});
+
+test('file pleine : le plus vieux sort et sa photo est nettoyée', async () => {
+  for (let i = 0; i < 6; i++) await queueSend({ ...send, localUri: `file:///cache/${i}.jpg` });
+  const list = await pendingSends();
+  expect(list).toHaveLength(5);
+  expect(list[0].localUri).toBe('file:///cache/1.jpg');
+  expect(mockedForget).toHaveBeenCalledWith('file:///cache/0.jpg');
 });
