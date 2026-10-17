@@ -6,8 +6,20 @@ appId: host.exp.exponent
 - openLink: "exp://10.0.2.2:8082"
 - extendedWaitUntil:
     visible:
-      text: "send my first sweet|envoyer mon premier sweet|Continue|Continuer|welcome back.|te revoilà.|à gratter.|Fast Refresh"
+      text: "send my first sweet|envoyer mon premier sweet|Continue|Continuer|welcome back.|te revoilà.|à gratter.|Fast Refresh|Wait"
     timeout: 300000
+# dialogs ANR système (Messages/System UI sur émulateur lent) : « Wait » les relance
+- runFlow:
+    when:
+      visible: "Wait"
+    commands:
+      - tapOn: "Wait"
+# l'ANR a pu masquer le reste : on boucle une fois de plus sur les mêmes cas
+- runFlow:
+    when:
+      visible: "Wait"
+    commands:
+      - tapOn: "Wait"
 # 1er menu : feuille « This is the developer menu » avec bouton Continue
 - runFlow:
     when:

@@ -11,7 +11,7 @@ appId: host.exp.exponent
 - runFlow: _ouvrir.yaml
 - extendedWaitUntil:
     visible: "send my first sweet|envoyer mon premier sweet"
-    timeout: 60000
+    timeout: 120000
 - tapOn: "send my first sweet|envoyer mon premier sweet"
 # selon l'état de permission : viseur direct ou écran « camera first. »
 - extendedWaitUntil:
@@ -47,20 +47,40 @@ appId: host.exp.exponent
 # sélecteur photo Android : la vignette porte « Photo taken on … » en content-desc
 # (le matching est un regex complet — d'où les .* d'encadrement)
 - extendedWaitUntil:
-    visible: ".*Photo taken.*|Photos|Albums|Recent"
+    visible: ".*Photo taken.*|Photos|Albums|Recent|Récents"
     timeout: 30000
 - runFlow:
     when:
       visible: ".*Photo taken.*"
     commands:
       - tapOn: ".*Photo taken.*"
-# fallback si le content-desc n'est pas exposé : 1re vignette de la grille ouverte
+# la grille se remplit en asynchrone : réessayer avec attente si rien n'était exposé
 - runFlow:
     when:
-      visible: "Recent"
+      visible: "Recent|Récents|Photos|Albums"
+    commands:
+      - extendedWaitUntil:
+          visible: ".*Photo taken.*"
+          timeout: 45000
+          optional: true
+- runFlow:
+    when:
+      visible: ".*Photo taken.*"
+    commands:
+      - tapOn: ".*Photo taken.*"
+# fallback si le content-desc n'est jamais exposé : vignette selon le layout du picker
+- runFlow:
+    when:
+      visible: "Recent|Récents"
     commands:
       - tapOn:
           point: "16%,33%"
+- runFlow:
+    when:
+      visible: "Recent|Récents|Photos|Albums"
+    commands:
+      - tapOn:
+          point: "16%,66%"
 # si un écran de recadrage s'ouvre, on confirme
 - runFlow:
     when:
