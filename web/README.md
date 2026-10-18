@@ -6,7 +6,6 @@
 
 | Adresse | Fichier | Utilisée par |
 | --- | --- | --- |
-| `/` | `index.html` | page d'accueil : démo de grattage animée, slogan, boutons App Store / Google Play, liens légaux | |
 | `/confidentialite/` · `/en/privacy/` | politique de confidentialité | l'app (Réglages), App Store, Google Play |
 | `/conditions/` · `/en/terms/` | conditions d'utilisation et mentions légales | l'app (Réglages), App Store |
 | `/suppression-compte/` · `/en/delete-account/` | comment supprimer son compte | Google Play (obligatoire) |
@@ -29,7 +28,7 @@ Les passages surlignés en jaune dans les pages (`<span class="todo">`) sont à 
 Ailleurs :
 - `.well-known/apple-app-site-association` : remplacer `TEAMID` par l'identifiant d'équipe Apple ;
 - `.well-known/assetlinks.json` : empreinte SHA-256 du certificat de signature (`eas credentials` > Android) et celle de Google Play App Signing ;
-- `u/index.html` et `f/index.html` : remplacer `APP_STORE_ID` (uniquement quand l'app iOS sort — jusque-là, les iPhones voient la liste d'attente).
+- `u/index.html` et `f/index.html` : remplacer `APP_STORE_ID`.
 - `index.html`, `f/index.html` et `u/index.html` : remplacer `REF-DU-PROJET` (balise `<meta name="sweetin-api">`) par la référence du projet Supabase, en une commande :
   `grep -rl REF-DU-PROJET . | xargs sed -i 's/REF-DU-PROJET/<ref>/'`
 - pages légales (`conditions/`, `confidentialite/`, `en/terms/`, `en/privacy/`) : remplir les champs `class="todo"` (en jaune).

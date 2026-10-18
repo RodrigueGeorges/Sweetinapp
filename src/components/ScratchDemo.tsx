@@ -5,6 +5,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { play, scratchLoop } from '../lib/sounds';
 import { signature, tick as scratchTick } from '../lib/haptics';
+import { useScratchTexture } from '../lib/texture';
 import { colors, fonts, motion } from '../theme';
 
 const CYCLE = 4800;
@@ -25,6 +26,7 @@ type Props = {
  */
 export function ScratchDemo({ width, message, onReveal }: Props) {
   const reduce = useReducedMotion();
+  const texture = useScratchTexture();
   const pw = width;
   const ph = pw * 1.22;
   const brush = pw * 0.24;
@@ -41,10 +43,10 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     return out;
   }, [pw, ph]);
   const autoPath = useMemo(() => {
-    const p = Skia.PathBuilder.Make();
+    const p = Skia.Path.Make();
     p.moveTo(pts[0][0], pts[0][1]);
     for (const [x, y] of pts.slice(1)) p.lineTo(x, y);
-    return p.detach();
+    return p;
   }, [pts]);
   const cum = useMemo(() => {
     const c = [0];
@@ -84,18 +86,15 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
   const pop = useSharedValue(1);
   const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
 
-  /* eslint-disable react-hooks/refs, react-hooks/immutability --
-     section gestuelle impérative : les refs (traits, grille) et les shared values
-     Reanimated/Skia sont volontairement lus et mutés dans les callbacks, jamais au rendu */
   const userPath = useMemo(() => {
-    const p = Skia.PathBuilder.Make();
+    const p = Skia.Path.Make();
     for (const s of strokes.current) {
       if (!s.length) continue;
       p.moveTo(s[0].x, s[0].y);
       p.lineTo(s[0].x + 0.1, s[0].y);
       for (let i = 1; i < s.length; i++) p.lineTo(s[i].x, s[i].y);
     }
-    return p.detach();
+    return p;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 
@@ -124,11 +123,12 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     const s = Math.floor(pct * 10);
     if (s > step.current) {
       step.current = s;
-      scratchTick();
+      if (!texture) scratchTick();
     }
     if (!done.current && pct >= REVEAL_AT) {
       done.current = true;
       scratchLoop.stop();
+      texture?.end();
       play('reveal');
       signature();
       // on efface le reste de la photo d'un coup, le secret saute un peu
@@ -158,11 +158,14 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     .onUpdate((e) => {
       if (done.current) return;
       strokes.current[strokes.current.length - 1]?.push({ x: e.x, y: e.y });
+      texture?.move(Math.hypot(e.velocityX, e.velocityY) / 1000);
       mark(e.x, e.y);
       redraw();
     })
-    .onFinalize(() => scratchLoop.stop());
-  /* eslint-enable react-hooks/refs, react-hooks/immutability */
+    .onFinalize(() => {
+      scratchLoop.stop();
+      texture?.end();
+    });
 
   useEffect(() => () => scratchLoop.stop(), []);
 

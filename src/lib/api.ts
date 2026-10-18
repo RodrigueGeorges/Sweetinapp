@@ -347,6 +347,23 @@ export async function matchContacts(hashes: string[]): Promise<Profile[]> {
   return [...new Map(out.map((p) => [p.id, p])).values()];
 }
 
+/** Types de notifications qu'on peut couper (même liste que le serveur, _shared/util.ts). */
+export type PushKind = 'flips' | 'reads' | 'streaks' | 'sweethour';
+
+/** Types coupés sur ce compte ; null si aucune notification n'est encore autorisée sur ce téléphone. */
+export async function myMute(): Promise<PushKind[] | null> {
+  const id = await myId();
+  const { data } = await supabase.from('push_tokens').select('mute').eq('user_id', id).limit(1);
+  return data && data.length ? ((data[0].mute ?? []) as PushKind[]) : null;
+}
+
+/** Coupe ou rétablit des types de notifications sur tous les appareils du compte. */
+export async function setMute(mute: PushKind[]) {
+  const id = await myId();
+  const { error } = await supabase.from('push_tokens').update({ mute }).eq('user_id', id);
+  if (error) throw new ApiError(undefined, error.message, true);
+}
+
 export async function mySettings(): Promise<{ discoverable: boolean; has_phone: boolean }> {
   const { data } = await supabase.rpc('my_settings');
   const row = Array.isArray(data) ? data[0] : null;

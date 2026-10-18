@@ -40,7 +40,7 @@ jest.mock('expo-apple-authentication', () => ({
   AppleAuthenticationButtonStyle: { BLACK: 1 },
 }));
 jest.mock('expo-linking', () => ({ createURL: (p: string) => `sweetin://${p}`, openURL: jest.fn() }));
-jest.mock('../src/lib/monitoring', () => ({ track: jest.fn() }));
+jest.mock('../src/lib/monitoring', () => ({ track: jest.fn() , setTestGroup: jest.fn() }));
 
 let mockParams: { mode?: string; next?: string; mail?: string } = { mode: 'login' };
 const mockReplace = jest.fn();

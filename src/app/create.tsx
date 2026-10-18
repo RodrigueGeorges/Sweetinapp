@@ -2,14 +2,16 @@ import * as Haptics from 'expo-haptics';
 import { Mark } from '../components/Logo';
 import { Image } from 'expo-image';
 import { Redirect, router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+// suit le clavier image par image (Android compris), au lieu du saut de KeyboardAvoidingView
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { FadeInDown, FadeInUp, interpolate, runOnJS, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Bounce } from '../components/Bounce';
 import { HoloLayer } from '../components/Holo';
 import { Icon } from '../components/Icon';
 import { TiltCard } from '../components/TiltCard';
-import { BottomCTA, Button, Header, Screen, Toggle } from '../components/ui';
+import { BottomCTA, Button, Header, Screen } from '../components/ui';
 import { t, type Key } from '../i18n';
 import { draft } from '../lib/draft';
 import { track } from '../lib/monitoring';
@@ -32,7 +34,6 @@ export default function Create() {
   const photoH = w * layout.cardRatio;
   const [flipped, setFlipped] = useState(false);
   const [text, setText] = useState(draft.message);
-  const [once, setOnce] = useState(draft.mode === 'once');
   const rot = useSharedValue(0);
   const reduce = useReducedMotion();
 
@@ -42,15 +43,18 @@ export default function Create() {
   const tilt = { x: useDerivedValue(() => raw.x.value * on.value), y: useDerivedValue(() => raw.y.value * on.value) };
 
   // arrivée depuis la caméra : la photo plein écran se réduit et devient la carte (aucun flash, aucun fondu blanc)
-  const [fromCam] = useState(() => draft.takeFromCamera() && !reduce);
+  const fromCam = useRef(draft.fromCamera && !reduce).current;
+  useEffect(() => {
+    draft.fromCamera = false;
+  }, []);
   const intro = useSharedValue(fromCam ? 0 : 1);
   const [introDone, setIntroDone] = useState(!fromCam);
   const photoRef = useRef<View>(null);
   const measured = useRef(false);
-  const px = useSharedValue(0);
-  const py = useSharedValue(0);
-  const pw = useSharedValue(screenW);
-  const ph = useSharedValue(screenH);
+  const tx = useSharedValue(0);
+  const ty = useSharedValue(0);
+  const tw = useSharedValue(screenW);
+  const th = useSharedValue(screenH);
   const landed = () => {
     setIntroDone(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -59,11 +63,11 @@ export default function Create() {
     if (!fromCam || measured.current) return;
     measured.current = true;
     requestAnimationFrame(() =>
-      photoRef.current?.measureInWindow((x, y, mw, mh) => {
-        px.value = x;
-        py.value = y;
-        pw.value = mw;
-        ph.value = mh;
+      photoRef.current?.measureInWindow((x, y, pw, ph) => {
+        tx.value = x;
+        ty.value = y;
+        tw.value = pw;
+        th.value = ph;
         intro.value = withSpring(1, { damping: 19, stiffness: 170, mass: 0.9 }, (f) => {
           if (f) runOnJS(landed)();
         });
@@ -73,10 +77,10 @@ export default function Create() {
   const overlay = useAnimatedStyle(() => {
     const k = intro.value;
     return {
-      left: px.value * k,
-      top: py.value * k,
-      width: screenW + (pw.value - screenW) * k,
-      height: screenH + (ph.value - screenH) * k,
+      left: tx.value * k,
+      top: ty.value * k,
+      width: screenW + (tw.value - screenW) * k,
+      height: screenH + (th.value - screenH) * k,
       borderRadius: 16 * k,
       transform: [{ rotate: `${-1.5 * k}deg` }],
     };
@@ -104,7 +108,8 @@ export default function Create() {
   const next = () => {
     const m = text.trim();
     if (!m) return;
-    draft.setMessage(m, once);
+    draft.message = m;
+    draft.mode = 'free'; // une seule règle : on gratte librement, le mot apparaît passé un seuil
     if (session) return router.push('/sendto');
     // premier secret sans compte : on le garde de côté et on crée le compte pour l'envoyer
     draft.save();
@@ -127,9 +132,7 @@ export default function Create() {
           <Header back={flipped ? () => flip(false) : true} title={flipped ? t('create.titleBack') : t('create.titleFront')} />
         </Animated.View>
         <ScrollView contentContainerStyle={s.zone} keyboardShouldPersistTaps="handled" scrollEnabled={false}>
-          {/* l'entrée anime le wrapper : le penché de la carte et cardIn restent sur la vue intérieure */}
-          <Animated.View entering={fromCam ? undefined : FadeInUp.springify().damping(14)}>
-          <Animated.View style={[{ transform: [{ rotate: '-1.5deg' }] }, cardIn]}>
+          <Animated.View entering={fromCam ? undefined : FadeInUp.springify().damping(14)} style={[{ transform: [{ rotate: '-1.5deg' }] }, cardIn]}>
             <TiltCard tilt={tilt} style={{ width: w, height: cardH }}>
               {/* recto */}
               <Animated.View style={[s.cardWrap, front]} pointerEvents={flipped ? 'none' : 'auto'}>
@@ -161,7 +164,7 @@ export default function Create() {
                         value={text}
                         onChangeText={(v) => setText(v.slice(0, MAX))}
                         placeholder={t('create.placeholder')}
-                        placeholderTextColor="rgba(255,255,255,0.4)"
+                        placeholderTextColor="rgba(255,255,255,0.6)"
                         multiline
                         autoFocus
                         maxLength={MAX}
@@ -179,7 +182,6 @@ export default function Create() {
               </Animated.View>
             </TiltCard>
           </Animated.View>
-          </Animated.View>
 
           {flipped ? (
             <Animated.View entering={FadeInDown.delay(250).springify()} style={{ alignSelf: 'stretch', gap: 12 }}>
@@ -190,26 +192,9 @@ export default function Create() {
                   </Pressable>
                 ))}
               </ScrollView>
-              <View style={s.option}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.optionT}>{t('send.once')}</Text>
-                  <Text style={s.optionS}>{t('send.onceHint')}</Text>
-                </View>
-                <Toggle label={t('send.once')} value={once} onValueChange={setOnce} />
-              </View>
             </Animated.View>
           ) : (
-            <Animated.View style={[{ alignItems: 'center', gap: 14, alignSelf: 'stretch' }, uiIn]}>
-              <Text style={s.tip}>{t('create.tip')}</Text>
-              {/* le mode « un seul passage » est visible dès le recto : plus besoin de retourner la carte pour le découvrir */}
-              <Bounce onPress={() => { Haptics.selectionAsync(); setOnce((v) => !v); }} accessibilityRole="togglebutton" accessibilityState={{ checked: once }} accessibilityLabel={`${t('send.once')}. ${t('send.onceHint')}`} scaleTo={0.94} haptic={false}>
-                <View style={[s.onceChip, once && s.onceChipOn]}>
-                  <Icon name="hourglass" size={14} color={once ? colors.cacao : colors.muted} stroke={2.6} />
-                  <Text style={[s.onceT, once && s.onceTOn]}>{t('send.once')}</Text>
-                  <View style={[s.onceDot, once && { backgroundColor: colors.cerise, borderColor: colors.cerise }]}>{once ? <Icon name="check" size={9} stroke={3.6} color={colors.white} /> : null}</View>
-                </View>
-              </Bounce>
-            </Animated.View>
+            <Animated.Text style={[s.tip, uiIn]}>{t('create.tip')}</Animated.Text>
           )}
         </ScrollView>
         <Animated.View style={uiIn}>
@@ -242,7 +227,7 @@ const s = StyleSheet.create({
   strip: { height: layout.stripHeight, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 6 },
   stripBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
   stripT: { ...tx.bold, fontSize: 13, color: colors.cacao },
-  heart: { flex: 1, borderRadius: 26, backgroundColor: colors.coeur, borderWidth: isDark ? 1 : 0, borderColor: 'rgba(255,255,255,0.14)', padding: 18, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 12 },
+  heart: { flex: 1, borderRadius: 26, backgroundColor: colors.coeur, borderWidth: isDark ? 1.5 : 0, borderColor: 'rgba(255,255,255,0.2)', padding: 18, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 12 },
   over: { ...tx.black, fontSize: 13, color: colors.citron },
   inputWrap: { flex: 1, justifyContent: 'center' },
   input: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 23, lineHeight: 26, color: colors.onCoeur, textAlign: 'left', textAlignVertical: 'center', maxHeight: '100%' },
@@ -250,13 +235,5 @@ const s = StyleSheet.create({
   ideas: { gap: 8, paddingHorizontal: 20 },
   idea: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
   ideaT: { ...tx.bold, fontSize: 14, color: colors.ink },
-  option: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
-  optionT: { ...tx.black, fontSize: 15, color: colors.ink },
-  optionS: { ...tx.text, fontSize: 12.5, color: colors.muted, marginTop: 1 },
   tip: { ...tx.text, fontSize: 14, lineHeight: 20, color: colors.muted, textAlign: 'center', paddingHorizontal: 24 },
-  onceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.dashed },
-  onceChipOn: { backgroundColor: colors.citron, borderStyle: 'solid', borderColor: colors.citron },
-  onceT: { ...tx.black, fontSize: 13.5, color: colors.muted },
-  onceTOn: { color: colors.cacao },
-  onceDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, borderColor: colors.dashed, alignItems: 'center', justifyContent: 'center' },
 });

@@ -1,11 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
-import { Loader } from '../../components/Loader';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { Mark } from '../../components/Logo';
 import { useToast } from '../../components/Toast';
 import { Screen, Title } from '../../components/ui';
-import { t } from '../../i18n';
+import { t, humanError } from '../../i18n';
 import { acceptInvite, type InviteSource } from '../../lib/api';
 import { track } from '../../lib/monitoring';
 import { rememberInvite, useSession } from '../../lib/session';
@@ -37,7 +36,7 @@ export default function InviteLink() {
         track('invite_accepted', { source });
         toast(t('invite.added', { name: p.username }));
       })
-      .catch((e: Error) => toast(e.message))
+      .catch((e: Error) => toast(humanError(e)))
       .finally(() => router.replace('/contacts'));
   }, [name, source, session, profile?.onboarded, toast]);
 
@@ -47,7 +46,7 @@ export default function InviteLink() {
       <Title tone="cerise" size={34} style={{ textAlign: 'center' }}>
         {t('invite.adding', { name })}
       </Title>
-      <Loader size={34} />
+      <ActivityIndicator color={colors.cacao} />
     </Screen>
   );
 }

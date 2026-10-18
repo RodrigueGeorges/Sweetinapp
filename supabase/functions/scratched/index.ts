@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   if (b.reaction && !REACTIONS.has(b.reaction)) b.reaction = undefined;
   if (rec.scratched_at && b.reaction) {
     await db.from('flip_recipients').update({ reaction: b.reaction.slice(0, 8) }).eq('flip_id', b.flip_id).eq('recipient_id', user.id);
-    await sendPush(db, [senderId], (_u, lang) => ({ body: copy.reacted(lang, name || copy.someone(lang), b.reaction!), data: { screen: 'inbox' } }));
+    await sendPush(db, [senderId], (_u, lang) => ({ body: copy.reacted(lang, name || copy.someone(lang), b.reaction!), data: { screen: 'inbox' } }), 'reads');
     return json({ ok: true });
   }
   if (rec.scratched_at) return json({ ok: true });
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     .eq('recipient_id', user.id);
 
   const secs = (duration / 1000).toFixed(1).replace('.', ',');
-  await sendPush(db, [senderId], (_u, lang) => ({ body: copy.scratched(lang, name || copy.someone(lang), percent, secs), data: { screen: 'inbox' } }));
+  await sendPush(db, [senderId], (_u, lang) => ({ body: copy.scratched(lang, name || copy.someone(lang), percent, secs), data: { screen: 'inbox' } }), 'reads');
 
   // efface la photo et le message si plus personne (ami ou lien) n'attend
   await destroyIfConsumed(db, b.flip_id);

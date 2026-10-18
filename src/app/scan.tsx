@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useToast } from '../components/Toast';
 import { Icon } from '../components/Icon';
 import { BackButton, Body, BottomCTA, Button, Chip, Header, Screen, Title } from '../components/ui';
-import { t } from '../i18n';
+import { t, humanError } from '../i18n';
 import { acceptInvite } from '../lib/api';
 import { parseInvite } from '../lib/invite';
 import { track } from '../lib/monitoring';
@@ -38,7 +38,7 @@ export default function Scan() {
       if (router.canGoBack()) router.back();
       else router.replace('/contacts');
     } catch (e) {
-      toast((e as Error).message);
+      toast(humanError(e));
       setTimeout(() => (busy.current = false), 1500);
     }
   };

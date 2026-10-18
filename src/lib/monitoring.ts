@@ -25,6 +25,13 @@ type Event =
   | 'signup_completed'
   | 'push_prompt'
   | 'demo_scratched'
+  | 'welcome_opened'
+  | 'welcome_invited'
+  | 'next_tapped'
+  | 'install_referrer'
+  | 'flip_left_early'
+  | 'welcome_scratched'
+  | 'welcome_start'
   | 'review_prompt'
   | 'guest_started'
   | 'guest_signup'
@@ -54,6 +61,13 @@ type Event =
   | 'invite_pasted';
 
 /** Enregistre un événement anonyme (propriétés numériques ou booléennes seulement). */
+/** Range un compte dans un groupe de test : toutes ses statistiques suivantes portent ce groupe (propriété PostHog). */
+export function setTestGroup(test: string, group: string) {
+  try {
+    posthog?.register({ [test]: group });
+  } catch {}
+}
+
 export function track(event: Event, props?: Record<string, number | boolean | string>) {
   try {
     posthog?.capture(event, props);

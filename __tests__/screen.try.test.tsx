@@ -5,7 +5,7 @@
  */
 
 const mockTrack = jest.fn();
-jest.mock('../src/lib/monitoring', () => ({ track: (...a: unknown[]) => mockTrack(...a) }));
+jest.mock('../src/lib/monitoring', () => ({ track: (...a: unknown[]) => mockTrack(...a) , setTestGroup: jest.fn() }));
 
 // on vérifie le mode invité, pas la caméra elle-même (testée ailleurs)
 const mockCamera = jest.fn((_props: { guest?: boolean }) => null);

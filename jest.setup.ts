@@ -1,8 +1,13 @@
 /// <reference types="jest" />
+// Les imports transitifs de lib/supabase lèvent sans variables d'environnement.
+process.env.EXPO_PUBLIC_SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
+process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'jest-anon-key';
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 jest.mock('@react-native-community/netinfo', () => ({ fetch: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })), addEventListener: jest.fn(() => () => {}) }));
 jest.mock('expo-contacts', () => ({ Contact: { getAllDetails: jest.fn(async () => []) }, ContactField: { PHONES: 'phones' }, getPermissionsAsync: jest.fn(), requestPermissionsAsync: jest.fn() }));
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
+jest.mock('react-native-pulsar', () => require('react-native-pulsar/jest-mock'));
+jest.mock('react-native-keyboard-controller', () => require('react-native-keyboard-controller/jest'));
 // Toast allégé : le vrai provider garde un setTimeout qui survit au teardown Jest (crash « Animated undefined »).
 // Le texte reste rendu dans un <Text> pour que les tests puissent l'affirmer.
 jest.mock('./src/components/Toast', () => {
@@ -32,6 +37,7 @@ jest.mock('@shopify/react-native-skia', () => {
       get: (_t, name) => {
         if (name === 'vec') return (x: number, y: number) => ({ x, y });
         if (name === 'Skia') return chain;
+        if (name === 'useClock') return () => ({ value: 0 });
         return comp;
       },
     },

@@ -30,5 +30,20 @@ export function t(key: Key, vars?: Record<string, string | number>, l: Lang = la
 export function errorText(code: string | undefined, fallback?: string): string {
   const key = `err.${code}` as Key;
   if (code && key in fr) return t(key);
-  return fallback ?? t('common.error');
+  if (fallback && isHumanText(fallback)) return fallback;
+  if (fallback && /fetch|network|timeout|timed out|offline|internet|connexion/i.test(fallback)) return t('err.OFFLINE');
+  return t('common.error');
+}
+
+/**
+ * Un texte qu'on peut montrer tel quel : nos messages sont en minuscules (DA Fondant).
+ * Tout le reste (« TypeError: Failed to fetch », « JWT expired », erreurs Postgres en anglais) est technique.
+ */
+function isHumanText(m: string): boolean {
+  return /^[a-zà-ÿ«“0-9@]/.test(m) && !/error|exception|fetch|network|violates|duplicate key|jwt|token|null|undefined|status code|column|relation|function |supabase|postgres/i.test(m);
+}
+
+/** Le message à montrer pour n'importe quelle erreur attrapée (ApiError, Error brute, valeur inconnue). */
+export function humanError(e: unknown): string {
+  return errorText(undefined, e instanceof Error ? e.message : typeof e === 'string' ? e : undefined);
 }

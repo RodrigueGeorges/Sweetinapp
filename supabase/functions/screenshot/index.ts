@@ -24,6 +24,6 @@ Deno.serve(async (req) => {
   // deno-lint-ignore no-explicit-any
   const senderId: string = (rec as any).flips?.sender_id;
   const { data: me } = await db.from('profiles').select('username').eq('id', user.id).single();
-  await sendPush(db, [senderId], (_u, lang) => ({ body: copy.screenshot(lang, me?.username ?? copy.someone(lang)), data: { screen: 'inbox' } }));
+  await sendPush(db, [senderId], (_u, lang) => ({ body: copy.screenshot(lang, me?.username ?? copy.someone(lang)), data: { screen: 'inbox' } }), 'reads');
   return json({ ok: true });
 });

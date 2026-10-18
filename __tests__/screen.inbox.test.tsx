@@ -34,6 +34,7 @@ jest.mock('../src/lib/sendQueue', () => ({
 }));
 
 jest.mock('../src/lib/useSweetHour', () => ({ useSweetHour: () => null }));
+jest.mock('../src/lib/welcome', () => ({ isWelcome: () => false, useWelcome: () => false, welcomeItem: jest.fn() }));
 jest.mock('../src/lib/invite', () => ({ shareInviteLink: jest.fn(async () => {}), inviteBySms: jest.fn() }));
 jest.mock('../src/lib/thumb', () => ({ thumbhashOf: () => null }));
 jest.mock('expo-image-manipulator', () => ({ ImageManipulator: { manipulate: jest.fn() }, SaveFormat: { JPEG: 'jpeg' } }));

@@ -3,7 +3,6 @@ import {
   ICE_SCOOP_MINI,
   ICE_VIEWBOX as V,
 } from "../components/logoPath";
-import { DRIP_EDGE_INVERSE } from "../components/dripEdge";
 import {
   FlexWidget,
   SvgWidget,
@@ -23,7 +22,6 @@ const CITRON = "#E8FF5A";
 const mark = (scoop: string, cone: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${V.x} ${V.y} ${V.w} ${V.h}"><path fill="${cone}" d="${ICE_CONE_MINI}"/><path fill="${scoop}" d="${ICE_SCOOP_MINI}"/></svg>`;
 /** Le bord qui coule, peint dans la couleur du fond sur le bas de la carte. */
-const DRIP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 82" preserveAspectRatio="none"><path fill="${PAPER}" d="${DRIP_EDGE_INVERSE}"/></svg>`;
 
 /**
  * Widget Android, DA « net + éclats » : fond blanc, la carte photo de la vitrine (photo floutée sous un voile de sucre,
@@ -179,10 +177,7 @@ export function SweetinWidget({
                 }}
               />
             </FlexWidget>
-            <SvgWidget
-              svg={DRIP_SVG}
-              style={{ width: "match_parent", height: 30 }}
-            />
+            <FlexWidget style={{ height: 12 }} />
           </FlexWidget>
         </OverlapWidget>
       </FlexWidget>

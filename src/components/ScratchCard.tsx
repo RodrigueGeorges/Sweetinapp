@@ -19,6 +19,7 @@ import Animated, {
 import { t } from '../i18n';
 import type { Mode } from '../lib/api';
 import { signature, tick as scratchTick } from '../lib/haptics';
+import { useScratchTexture } from '../lib/texture';
 import { colors, fonts, motion } from '../theme';
 import { HoloFill } from './Holo';
 import { play, scratchLoop } from '../lib/sounds';
@@ -62,6 +63,7 @@ type Props = {
  */
 export function ScratchCard({ photo, message, mode, width, height, radius = 16, showHint, tilt, onFirstTouch, onProgress, onReveal, forceReveal, melting, safeTop = 0, safeBottom = 0 }: Props) {
   const reduce = useReducedMotion();
+  const texture = useScratchTexture();
   const strokes = useRef<{ x: number; y: number }[][]>([]);
   const grid = useRef(new Uint8Array(COLS * ROWS));
   const covered = useRef(0);
@@ -72,8 +74,6 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   const moves = useRef(0);
   const [tick, setTick] = useState(0);
   const [touched, setTouched] = useState(false);
-  // doublon de `revealed.current` en état, pour les props d'accessibilité lues au rendu
-  const [revealedSt, setRevealedSt] = useState(false);
   const full = width >= 360;
   const brush = width * (full ? 0.24 : 0.2);
   const revealAt = full ? REVEAL_AT_FULL : REVEAL_AT;
@@ -109,9 +109,6 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
     }),
   );
 
-  /* eslint-disable react-hooks/refs, react-hooks/immutability, react-hooks/purity --
-     section gestuelle impérative : les refs (traits, grille) et les shared values
-     Reanimated/Skia sont volontairement lus et mutés dans les callbacks, jamais au rendu */
   const spawn = (list: Omit<Spark, 't0'>[]) => {
     if (reduce) return;
     const now = clock.value;
@@ -120,14 +117,14 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   };
 
   const path = useMemo(() => {
-    const p = Skia.PathBuilder.Make();
+    const p = Skia.Path.Make();
     for (const s of strokes.current) {
       if (!s.length) continue;
       p.moveTo(s[0].x, s[0].y);
       p.lineTo(s[0].x + 0.1, s[0].y);
       for (let i = 1; i < s.length; i++) p.lineTo(s[i].x, s[i].y);
     }
-    return p.detach();
+    return p;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 
@@ -157,7 +154,8 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
     const s = Math.floor(pct / 10);
     if (s > step.current) {
       step.current = s;
-      scratchTick();
+      if (!texture) scratchTick(); // avec le grain continu, pas de tic en plus
+
       onProgress?.(pct);
     }
   };
@@ -189,9 +187,9 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   const reveal = (forcedPct?: number) => {
     if (revealed.current) return;
     revealed.current = true;
-    setRevealedSt(true);
     setTouched(true); // le doigt d'aide disparaît, y compris après « lire sans gratter »
     scratchLoop.stop();
+    texture?.end();
     play('reveal');
     if (!startedAt.current) startedAt.current = Date.now();
     const pct = forcedPct ?? percent();
@@ -248,16 +246,17 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
       const n = Math.max(1, Math.ceil(dist / (brush / 4)));
       for (let i = 1; i <= n; i++) mark(last.x + ((e.x - last.x) * i) / n, last.y + ((e.y - last.y) * i) / n);
       s.push({ x: e.x, y: e.y });
+      texture?.move(Math.hypot(e.velocityX, e.velocityY) / 1000);
       trail(e.x, e.y);
       redraw();
       if (mode === 'free' && percent() >= revealAt) reveal();
     })
     .onFinalize(() => {
       scratchLoop.stop();
+      texture?.end();
       if (revealed.current || !startedAt.current) return;
       if (mode === 'once' || percent() >= revealAt) reveal();
     });
-  /* eslint-enable react-hooks/refs, react-hooks/immutability, react-hooks/purity */
 
   useEffect(
     () => () => {
@@ -271,7 +270,7 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
     <View style={{ width, height, overflow: 'hidden', borderRadius: radius, backgroundColor: colors.coeur }}>
       {/* dos de la carte : le cœur (DA Fondant), nuit, le message en display blanc */}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.coeur }]}>
-        <Animated.View style={[s.msgWrap, { paddingTop: safeTop, paddingBottom: safeBottom }, msgStyle]} accessibilityElementsHidden={!revealedSt} importantForAccessibility={revealedSt ? 'auto' : 'no-hide-descendants'}>
+        <Animated.View style={[s.msgWrap, { paddingTop: safeTop, paddingBottom: safeBottom }, msgStyle]} accessibilityElementsHidden={!revealed.current} importantForAccessibility={revealed.current ? 'auto' : 'no-hide-descendants'}>
           <MeltingWord text={message} style={[s.msg, msgSize(message, width, height - safeTop - safeBottom)]} melt={meltP} reduce={reduce} />
         </Animated.View>
       </View>
@@ -292,7 +291,7 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
             <Canvas style={StyleSheet.absoluteFill}>
               <Group layer>
                 <SkiaImage image={photo} x={0} y={0} width={width} height={height} fit="cover" />
-                {!reduce ? <HoloFill width={width} height={height} tilt={tilt} strength={0.9} /> : null}
+                {!reduce ? <HoloFill width={width} height={height} tilt={tilt} strength={0.5} /> : null}
                 <Path path={path} style="stroke" strokeWidth={brush} strokeCap="round" strokeJoin="round" color="black" blendMode="clear">
                   <BlurMask blur={brush * 0.12} style="normal" />
                 </Path>
@@ -321,23 +320,24 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
 function MeltingWord({ text, style, melt, reduce }: { text: string; style: StyleProp<TextStyle>; melt: SharedValue<number>; reduce: boolean }) {
   const words = text.split(/(\s+)/).filter((w) => w.length > 0);
   const total = text.length;
-  // position de chaque mot dans le texte, pour la cascade de la fonte
-  const starts = words.map((_, wi) => words.slice(0, wi).reduce((n, x) => n + x.length, 0));
+  let i = 0;
   return (
     <View style={s.word} accessible accessibilityLabel={text}>
-      {words.map((w, wi) =>
-        /^\s+$/.test(w) ? (
-          <Text key={`s${wi}`} style={style}>
-            {' '}
-          </Text>
-        ) : (
+      {words.map((w, wi) => {
+        if (/^\s+$/.test(w)) {
+          i += w.length;
+          return <Text key={`s${wi}`} style={style}>{' '}</Text>;
+        }
+        const start = i;
+        i += w.length;
+        return (
           <View key={`w${wi}`} style={{ flexDirection: 'row' }}>
             {Array.from(w).map((ch, ci) => (
-              <Letter key={ci} ch={ch} index={starts[wi] + ci} total={total} melt={melt} reduce={reduce} style={style} />
+              <Letter key={ci} ch={ch} index={start + ci} total={total} melt={melt} reduce={reduce} style={style} />
             ))}
           </View>
-        ),
-      )}
+        );
+      })}
     </View>
   );
 }

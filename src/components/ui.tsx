@@ -175,6 +175,7 @@ export function BottomCTA({ children, tone = 'vanille', style }: { children: Rea
 
 /** Bouton rond à icône (retour, menu…). */
 export function IconButton({ icon, label, onPress, tone = 'vanille', size = 40, filled }: { icon: IconName; label: string; onPress: () => void; tone?: Tone; size?: number; filled?: boolean }) {
+  const c = TONE[tone];
   const reduce = useReducedMotion();
   const sc = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
@@ -184,11 +185,9 @@ export function IconButton({ icon, label, onPress, tone = 'vanille', size = 40, 
       accessibilityLabel={label}
       hitSlop={10}
       onPressIn={() => {
-        // eslint-disable-next-line react-hooks/immutability -- une shared value Reanimated se mute dans les callbacks
         if (!reduce) sc.value = withSpring(0.86, motion.press);
         Haptics.selectionAsync();
       }}
-      // eslint-disable-next-line react-hooks/immutability -- idem
       onPressOut={() => (sc.value = withSpring(1, motion.pop))}
       onPress={onPress}
     >
@@ -295,7 +294,8 @@ export function Chip({ label, tone = 'vanille', icon, rotate, size = 'md', style
  * très gras (le 6 de Climate Crisis se lit comme un G). L'unité (j / d) reste en Funnel Sans.
  */
 export function StreakNum({ days, atRisk, size = 26 }: { days: number; atRisk?: boolean; size?: number }) {
-  const lone = /^[69]$/.test(String(days));
+  // un seul chiffre en Climate Crisis devient une tache (le 3 ressemble à un S) : on passe en Funnel Sans Black
+  const lone = days < 10;
   const color = atRisk ? colors.ceriseText : colors.ink;
   return (
     <Text style={{ color }} allowFontScaling={false} accessibilityLabel={t('send.streak', { n: days })}>
@@ -317,17 +317,14 @@ export function StreakPill({ days, atRisk }: { days: number; atRisk?: boolean })
 }
 
 /**
- * Avatar : la photo de profil, sinon l'initiale sur une couleur sorbet douce.
- * `ring` (sur photo) : liseré blanc et ombre douce. `flavor` : un liseré du parfum de la personne
- * (visible seulement quand il y a une photo — sans photo, le fond est déjà son parfum).
+ * Avatar : la photo de profil, sinon l'initiale sur une couleur sorbet douce. `ring` (sur photo) : liseré blanc et ombre douce.
  */
-export function Avatar({ name, uri, size = 38, ring = false, flavor = false }: { name: string; uri?: string | null; size?: number; ring?: boolean; flavor?: boolean }) {
+export function Avatar({ name, uri, size = 38, ring = false }: { name: string; uri?: string | null; size?: number; ring?: boolean }) {
   const bw = ring ? Math.max(2, Math.round(size * 0.06)) : 0;
   const wrap = { width: size, height: size, borderRadius: size / 2, borderWidth: bw, borderColor: colors.white, backgroundColor: avatarColor(name), overflow: 'hidden' as const, alignItems: 'center' as const, justifyContent: 'center' as const };
   return (
     <View style={ring ? s.avShadow : null}>
-      <View style={flavor && uri ? { borderRadius: size / 2 + 3, borderWidth: 2, borderColor: avatarColor(name), padding: 1.5 } : undefined}>
-        <View style={wrap}>
+      <View style={wrap}>
         {uri ? (
           <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} accessibilityIgnoresInvertColors />
         ) : (
@@ -335,7 +332,6 @@ export function Avatar({ name, uri, size = 38, ring = false, flavor = false }: {
             {name.slice(0, 2).replace(/^./, (c) => c.toUpperCase())}
           </Text>
         )}
-        </View>
       </View>
     </View>
   );
@@ -346,7 +342,7 @@ export function Row({ children, onPress, onLongPress, style, active, accessibili
   const box = [s.row, active && s.rowOn, style];
   if (!onPress) return <View style={box}>{children}</View>;
   return (
-    <Pressable onPress={onPress} onLongPress={onLongPress} accessibilityLabel={accessibilityLabel} accessibilityRole={accessibilityRole ?? 'button'} accessibilityState={accessibilityState} style={({ pressed }) => [box, pressed && { backgroundColor: colors.card, borderRadius: 14 }]}>
+    <Pressable onPress={onPress} onLongPress={onLongPress} accessibilityLabel={accessibilityLabel} accessibilityRole={accessibilityRole ?? 'button'} accessibilityState={accessibilityState} style={({ pressed }) => [box, pressed && { transform: [{ scale: 0.98 }] }]}>
       {children}
     </Pressable>
   );

@@ -20,12 +20,12 @@ Deno.serve(async (req) => {
     if (!link.opened_at || link.scratched_at) return json({ ok: true });
     await db.from('flip_links').update({ scratched_at: new Date().toISOString(), percent, duration_ms: duration }).eq('token', b.token);
     const secs = (duration / 1000).toFixed(1).replace('.', ',');
-    await sendPush(db, [senderId], (_u, lang) => ({ body: copy.linkScratched(lang, percent, secs), data: { screen: 'inbox' } }));
+    await sendPush(db, [senderId], (_u, lang) => ({ body: copy.linkScratched(lang, percent, secs), data: { screen: 'inbox' } }), 'reads');
     await destroyIfConsumed(db, link.flip_id);
   } else {
     const { data } = await db.rpc('bump_story', { p_token: b.token, p_scratch: true });
     const n = (data as number) ?? 0;
-    if (MILESTONES.has(n) && n > 1) await sendPush(db, [senderId], (_u, lang) => ({ body: copy.storyMilestone(lang, n), data: { screen: 'inbox' } }));
+    if (MILESTONES.has(n) && n > 1) await sendPush(db, [senderId], (_u, lang) => ({ body: copy.storyMilestone(lang, n), data: { screen: 'inbox' } }), 'reads');
   }
   return json({ ok: true });
 });

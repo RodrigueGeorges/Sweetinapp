@@ -2,19 +2,21 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>un mot caché t’attend · sweetin</title>
 <meta name="robots" content="noindex">
 <meta name="description" content="quelqu’un t’a caché un mot sous une photo. gratte-la pour le lire. après, il fond.">
 <meta property="og:title" content="quelqu’un t’a caché un mot sous une photo">
 <meta property="og:description" content="gratte-la pour le lire. après, il fond.">
-<meta property="og:image" content="https://sweetin.app/og.png">
+<meta property="og:image" content="https://sweetin.app/og-f.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0E0B0C" media="(prefers-color-scheme: dark)">
 <!-- adresse des fonctions Supabase : https://<ref-du-projet>.supabase.co/functions/v1 -->
-<meta name="sweetin-api" content="https://nvtcbwyzalpidgwmagtd.supabase.co/functions/v1">
+<meta name="sweetin-api" content="https://REF-DU-PROJET.supabase.co/functions/v1">
 <link rel="preload" href="/fonts/SweetinDisplay.woff2" as="font" type="font/woff2" crossorigin>
 <style>
   /* DA « net + éclats » (design system Fondant) : le blanc en grand (nuit en sombre), framboise et citron en éclats,
@@ -40,16 +42,16 @@
 
   /* la scène : la carte et ses deux autocollants */
   .stage { position: relative; width: min(290px, calc(100vw - 88px)); margin: 10px 0 6px; transition: transform .5s cubic-bezier(.2,1.4,.4,1); }
-  .card { position: relative; width: 100%; aspect-ratio: 3 / 4; border-radius: 28px 28px 0 0; overflow: hidden; background: var(--card); touch-action: none; transform: rotate(-2deg); }
+  .card { position: relative; width: 100%; aspect-ratio: 3 / 4; border-radius: 28px; overflow: hidden; background: var(--card); touch-action: none; transform: rotate(-2deg); }
   .card img.preview { position: absolute; inset: -14%; width: 128%; height: 128%; object-fit: cover; filter: blur(16px) saturate(1.15); }
   .sugar { position: absolute; inset: 0; background: rgba(255,255,255,.12) url(/sucre-givre.png) repeat; background-size: 128px; opacity: .9; pointer-events: none; }
   .holo { position: absolute; inset: 0; background: linear-gradient(180deg,#6B5BD6 0%,#C86FB0 30%,#FF8A7A 48%,#FFC07A 58%,#1E8C92 66%,#12707A 76%,#F2D3A5 84%,#E8C08F 100%); filter: blur(10px); }
   .word { position: absolute; left: 0; right: 0; top: 34%; text-align: center; font-size: 44px; color: #fff; text-shadow: 0 2px 22px rgba(22,15,18,.35); pointer-events: none; }
   .dot { position: absolute; top: 12px; right: 12px; width: 18px; height: 18px; border-radius: 9px; background: var(--fr); border: 3px solid var(--paper); }
-  .chip { position: absolute; left: 12px; bottom: calc(15.4% + 6px); display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-weight: 800; font-size: 13px; color: #fff;
+  .chip { position: absolute; left: 12px; bottom: 14px; display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-weight: 800; font-size: 13px; color: #fff;
     background: rgba(22,15,18,.28); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); max-width: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chip:empty { display: none; }
-  .back { position: absolute; inset: 0; background: var(--heart); display: flex; align-items: center; padding: 26px 26px calc(15.4% + 10px); }
+  .back { position: absolute; inset: 0; background: var(--heart); display: flex; align-items: center; padding: 26px 26px 56px; }
   .msg { color: #fff; font-size: 25px; line-height: 1.12; word-break: break-word; transform: scale(.92); transition: transform .5s cubic-bezier(.2,1.6,.4,1); }
   .revealed .msg { transform: scale(1); }
   .msg .w { display: inline-block; white-space: nowrap; font-weight: inherit; }
@@ -101,7 +103,7 @@
 </style>
 </head>
 <body>
-<canvas id="confetti"></canvas>
+<canvas id="confetti" aria-hidden="true" role="presentation"></canvas>
 <header><a href="/" aria-label="sweetin"><svg viewBox="11 -699 5615 728" height="26" role="img" aria-label="sweetin" class="logo"><path fill="currentColor" d="M23 -422Q23 -475 53 -514.5Q83 -554 135.5 -581Q188 -608 255 -621.5Q322 -635 395 -635Q482 -635 557.5 -619.5Q633 -604 696 -578V-373Q670 -391 628.5 -404.5Q587 -418 541.5 -425Q496 -432 455 -432Q424 -432 398.5 -428Q373 -424 357.5 -414.5Q342 -405 342 -391Q342 -382 347.5 -377.5Q353 -373 363 -370.5Q373 -368 386 -368Q411 -368 431.5 -368Q452 -368 476 -368Q525 -368 573 -361.5Q621 -355 660 -337Q699 -319 722.5 -285Q746 -251 746 -197Q746 -140 714.5 -99.5Q683 -59 628.5 -34Q574 -9 506.5 3Q439 15 366 15Q284 15 203 -0.5Q122 -16 64 -45V-261Q87 -237 129 -221.5Q171 -206 220.5 -198.5Q270 -191 312 -191Q346 -192 371.5 -197Q397 -202 411.5 -212Q426 -222 426 -235Q426 -242 422.5 -246.5Q419 -251 411.5 -254Q404 -257 392 -257Q374 -257 355.5 -257Q337 -257 322 -257Q286 -257 245 -259.5Q204 -262 165 -271Q126 -280 93.5 -298Q61 -316 42 -346.5Q23 -377 23 -422ZM1906 -607Q1884 -508 1860.5 -409Q1837 -310 1813.5 -211.5Q1790 -113 1768 -13H1399L1346 -278Q1344 -287 1341 -292Q1338 -297 1334.5 -299Q1331 -301 1327 -299.5Q1323 -298 1320.5 -294Q1318 -290 1316 -282L1265 -13H915Q892 -114 870 -213.5Q848 -313 826 -411.5Q804 -510 779 -607H1083Q1092 -516 1103 -427.5Q1114 -339 1124 -250Q1124 -240 1127 -234.5Q1130 -229 1134.5 -227Q1139 -225 1143 -225.5Q1147 -226 1150.5 -229.5Q1154 -233 1155 -239L1216 -607H1485L1541 -236Q1541 -230 1544.5 -226.5Q1548 -223 1552.5 -222Q1557 -221 1562 -222.5Q1567 -224 1570 -228Q1573 -232 1573 -238Q1581 -300 1588 -362Q1595 -424 1602.5 -485.5Q1610 -547 1617 -607ZM2375 -210Q2429 -210 2460.5 -229.5Q2492 -249 2496 -280L2769 -190Q2752 -133 2697 -86Q2642 -39 2558.5 -11Q2475 17 2373 17Q2282 17 2203.5 -4.5Q2125 -26 2065.5 -68.5Q2006 -111 1971.5 -173Q1937 -235 1935 -316Q1933 -397 1967 -457.5Q2001 -518 2061 -558Q2121 -598 2201 -617.5Q2281 -637 2371 -637Q2466 -637 2543.5 -615.5Q2621 -594 2676.5 -551.5Q2732 -509 2761.5 -446Q2791 -383 2791 -299H2263Q2258 -299 2255.5 -297Q2253 -295 2252 -293.5Q2251 -292 2251 -289Q2251 -272 2260.5 -257.5Q2270 -243 2286 -232.5Q2302 -222 2324.5 -216Q2347 -210 2375 -210ZM2369 -412Q2316 -412 2282.5 -393Q2249 -374 2249 -339Q2249 -334 2251 -331.5Q2253 -329 2255.5 -327.5Q2258 -326 2261 -326Q2264 -326 2264 -326H2487Q2489 -326 2490.5 -329Q2492 -332 2492 -335Q2492 -350 2484 -364.5Q2476 -379 2460.5 -389.5Q2445 -400 2422 -406Q2399 -412 2369 -412ZM3264 -210Q3318 -210 3349.5 -229.5Q3381 -249 3385 -280L3658 -190Q3641 -133 3586 -86Q3531 -39 3447.5 -11Q3364 17 3262 17Q3171 17 3092.5 -4.5Q3014 -26 2954.5 -68.5Q2895 -111 2860.5 -173Q2826 -235 2824 -316Q2822 -397 2856 -457.5Q2890 -518 2950 -558Q3010 -598 3090 -617.5Q3170 -637 3260 -637Q3355 -637 3432.5 -615.5Q3510 -594 3565.5 -551.5Q3621 -509 3650.5 -446Q3680 -383 3680 -299H3152Q3147 -299 3144.5 -297Q3142 -295 3141 -293.5Q3140 -292 3140 -289Q3140 -272 3149.5 -257.5Q3159 -243 3175 -232.5Q3191 -222 3213.5 -216Q3236 -210 3264 -210ZM3258 -412Q3205 -412 3171.5 -393Q3138 -374 3138 -339Q3138 -334 3140 -331.5Q3142 -329 3144.5 -327.5Q3147 -326 3150 -326Q3153 -326 3153 -326H3376Q3378 -326 3379.5 -329Q3381 -332 3381 -335Q3381 -350 3373 -364.5Q3365 -379 3349.5 -389.5Q3334 -400 3311 -406Q3288 -412 3258 -412ZM4065 -359Q4079 -401 4091.5 -443Q4104 -485 4115.5 -527.5Q4127 -570 4137 -611H4311V-359ZM3725 -263Q3725 -346 3725 -438Q3725 -530 3725 -612L4041 -687Q4040 -642 4039.5 -595Q4039 -548 4039 -501Q4039 -465 4040 -430Q4041 -395 4043 -361Q4041 -359 4040 -356Q4039 -353 4039 -348Q4039 -327 4047.5 -310.5Q4056 -294 4071.5 -282Q4087 -270 4108 -263Q4129 -256 4156 -256Q4182 -256 4209 -264Q4236 -272 4258 -286Q4280 -300 4290 -319V-50Q4250 -19 4188 -4.5Q4126 10 4064 10Q3968 10 3891 -21.5Q3814 -53 3769.5 -114Q3725 -175 3725 -263ZM5293 -13Q5295 -85 5297.5 -161Q5300 -237 5300 -316Q5300 -347 5286.5 -361.5Q5273 -376 5253.5 -379Q5234 -382 5217.5 -378Q5201 -374 5196 -368L5266 -596Q5300 -611 5338.5 -618.5Q5377 -626 5414 -626Q5467 -626 5512.5 -608.5Q5558 -591 5586 -554Q5614 -517 5614 -456V-13ZM4841 -13Q4840 -74 4841 -135.5Q4842 -197 4843 -259.5Q4844 -322 4844 -384Q4844 -440 4843.5 -495.5Q4843 -551 4840 -607Q4893 -607 4947 -607Q5001 -607 5055 -607Q5109 -607 5159 -607Q5159 -574 5159.5 -542Q5160 -510 5160.5 -479Q5161 -448 5161.5 -417Q5162 -386 5164 -354Q5162 -343 5161 -329Q5160 -315 5160 -299Q5160 -229 5161 -154.5Q5162 -80 5164 -13Z M4430.6 -290.0 L4425.8 -289.2 L4423.2 -287.0 L4422.5 -283.2 L4423.8 -278.0 L4566.5 -12.4 L4570.7 -3.7 L4576.3 5.2 L4582.7 11.3 L4588.3 13.3 L4591.8 12.9 L4594.6 11.7 L4601.0 6.0 L4606.6 -2.4 L4695.1 -167.9 L4683.6 -163.2 L4672.5 -160.7 L4660.3 -160.1 L4648.9 -161.5 L4637.2 -165.0 L4627.0 -170.1 L4617.2 -177.4 L4609.3 -185.7 L4603.6 -194.0 L4599.6 -201.9 L4596.3 -211.5 L4594.5 -221.5 L4594.1 -231.1 L4594.6 -254.2 L4597.9 -290.0Z M4794.8 -430.1 L4792.8 -450.2 L4788.8 -470.1 L4783.0 -489.4 L4775.2 -508.1 L4765.7 -525.9 L4754.5 -542.7 L4741.6 -558.3 L4727.3 -572.6 L4711.7 -585.5 L4694.9 -596.7 L4677.1 -606.2 L4658.4 -614.0 L4639.1 -619.8 L4619.2 -623.8 L4599.1 -625.8 L4578.9 -625.8 L4558.8 -623.8 L4538.9 -619.8 L4519.6 -614.0 L4500.9 -606.2 L4483.1 -596.7 L4466.3 -585.5 L4450.7 -572.6 L4436.4 -558.3 L4423.5 -542.7 L4412.3 -525.9 L4402.8 -508.1 L4395.0 -489.4 L4389.2 -470.1 L4385.2 -450.2 L4383.2 -430.1 L4383.2 -409.9 L4386.0 -384.8 L4391.9 -360.2 L4400.7 -336.5 L4410.0 -318.0 L4621.4 -318.0 L4623.3 -313.0 L4624.0 -302.6 L4623.7 -286.1 L4621.0 -260.0 L4620.2 -238.9 L4620.3 -224.7 L4622.6 -214.4 L4625.2 -208.7 L4628.5 -203.3 L4632.7 -198.6 L4639.2 -193.2 L4646.6 -189.3 L4652.6 -187.3 L4658.8 -186.2 L4665.1 -186.1 L4671.4 -186.8 L4677.5 -188.5 L4683.2 -191.1 L4690.2 -195.7 L4694.8 -200.1 L4698.7 -205.1 L4701.8 -210.6 L4704.1 -216.4 L4705.8 -226.8 L4705.7 -244.1 L4704.8 -262.0 L4702.3 -285.2 L4702.0 -300.6 L4702.6 -312.3 L4704.6 -318.0 L4768.0 -318.0 L4770.7 -322.9 L4781.2 -345.9 L4786.1 -360.2 L4790.0 -374.9 L4792.8 -389.8 L4794.4 -404.8Z"/></svg></a></header>
 
 <main id="main">
@@ -121,7 +123,6 @@
       <div class="dot" id="dot"></div>
       <div class="chip" id="chip"></div>
       <div class="ghost" id="ghost" hidden></div>
-      <svg class="drip" viewBox="0 0 400 82" preserveAspectRatio="none" aria-hidden="true"><path d="M400.0 0.0 L399.3 0.0 L400.0 1.4 L400.0 0.0ZM0.0 82.0 L400.0 82.0 L400.0 25.1 L399.0 26.4 L397.1 27.0 L393.2 27.9 L387.2 28.7 L383.0 28.9 L376.6 28.7 L354.3 26.7 L343.3 26.3 L334.8 27.0 L326.2 28.8 L320.8 29.6 L320.1 32.0 L320.0 36.9 L320.3 36.3 L320.8 36.2 L321.5 37.4 L322.0 40.7 L321.9 43.8 L320.9 48.8 L318.8 53.5 L317.2 55.8 L315.3 57.8 L313.1 59.6 L310.8 61.2 L308.3 62.4 L305.6 63.3 L302.9 63.8 L300.1 64.0 L297.3 63.8 L294.6 63.3 L291.9 62.5 L289.4 61.3 L287.0 59.8 L284.9 58.0 L281.6 54.1 L280.2 51.6 L279.2 49.1 L278.4 46.4 L278.1 43.6 L278.1 40.1 L278.4 37.7 L278.7 36.8 L279.3 36.2 L279.8 36.3 L280.0 36.9 L279.7 31.0 L279.3 29.7 L278.8 29.1 L277.2 28.3 L275.5 28.1 L271.3 28.4 L266.9 29.0 L256.0 31.1 L247.5 31.7 L236.8 31.1 L213.3 28.0 L202.7 27.2 L196.3 27.3 L185.4 28.6 L176.5 29.0 L167.8 28.7 L148.6 27.2 L140.2 26.8 L131.8 27.0 L125.6 27.7 L119.4 29.0 L115.3 30.2 L115.1 32.5 L115.0 37.3 L116.3 40.5 L116.9 42.7 L117.2 46.3 L117.2 51.5 L116.8 54.8 L115.9 57.9 L114.6 61.0 L112.7 64.3 L111.0 66.4 L108.7 68.7 L106.0 70.7 L103.7 72.1 L101.2 73.3 L98.0 74.3 L95.3 74.8 L92.1 75.0 L88.2 74.7 L85.0 74.0 L81.9 72.9 L79.0 71.4 L75.8 69.2 L73.5 66.9 L71.4 64.4 L69.6 61.6 L67.6 56.5 L66.9 53.2 L66.7 50.5 L66.8 46.5 L67.1 42.9 L67.7 40.6 L69.0 37.4 L68.9 32.6 L68.6 29.9 L62.1 29.3 L55.7 29.2 L49.2 29.6 L42.2 30.5 L34.9 30.8 L28.0 30.4 L15.0 29.0 L9.0 28.7 L3.5 29.1 L0.0 30.0 L0.0 27.9 L0.0 82.0Z"/></svg>
     </div>
   </div>
   <svg class="flaque" id="flaque" hidden viewBox="0 0 300 172" aria-hidden="true">
@@ -166,7 +167,7 @@
   // même voix que l'app : minuscules, sweet / mot / gratter / lu / fondu ; jamais « secret » ni « message »
   var T = fr ? {
     title: 'quelqu’un t’a caché un mot.', titleFrom: '@{n} t’a caché un mot.', sub: 'gratte la photo du doigt pour le lire. après, il fond.',
-    open: 'gratter', once: 'il ne s’ouvre qu’une fois. prends ton temps.', onceMode: 'un seul passage : ne lève pas le doigt.',
+    open: 'gratter', once: 'il ne s’ouvre qu’une fois. prends ton temps.', onceMode: 'un seul passage : la photo disparaît quand tu lèves le doigt.',
     story: 'mot posté en story, à gratter pendant 24 h.', loading: '…', scratch: 'gratte.', progress: 'continue… {p} %',
     read: 'lu.', meltsIn: 'il fond dans {s} s', melted: 'fondu.', replyT: 'réponds à @{n} avec ton propre mot.', reply: 'répondre à @{n}', get: 'télécharger sweetin',
     gone: 'déjà lu.', goneSub: 'sur sweetin, un mot se lit une fois, puis il fond. envoie le tien.',
@@ -175,7 +176,7 @@
     stkA: 'gratte-moi', stkB: 'mot caché', word: 'gratte.', canvas: 'photo à gratter'
   } : {
     title: 'someone hid a word for you.', titleFrom: '@{n} hid a word for you.', sub: 'scratch the photo with your finger to read it. then it melts.',
-    open: 'scratch', once: 'it only opens once. take your time.', onceMode: 'one pass: don’t lift your finger.',
+    open: 'scratch', once: 'it only opens once. take your time.', onceMode: 'one pass: the photo is gone when you lift your finger.',
     story: 'word posted to a story, scratchable for 24 h.', loading: '…', scratch: 'scratch.', progress: 'keep going… {p}%',
     read: 'read.', meltsIn: 'it melts in {s} s', melted: 'melted.', replyT: 'reply to @{n} with a word of your own.', reply: 'reply to @{n}', get: 'get sweetin',
     gone: 'already read.', goneSub: 'on sweetin, a word gets read once, then it melts. send yours.',
@@ -190,6 +191,8 @@
   var store = /iPhone|iPad|iPod/.test(navigator.userAgent) ? 'https://apps.apple.com/app/idAPP_STORE_ID'
     : /Android/.test(navigator.userAgent) ? 'https://play.google.com/store/apps/details?id=app.sweetin.android' : '/';
   var sender = null, kind = 'single', mode = 'free', state = 'peek';
+  // Play Store : referrer=invite=<envoyeur>&src=flip, relu par l'app au premier lancement (l'envoyeur est ajouté tout seul)
+  var storeFor = function () { return sender && /play\.google/.test(store) ? store + '&referrer=' + encodeURIComponent('invite=' + sender + '&src=flip') : store; };
 
   $('title').textContent = T.title; $('sub').textContent = T.sub; $('stkA').textContent = T.stkA; $('stkB').textContent = T.stkB;
   $('word').textContent = T.word; $('noscratch').textContent = T.noScratch; $('scratch').setAttribute('aria-label', T.canvas);
@@ -213,7 +216,7 @@
     $('title').textContent = code === 'ALREADY_OPENED' ? T.gone : code === 'NOT_FOUND' ? T.notfound : code === 'EXPIRED' ? T.expired : T.error;
     $('sub').textContent = code === 'ALREADY_OPENED' ? T.goneSub : code === 'EXPIRED' ? T.expiredSub : '';
     puddle();
-    setCta(T.get, store);
+    setCta(T.get, storeFor());
     // lancement Android d'abord : sur iPhone, pas de lien vers un App Store vide, la liste d'attente à la place
     if (window.sweetinIosPending && sweetinIosPending(store)) sweetinWaitlist($('cta'), { api: API, src: 'flip', ref: sender, fr: fr });
   }
@@ -221,7 +224,7 @@
   // 1. aperçu, sans consommer le lien
   if (!token) fail({ code: 'NOT_FOUND' });
   else call('open-link', { token: token, peek: true }).then(function (p) {
-    sender = p.sender; kind = p.kind; mode = p.mode;
+    sender = p.sender; kind = p.kind; mode = 'free'; // « un seul passage » est retiré : tout se gratte librement
     $('title').textContent = fmt(T.titleFrom, { n: sender });
     $('chip').textContent = fmt(T.from, { n: sender });
     if (p.preview) { $('preview').src = 'data:image/jpeg;base64,' + p.preview; $('preview').hidden = false; }
@@ -247,7 +250,7 @@
   var REVEAL = 62;
 
   function start(f) {
-    sender = f.sender; mode = f.mode; kind = f.kind;
+    sender = f.sender; mode = 'free'; kind = f.kind;
     // le mot, lettre par lettre, pour pouvoir le faire fondre
     var msg = $('msg'); msg.textContent = '';
     // chaque mot reste d'un bloc (pas de coupure au milieu), chaque lettre peut couler

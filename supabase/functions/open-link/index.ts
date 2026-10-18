@@ -1,7 +1,7 @@
 // Ouverture d'un flip depuis un lien (page web /f/<jeton>), sans compte.
 // Appelée seulement quand la personne touche « Ouvrir » : les robots qui génèrent les aperçus de lien ne consomment rien.
 // Lien privé : une seule ouverture. Story : ouvrable par tous jusqu'à expiration (24 h).
-import { admin, clientActor, cors, fail, json, MILESTONES, rateHit, sendPush } from '../_shared/util.ts';
+import { admin, cors, fail, json, MILESTONES, sendPush } from '../_shared/util.ts';
 import { copy } from '../_shared/copy.ts';
 
 const MAX_STORY_OPENS = 5000;
@@ -13,8 +13,6 @@ Deno.serve(async (req) => {
   if (!token || !/^[A-Za-z0-9_-]{16,64}$/.test(token)) return fail('Lien invalide', 404, 'NOT_FOUND');
 
   const db = admin();
-  // endpoint sans compte : on limite par empreinte d'IP (120 ouvertures/heure)
-  if (!(await rateHit(db, await clientActor(req), 'open_link', 120, 3600))) return fail('Trop de tentatives, réessaie plus tard', 429, 'RATE_LIMIT');
   const { data: link } = await db
     .from('flip_links')
     .select('token, kind, opened_at, flips(id, sender_id, photo_path, mode, expires_at, created_at)')
@@ -32,7 +30,7 @@ Deno.serve(async (req) => {
       db.from('profiles').select('username').eq('id', flip.sender_id).single(),
       db.from('flips').select('preview').eq('id', flip.id).single(),
     ]);
-    return json({ kind: link.kind, sender: sender?.username ?? 'un ami', mode: link.kind === 'single' ? flip.mode : 'free', preview: p?.preview ?? null });
+    return json({ kind: link.kind, sender: sender?.username ?? 'quelqu’un', mode: link.kind === 'single' ? flip.mode : 'free', preview: p?.preview ?? null });
   }
 
   let opens = 0;
@@ -54,14 +52,14 @@ Deno.serve(async (req) => {
   if (!secret || signed.error) return fail('Ce sweet a fondu', 410, 'EXPIRED');
 
   if (link.kind === 'single') {
-    await sendPush(db, [flip.sender_id], (_u, lang) => ({ body: copy.linkOpened(lang), data: { screen: 'inbox' } }));
+    await sendPush(db, [flip.sender_id], (_u, lang) => ({ body: copy.linkOpened(lang), data: { screen: 'inbox' } }), 'reads');
   } else if (MILESTONES.has(opens)) {
-    await sendPush(db, [flip.sender_id], () => ({ body: opens === 1 ? '👀 Ta story a été ouverte' : `👀 ${opens} personnes ont ouvert ta story`, data: { screen: 'inbox' } }));
+    await sendPush(db, [flip.sender_id], (_u, lang) => ({ body: copy.storyOpened(lang, opens), data: { screen: 'inbox' } }), 'reads');
   }
 
   return json({
     kind: link.kind,
-    sender: sender?.username ?? 'un ami',
+    sender: sender?.username ?? 'quelqu’un',
     mode: link.kind === 'single' ? flip.mode : 'free',
     created_at: flip.created_at,
     photo_url: signed.data.signedUrl,

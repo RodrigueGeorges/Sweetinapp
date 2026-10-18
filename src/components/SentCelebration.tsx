@@ -11,7 +11,10 @@ import { Button, Chip, Pop } from './ui';
 export const STREAK_MILESTONES = [7, 30, 100, 365];
 
 type Props = {
-  to: string;
+  /** La phrase sous « envoyé. », déjà accordée au cas (une personne, plusieurs, lien, story). */
+  line: string;
+  /** La question des notifications, accordée au même cas. */
+  askText: string;
   sweet?: boolean;
   streak?: number;
   /** Proposer les notifications (jamais demandées) : « sois prévenu quand il le gratte ». */
@@ -19,12 +22,12 @@ type Props = {
 };
 
 /** Moment de célébration après l'envoi : la glace tombe, les confettis partent, « envoyé. ». */
-export function SentCelebration({ to, sweet, streak, ask }: Props) {
+export function SentCelebration({ line, askText, sweet, streak, ask }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const milestone = !!streak && STREAK_MILESTONES.includes(streak);
   return (
-    <Animated.View entering={FadeIn.duration(160)} style={StyleSheet.absoluteFill} accessibilityLiveRegion="assertive" accessibilityLabel={`${t('send.sent')} ${t('send.sentTo', { to })}`}>
+    <Animated.View entering={FadeIn.duration(160)} style={StyleSheet.absoluteFill} accessibilityLiveRegion="assertive" accessibilityLabel={`${t('send.sent')} ${line}`}>
       <View style={[StyleSheet.absoluteFill, s.center, { backgroundColor: colors.coeur }]}>
         <Animated.View entering={ZoomIn.springify().damping(9).stiffness(160)}>
           <Fondue mood="party" size={170} bg={colors.coeur} />
@@ -33,7 +36,7 @@ export function SentCelebration({ to, sweet, streak, ask }: Props) {
           {t('send.sent')}
         </Animated.Text>
         <Animated.View entering={FadeInDown.delay(240).springify()}>
-          <Text style={s.sub}>{t('send.sentTo', { to })}</Text>
+          <Text style={s.sub}>{line}</Text>
         </Animated.View>
         <View style={s.chips}>
           {!!streak && streak >= 2 && (
@@ -52,7 +55,7 @@ export function SentCelebration({ to, sweet, streak, ask }: Props) {
       {ask && (
         <Animated.View entering={FadeInDown.delay(700).springify()} style={[s.ask, { bottom: Math.max(insets.bottom, 16) + 8 }]}>
           <Pop radius={24} style={s.askCard}>
-            <Text style={s.askT}>{t('notif.ask', { to })}</Text>
+            <Text style={s.askT}>{askText}</Text>
             <Button label={t('notif.allow')} size="md" icon="message" onPress={ask.onAllow} />
             <Pressable onPress={ask.onLater} accessibilityRole="button" hitSlop={8} style={s.later}>
               <Text style={s.laterT}>{t('notif.later')}</Text>

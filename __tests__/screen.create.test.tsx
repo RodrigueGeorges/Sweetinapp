@@ -43,7 +43,7 @@ jest.mock('react-native-svg', () => {
   return new Proxy({}, { get: () => comp });
 });
 jest.mock('../src/lib/sounds', () => ({ play: jest.fn(), scratchLoop: { start: jest.fn(), stop: jest.fn() }, soundsEnabled: () => true, setSoundsEnabled: jest.fn() }));
-jest.mock('../src/lib/monitoring', () => ({ track: jest.fn() }));
+jest.mock('../src/lib/monitoring', () => ({ track: jest.fn() , setTestGroup: jest.fn() }));
 
 import { fireEvent, render } from '@testing-library/react-native';
 import Create from '../src/app/create';

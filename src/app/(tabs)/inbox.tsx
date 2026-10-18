@@ -1,10 +1,9 @@
 import NetInfo from '@react-native-community/netinfo';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { FadeIn, FadeInDown, LinearTransition, useSharedValue, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, LinearTransition, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { Bounce } from '../../components/Bounce';
@@ -13,10 +12,10 @@ import { Icon } from '../../components/Icon';
 import { Logo } from '../../components/Logo';
 import { reactionKey, ReactionFace } from '../../components/Reactions';
 import { Shimmer } from '../../components/Shimmer';
-import { useToast } from '../../components/Toast';
 import { Shutter } from '../../components/Shutter';
 import { SentThumb, SweetCard } from '../../components/SweetCard';
 import { Avatar, Button, Empty, Screen } from '../../components/ui';
+import { useToast } from '../../components/Toast';
 import { t } from '../../i18n';
 import { listFriends, listLinks, listSent, myStreaks, type Profile, type SentItem, type SentLink, type Streak } from '../../lib/api';
 import { draft } from '../../lib/draft';
@@ -25,7 +24,10 @@ import { shareInviteLink } from '../../lib/invite';
 import { useSession } from '../../lib/session';
 import { onQueueChange, pendingSends, removeQueuedAt, type QueuedSend } from '../../lib/sendQueue';
 import { useInbox } from '../../lib/useInbox';
+import { useWelcome, welcomeItem } from '../../lib/welcome';
 import { useSweetHour } from '../../lib/useSweetHour';
+import { useTilt } from '../../lib/useTilt';
+import { rememberOrigin } from '../../lib/origin';
 import { colors, fonts, isDark, tx } from '../../theme';
 
 const SWEET_HOUR_S = 3600;
@@ -35,14 +37,18 @@ const SWEET_HOUR_S = 3600;
  * reçus / envoyés, bandeau « ton tour » ou sweet hour, une grande carte puis la grille, et le déclencheur en bas.
  */
 export default function Inbox() {
-  const { items, loading, refresh } = useInbox();
+  const { items: received, loading, refresh } = useInbox();
+  // rien reçu encore : le sweet de bienvenue « de sweetin » à gratter tout de suite
+  const welcome = useWelcome();
+  const items = useMemo(() => (received.length === 0 && welcome && !loading ? [welcomeItem()] : received), [received, welcome, loading]);
   const { profile } = useSession();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const tilt = useTilt(); // une seule lecture du gyroscope pour toutes les cartes
   const sweet = useSweetHour();
   const [tab, setTab] = useState<'in' | 'out'>('in');
-  const [sent, setSent] = useState<SentItem[] | null>(null);
-  const [links, setLinks] = useState<SentLink[] | null>(null);
+  const [sent, setSent] = useState<SentItem[]>([]);
+  const [links, setLinks] = useState<SentLink[]>([]);
   const [friends, setFriends] = useState<Profile[]>([]);
   const [streaks, setStreaks] = useState<Map<string, Streak>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
@@ -84,23 +90,10 @@ export default function Inbox() {
   }, [friends, streaks]);
 
   const shoot = () => router.push('/camera');
-  // tirer au-delà du bas de la liste ouvre la caméra (jamais en plein scroll : le geste ne s'arme qu'en bout de liste)
-  const atBottom = useSharedValue(0);
-  const viewH = useRef(0);
-  const swipeUp = Gesture.Pan()
-    .manualActivation(true)
-    .onTouchesMove((_e, state) => {
-      if (atBottom.value) state.activate();
-      else state.fail();
-    })
-    .runOnJS(true)
-    .activeOffsetY(-30)
-    .onEnd((e) => {
-      if (e.translationY < -60 || e.velocityY < -500) shoot();
-    });
   const sendTo = (f: Profile) => {
     draft.reset();
-    draft.setReply(f.id, f.username);
+    draft.replyTo = f.id;
+    draft.replyName = f.username;
     router.push('/camera');
   };
 
@@ -115,7 +108,7 @@ export default function Inbox() {
     <Screen>
       <View style={{ paddingTop: insets.top }}>
         <View style={s.top}>
-          <GlassButton label={t('tabs.contacts')} dot={!!turn} onPress={() => router.push('/contacts')}>
+          <GlassButton label={t('tabs.contacts')} onPress={() => router.push('/contacts')}>
             <Icon name="users" size={24} color={colors.ink} stroke={2.25} />
           </GlassButton>
           <View style={{ marginTop: 4 }}>
@@ -127,23 +120,10 @@ export default function Inbox() {
         </View>
       </View>
 
-      <GestureDetector gesture={swipeUp}>
       <ScrollView
         contentContainerStyle={[s.scroll, { paddingBottom: insets.bottom + 170 }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.ink} />}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={100}
-        onLayout={(e) => {
-          viewH.current = e.nativeEvent.layout.height;
-        }}
-        onContentSizeChange={(_w, h) => {
-          // contenu plus court que l'écran : on est déjà « en bas », le geste est armé
-          if (h <= viewH.current + 40) atBottom.value = 1;
-        }}
-        onScroll={(e) => {
-          const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-          atBottom.value = contentOffset.y + layoutMeasurement.height >= contentSize.height - 40 ? 1 : 0;
-        }}
       >
         {offline && (
           <Animated.View entering={FadeInDown.springify()} style={s.offline} accessibilityLiveRegion="polite">
@@ -152,7 +132,7 @@ export default function Inbox() {
           </Animated.View>
         )}
         <View style={s.pills} accessibilityRole="tablist">
-          <Pill on={tab === 'in'} label={t('inbox.received')} count={items.length} onPress={() => setTab('in')} />
+          <Pill on={tab === 'in'} label={t('inbox.received')} count={received.length} onPress={() => setTab('in')} />
           <Pill on={tab === 'out'} label={t('inbox.sent')} onPress={() => setTab('out')} />
         </View>
 
@@ -208,17 +188,23 @@ export default function Inbox() {
                 art={<Fondue mood="wait" size={130} />}
                 title={t('inbox.emptyTitle')}
                 body={t('inbox.emptyBody')}
-                action={profile?.username ? <Button label={t('inbox.emptyCta')} icon="share" tone="white" size="md" onPress={() => shareInviteLink(profile.username)} style={{ marginTop: 8 }} /> : null}
+                // le plus sûr moyen d'en recevoir un : en envoyer un. L'action principale ouvre l'appareil photo.
+                action={
+                  <View style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
+                    <Button label={t('inbox.emptyCta2')} icon="snap" size="md" haptic="medium" onPress={() => router.push('/camera')} />
+                    {profile?.username ? <Button label={t('inbox.emptyCta')} icon="share" tone="white" size="sm" onPress={() => shareInviteLink(profile.username)} /> : null}
+                  </View>
+                }
               />
             </Animated.View>
           ) : (
             <View style={{ gap: 14 }}>
               <Animated.View entering={FadeInDown.springify().damping(16)} layout={LinearTransition.springify()}>
                 <Link href={`/read/${hero.flip_id}`} asChild>
-                  <Bounce scaleTo={0.97} accessibilityRole="button" accessibilityLabel={t('inbox.open', { name: hero.sender.username, ago: ago(hero.created_at) })}>
+                  <Bounce scaleTo={0.97} onPressIn={(e) => rememberOrigin(e.currentTarget as unknown as View, 28)} accessibilityRole="button" accessibilityLabel={t('inbox.open', { name: hero.sender.username, ago: ago(hero.created_at) })}>
                     <Link.AppleZoom>
                       <View>
-                        <SweetCard item={hero} width={heroW} height={heroH} hero />
+                        <SweetCard item={hero} width={heroW} height={heroH} hero tilt={tilt} />
                       </View>
                     </Link.AppleZoom>
                   </Bounce>
@@ -228,10 +214,10 @@ export default function Inbox() {
                 {rest.map((it, i) => (
                   <Animated.View key={it.flip_id} entering={FadeInDown.springify().damping(16).delay(60 + i * 50)} layout={LinearTransition.springify()}>
                     <Link href={`/read/${it.flip_id}`} asChild>
-                      <Bounce scaleTo={0.95} accessibilityRole="button" accessibilityLabel={t('inbox.open', { name: it.sender.username, ago: ago(it.created_at) })}>
+                      <Bounce scaleTo={0.95} onPressIn={(e) => rememberOrigin(e.currentTarget as unknown as View, 26)} accessibilityRole="button" accessibilityLabel={t('inbox.open', { name: it.sender.username, ago: ago(it.created_at) })}>
                         <Link.AppleZoom>
                           <View>
-                            <SweetCard item={it} width={cellW} height={cellH} />
+                            <SweetCard item={it} width={cellW} height={cellH} tilt={i < 4 ? tilt : undefined} />
                           </View>
                         </Link.AppleZoom>
                       </Bounce>
@@ -241,20 +227,13 @@ export default function Inbox() {
               </View>
             </View>
           )
-        ) : sent === null || links === null ? (
-          <View style={{ gap: 8 }}>
-            {[0, 1, 2].map((i) => (
-              <Shimmer key={i} style={{ height: 60, borderRadius: 18 }} />
-            ))}
-          </View>
         ) : (
           <SentList sent={sent} links={links} queued={queued} friends={friends} />
         )}
       </ScrollView>
-      </GestureDetector>
 
       {/* fondu du bas : la grille passe sous le déclencheur */}
-      <View pointerEvents="none" style={[s.fade, { height: insets.bottom + 190 }]}>
+      <View pointerEvents="none" style={[s.fade, { height: insets.bottom + 120 }]}>
         <LinearGradient colors={isDark ? ['rgba(14,11,12,0)', 'rgba(14,11,12,0.92)', colors.paper] : ['rgba(255,255,255,0)', 'rgba(255,255,255,0.9)', colors.paper]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
       </View>
       <Animated.View entering={ZoomIn.springify().damping(12).delay(120)} style={[s.shutter, { bottom: insets.bottom + 18 }]}>
@@ -402,8 +381,6 @@ const s = StyleSheet.create({
   me: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   scroll: { paddingHorizontal: 16, gap: 14 },
   pills: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 4 },
-  offline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, alignSelf: 'center', paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.citron },
-  offlineT: { ...tx.black, fontSize: 13, color: colors.cacao },
   pill: { height: 36, paddingHorizontal: 14, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 6 },
   pillT: { ...tx.bold, fontSize: 15 },
   pillN: { minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: colors.cerise, alignItems: 'center', justifyContent: 'center' },
@@ -411,7 +388,7 @@ const s = StyleSheet.create({
   banner: { minHeight: 76, borderRadius: 22, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 16 },
   bannerTitle: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 20, lineHeight: 22, color: colors.cacao },
   bannerSub: { marginTop: 3, ...tx.bold, fontSize: 13, lineHeight: 18, color: colors.cacao },
-  bannerClock: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 26, color: colors.cacao, minWidth: 84, textAlign: 'right' },
+  bannerClock: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 26, color: colors.cacao },
   turnAv: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   turnGo: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.citron, alignItems: 'center', justifyContent: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, rowGap: 14 },
@@ -419,6 +396,8 @@ const s = StyleSheet.create({
   shutter: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   sentRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   queueRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  offline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, alignSelf: 'center', paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.citron },
+  offlineT: { ...tx.black, fontSize: 13, color: colors.cacao },
   linkBadge: { position: 'absolute', right: -6, top: -6, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.citron, borderWidth: 2, borderColor: colors.paper },
   sentMid: { flex: 1, minWidth: 0, gap: 4 },
   sentWho: { flexDirection: 'row', alignItems: 'center', gap: 7 },

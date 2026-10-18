@@ -71,7 +71,7 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 jest.mock('../src/lib/sounds', () => ({ play: jest.fn(), initSounds: jest.fn(), scratchLoop: { start: jest.fn(), stop: jest.fn() }, soundsEnabled: () => true, setSoundsEnabled: jest.fn() }));
-jest.mock('../src/lib/monitoring', () => ({ track: jest.fn(), wrapRoot: (c: unknown) => c }));
+jest.mock('../src/lib/monitoring', () => ({ track: jest.fn(), wrapRoot: (c: unknown) => c , setTestGroup: jest.fn() }));
 jest.mock('../src/lib/useSweetHour', () => ({ useSweetHour: () => null }));
 
 import { fireEvent, render, waitFor } from '@testing-library/react-native';

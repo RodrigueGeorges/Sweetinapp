@@ -3,7 +3,9 @@ import { Fondue } from '../components/Fondue';
 import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, type TextInput } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View, type TextInput } from 'react-native';
+// suit le clavier image par image (Android compris), au lieu du saut de KeyboardAvoidingView
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Svg, { Path } from 'react-native-svg';
 import { useToast } from '../components/Toast';
 import { Icon } from '../components/Icon';
@@ -12,7 +14,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Body, BottomCTA, Button, Field, Header, Pop, Screen, Title } from '../components/ui';
 import { toE164 } from '../lib/contacts';
 import { legal } from '../lib/legal';
-import { t } from '../i18n';
+import { t, humanError } from '../i18n';
 import { signInWithApple, signInWithGoogle } from '../lib/api';
 import { track } from '../lib/monitoring';
 import { supabase } from '../lib/supabase';
@@ -25,13 +27,13 @@ import { colors, tx } from '../theme';
  * Le pseudo et la date de naissance sont demandés juste après, sur /profile-setup.
  */
 export default function Auth() {
-  const { mode, next, mail } = useLocalSearchParams<{ mode?: string; next?: string; mail?: string }>();
+  const { mode, next } = useLocalSearchParams<{ mode?: string; next?: string }>();
   const signup = mode === 'signup';
   // arrivé ici depuis un premier secret écrit sans compte
   const sending = next === 'send';
   const toast = useToast();
   const [method, setMethod] = useState<'phone' | 'email'>('phone');
-  const [email, setEmail] = useState(mail ?? '');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -75,7 +77,7 @@ export default function Auth() {
       setCooldown(30);
       setTimeout(() => codeRef.current?.focus(), 200);
     } catch (e) {
-      toast((e as Error).message);
+      toast(humanError(e));
     } finally {
       setBusy(false);
     }
@@ -92,7 +94,7 @@ export default function Auth() {
       }
       done('phone');
     } catch (e) {
-      toast((e as Error).message);
+      toast(humanError(e));
       setCode('');
     } finally {
       setBusy(false);
@@ -122,7 +124,7 @@ export default function Auth() {
     try {
       if (signup) {
         const { data, error } = await supabase.auth.signUp({ email: mail, password, options: { emailRedirectTo: Linking.createURL('/auth-callback') } });
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(/already|registered|exists/i.test(error.message) ? t('auth.exists') : /rate|too many|seconds/i.test(error.message) ? t('auth.slowDown') : error.message);
         if (data.session) done('email');
         else setSent(true);
       } else {
@@ -131,7 +133,7 @@ export default function Auth() {
         done('email');
       }
     } catch (e) {
-      toast((e as Error).message);
+      toast(humanError(e));
     } finally {
       setBusy(false);
     }
@@ -164,7 +166,8 @@ export default function Auth() {
   return (
     <Screen>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        <Header back logo />
+        {/* arrivé ici directement (téléphone qui a déjà eu un compte) : le retour mène à l'accueil */}
+        <Header back={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} logo />
         <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
           {/* trois autocollants de réaction : on reconnaît l'app avant même de lire */}
           <View style={s.stickers} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -325,10 +328,7 @@ export default function Auth() {
             {t('auth.sent')}
           </Title>
           <Body style={{ textAlign: 'center', color: colors.muted }}>{t('auth.sentSub')}</Body>
-          <Button label={t('auth.confirmed')} onPress={() => router.replace({ pathname: '/auth', params: { mode: 'login', mail: email.trim().toLowerCase(), ...(next ? { next } : {}) } })} />
-          <Pressable onPress={() => setSent(false)} hitSlop={8} accessibilityRole="button" style={{ marginTop: 6 }}>
-            <Text style={s.forgot}>{t('auth.wrongMail')}</Text>
-          </Pressable>
+          <Button label={t('auth.confirmed')} onPress={() => router.replace({ pathname: '/auth', params: { mode: 'login', ...(next ? { next } : {}) } })} />
         </View>
       )}
     </Screen>

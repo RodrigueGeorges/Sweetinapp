@@ -33,7 +33,7 @@ jest.mock('../src/lib/invite', () => ({ inviteBySms: jest.fn(async () => true) }
 jest.mock('../src/lib/push', () => ({ shouldAskPush: jest.fn(async () => true), registerForPush: jest.fn(async () => {}) }));
 jest.mock('../src/lib/haptics', () => ({ signature: jest.fn(), tick: jest.fn(), heat: jest.fn(), melt: jest.fn() }));
 jest.mock('../src/lib/sounds', () => ({ play: jest.fn(), initSounds: jest.fn(), scratchLoop: { start: jest.fn(), stop: jest.fn() }, soundsEnabled: () => true, setSoundsEnabled: jest.fn() }));
-jest.mock('../src/lib/monitoring', () => ({ track: jest.fn(), wrapRoot: (c: unknown) => c }));
+jest.mock('../src/lib/monitoring', () => ({ track: jest.fn(), wrapRoot: (c: unknown) => c , setTestGroup: jest.fn() }));
 jest.mock('../src/lib/session', () => ({
   useSession: () => ({ session: { user: { id: 'me' } }, profile: { username: 'moi', onboarded: true }, ready: true, refreshProfile: jest.fn(async () => null) }),
 }));
@@ -41,7 +41,7 @@ jest.mock('../src/lib/session', () => ({
 const mockReplace = jest.fn();
 const mockDismissAll = jest.fn();
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: (...a: unknown[]) => mockReplace(...a), dismissAll: () => mockDismissAll(), navigate: jest.fn(), canGoBack: () => true },
+  router: { push: jest.fn(), back: jest.fn(), replace: (...a: unknown[]) => mockReplace(...a), dismissAll: () => mockDismissAll(), canDismiss: () => true, navigate: jest.fn(), canGoBack: () => true },
   useFocusEffect: (cb: () => void) => require('react').useEffect(cb, []),
   Link: ({ children }: { children?: unknown }) => children ?? null,
 }));

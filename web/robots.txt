@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# /f/ et /u/ portent noindex dans leur page (à laisser explorables pour que Google le voie)
+Sitemap: https://sweetin.app/sitemap.xml

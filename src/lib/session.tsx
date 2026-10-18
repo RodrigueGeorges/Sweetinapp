@@ -5,7 +5,8 @@ import { acceptInvite, getMyProfile, type InviteSource, type MyProfile } from '.
 import { identify, track } from './monitoring';
 import { watchLiveTokens } from './live';
 import { registerForPush } from './push';
-import { syncStreakReminder } from './reminders';
+import { markHasAccount } from './returning';
+import { loadConfig } from './config';
 import { supabase } from './supabase';
 
 const PENDING_INVITE = 'sweetin.pendingInvite';
@@ -21,6 +22,13 @@ const SessionContext = createContext<Ctx>({ session: null, profile: null, ready:
 
 /** Garde un pseudo d'invitation à traiter quand l'utilisateur aura un profil complet. */
 export const rememberInvite = (username: string, source: InviteSource = 'link') => AsyncStorage.setItem(PENDING_INVITE, `${username}|${source}`).catch(() => {});
+
+/** Pseudo de l'invitation en attente, sans la consommer (accueil personnalisé). */
+export async function peekPendingInvite(): Promise<string | null> {
+  const raw = await AsyncStorage.getItem(PENDING_INVITE).catch(() => null);
+  const name = raw?.split('|')[0] ?? '';
+  return /^[a-z0-9._]{3,20}$/i.test(name) ? name : null;
+}
 
 /** Ajoute l'ami de l'invitation en attente, s'il y en a une. Renvoie son pseudo. */
 export async function consumePendingInvite(): Promise<string | null> {
@@ -53,13 +61,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    loadConfig(); // réglages à distance (durée de lecture…), sans bloquer le démarrage
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
+      if (data.session) markHasAccount();
       if (data.session) await refreshProfile();
       setReady(true);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+      if (s) markHasAccount();
       if (s) refreshProfile();
       else setProfile(null);
     });
@@ -72,11 +83,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     registerForPush(session.user.id).catch(() => {});
     return watchLiveTokens(session.user.id);
   }, [session?.user.id]);
-
-  // rappel local « série en danger » synchronisé au lancement (fuseau réel de l'appareil)
-  useEffect(() => {
-    if (profile?.onboarded) syncStreakReminder();
-  }, [profile?.onboarded]);
 
   return <SessionContext.Provider value={{ session, profile, ready, refreshProfile }}>{children}</SessionContext.Provider>;
 }

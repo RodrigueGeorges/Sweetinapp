@@ -1,22 +1,25 @@
 import { router } from 'expo-router';
 import { Fondue } from '../components/Fondue';
 import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+// suit le clavier image par image (Android compris), au lieu du saut de KeyboardAvoidingView
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AvatarPicker } from '../components/AvatarPicker';
 import { Logo } from '../components/Logo';
 import { useToast } from '../components/Toast';
 import { Icon } from '../components/Icon';
-import { Body, BottomCTA, Button, Field, Screen, SectionLabel, Title } from '../components/ui';
-import { lang, t } from '../i18n';
+import { Body, BottomCTA, Button, Field, IconBadge, Screen, SectionLabel, Title } from '../components/ui';
+import { lang, t, humanError } from '../i18n';
+import { clearHasAccount } from '../lib/returning';
 import { ApiError, completeProfile, deleteAccount, setAvatar } from '../lib/api';
 import { storeSaysUnderage } from '../lib/age';
 import { ageAt, isoDate, parseBirth } from '../lib/format';
 import { track } from '../lib/monitoring';
 import { consumePendingInvite, useSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
-import { colors, tx } from '../theme';
+import { colors, fonts, tx } from '../theme';
 import { MIN_AGE } from '../lib/constants';
 
 /** Pseudo + date de naissance, après la création du compte (email, Apple ou Google). */
@@ -67,7 +70,7 @@ export default function ProfileSetup() {
       router.replace('/friends-setup');
     } catch (e) {
       if (e instanceof ApiError && e.code === 'UNDERAGE') setUnderage(true);
-      else toast((e as Error).message);
+      else toast(humanError(e));
     } finally {
       setBusy(false);
     }
@@ -78,14 +81,15 @@ export default function ProfileSetup() {
     try {
       await deleteAccount();
     } catch {}
+    clearHasAccount();
     await supabase.auth.signOut();
     router.replace('/welcome');
   };
 
-  const digits = (set: (v: string) => void, max: number, next?: React.RefObject<TextInput | null>) => (v: string) => {
+  const digits = (set: (v: string) => void, max: number, next?: () => void) => (v: string) => {
     const clean = v.replace(/\D/g, '').slice(0, max);
     set(clean);
-    if (clean.length === max) next?.current?.focus();
+    if (clean.length === max) next?.();
   };
 
   const box = (value: string, onChange: (v: string) => void, placeholder: string, width: number, ref?: React.Ref<TextInput>, extra?: object) => (
@@ -131,9 +135,8 @@ export default function ProfileSetup() {
             <SectionLabel>{t('profile.step')}</SectionLabel>
             <Title size={46}>{t('profile.title')}</Title>
           </View>
-          <View style={{ alignItems: 'center', gap: 6 }}>
+          <View style={{ alignItems: 'center' }}>
             <AvatarPicker uri={selfie} name={username || 'a'} onPick={setSelfie} />
-            <Text style={s.hint}>{t('profile.avatarHint')}</Text>
           </View>
           <Field
             label={t('profile.username')}
@@ -153,19 +156,17 @@ export default function ProfileSetup() {
           <View style={{ gap: 7 }}>
             <Text style={s.label}>{t('profile.birth')}</Text>
             <View style={s.dateRow}>
-              {/* eslint-disable react-hooks/refs -- les refs ne sont lues que dans le handler retourné par digits(), au changement de champ */}
               {monthFirst ? (
                 <>
-                  {box(m, digits(setM, 2, dRef), t('profile.month'), 64, mRef, { maxLength: 2 })}
-                  {box(d, digits(setD, 2, yRef), t('profile.day'), 64, dRef, { maxLength: 2 })}
+                  {box(m, digits(setM, 2, () => dRef.current?.focus()), t('profile.month'), 64, mRef, { maxLength: 2 })}
+                  {box(d, digits(setD, 2, () => yRef.current?.focus()), t('profile.day'), 64, dRef, { maxLength: 2 })}
                 </>
               ) : (
                 <>
-                  {box(d, digits(setD, 2, mRef), t('profile.day'), 64, dRef, { maxLength: 2 })}
-                  {box(m, digits(setM, 2, yRef), t('profile.month'), 64, mRef, { maxLength: 2 })}
+                  {box(d, digits(setD, 2, () => mRef.current?.focus()), t('profile.day'), 64, dRef, { maxLength: 2 })}
+                  {box(m, digits(setM, 2, () => yRef.current?.focus()), t('profile.month'), 64, mRef, { maxLength: 2 })}
                 </>
               )}
-              {/* eslint-enable react-hooks/refs */}
               {box(y, digits(setY, 4), t('profile.year'), 96, yRef, { maxLength: 4, onSubmitEditing: submit, returnKeyType: 'go' })}
             </View>
             <Text style={s.hint}>{t('profile.birthHint', { age: MIN_AGE })}</Text>

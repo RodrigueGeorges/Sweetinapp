@@ -29,7 +29,7 @@ jest.mock('../src/lib/thumb', () => ({ thumbhashOf: () => null }));
 jest.mock('../src/lib/review', () => ({ countRead: jest.fn(), maybeAskReview: jest.fn() }));
 jest.mock('../src/lib/haptics', () => ({ heat: jest.fn(), melt: jest.fn(), tick: jest.fn(), signature: jest.fn() }));
 jest.mock('../src/lib/sounds', () => ({ play: jest.fn(), scratchLoop: { start: jest.fn(), stop: jest.fn() }, soundsEnabled: () => true, setSoundsEnabled: jest.fn() }));
-jest.mock('../src/lib/monitoring', () => ({ track: jest.fn() }));
+jest.mock('../src/lib/monitoring', () => ({ track: jest.fn() , setTestGroup: jest.fn() }));
 jest.mock('../src/lib/useTilt', () => ({ useTilt: () => ({ x: { value: 0 }, y: { value: 0 } }) }));
 
 // ScratchCard simulé : un bouton « grattage » déclenche onReveal, comme le ferait le doigt
@@ -55,7 +55,7 @@ jest.mock('expo-screen-capture', () => ({
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), back: () => mockBack(), replace: (...a: unknown[]) => mockReplace(...a), dismissAll: jest.fn(), canGoBack: () => true },
+  router: { push: jest.fn(), back: () => mockBack(), replace: (...a: unknown[]) => mockReplace(...a), dismissAll: jest.fn(), canDismiss: () => true, canGoBack: () => true },
   useLocalSearchParams: () => ({ id: 'flip9' }),
   Link: Object.assign(
     ({ children }: { children?: unknown }) => children ?? null,
@@ -132,7 +132,7 @@ describe('read · lecture', () => {
     const { findByLabelText, findByText } = await renderRead();
     fireEvent.press(await findByLabelText('zone de grattage'));
     expect(mockMarkScratched).toHaveBeenCalledWith('flip9', 62, 3400);
-    expect(await findByText(t('read.meltsIn', { s: 10 }))).toBeTruthy();
+    expect(await findByLabelText(t('read.meltsIn', { s: 10 }))).toBeTruthy();
   });
 
   it('« répondre » prépare la réponse et repart vers la caméra', async () => {

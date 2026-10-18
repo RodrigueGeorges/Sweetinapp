@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     await sendPush(db, users.slice(i, i + 500), (uid, lang) => {
       const b = best.get(uid)!;
       return { title: copy.streakTitle(lang, b.days, name.get(b.friend) ?? copy.friend(lang)), body: copy.streakBody(lang), sound: 'streak.wav', channelId: 'streaks', data: { screen: 'camera', kind: 'streak' } };
-    });
+    }, 'streaks');
   }
   return json({ reminded: users.length });
 });

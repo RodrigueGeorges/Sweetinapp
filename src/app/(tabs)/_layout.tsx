@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useToast } from '../../components/Toast';
 import { t } from '../../i18n';
 import { consumePendingInvite, useSession } from '../../lib/session';
+import { useLanding } from '../../lib/returning';
 import { colors } from '../../theme';
 
 /**
@@ -17,11 +18,12 @@ export const unstable_settings = { initialRouteName: 'inbox' };
 export default function HomeLayout() {
   const { session, profile } = useSession();
   const toast = useToast();
+  const landing = useLanding();
   // invitation ouverte avant la connexion : on ajoute l'ami maintenant
   useEffect(() => {
     if (profile?.onboarded) consumePendingInvite().then((name) => name && toast(t('invite.added', { name })));
   }, [profile?.onboarded, toast]);
-  if (!session) return <Redirect href="/welcome" />;
+  if (!session) return landing ? <Redirect href={landing} /> : null;
   if (!profile?.onboarded) return <Redirect href="/profile-setup" />;
   return (
     <Stack initialRouteName="inbox" screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}>

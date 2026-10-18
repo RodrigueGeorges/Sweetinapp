@@ -22,39 +22,36 @@ Sweetin : photo à gratter
 Un message secret entre amis
 
 **Texte promotionnel (170)**
-Une photo, un secret caché derrière. Ton ami gratte avec son doigt pour le découvrir, puis tout disparaît. Et chaque jour, 2 minutes surprise : le Sweet Hour.
+Une photo, un mot caché dessous. On le gratte du doigt pour le lire, puis tout fond. Et chaque jour, 2 minutes surprise : la Sweet Hour.
 
 **Description (4000)**
 Prends une photo. Cache un mot dessous. Envoie.
 Essaie tout de suite : ton premier sweet se crée avant même d'avoir un compte.
 
-Ton ami reçoit la photo, couverte de sucre givré, et la gratte du doigt comme un ticket à gratter pour lire ton mot. Il a 10 secondes. Puis tout fond : la photo et le mot sont effacés de nos serveurs.
+Ta photo arrive couverte de sucre givré. On la gratte du doigt, comme un ticket à gratter, pour lire ton mot. 10 secondes, pas une de plus. Puis tout fond : la photo et le mot sont effacés de nos serveurs.
 
 COMMENT ÇA MARCHE
 • Prends une photo, ou choisis-en une dans ta galerie
 • Elle se retourne : écris ton mot dessous
 • Choisis à qui l'envoyer
-• Ton ami gratte, lit, et ça fond
-• Tu sais qu'il l'a lu, en combien de temps, et ce que ça lui a fait (je fonds, mdrr, jpp, omg, encore)
+• On gratte, on lit, et ça fond
+• Tu sais quand ton mot est lu, en combien de secondes, et la réaction (je fonds, mdrr, jpp, omg, encore)
 
-MÊME À CEUX QUI N'ONT PAS L'APP
-Envoie ton sweet par lien sur WhatsApp, Insta ou SMS : ton ami le gratte directement dans son navigateur, sans rien installer. Le lien ne s'ouvre qu'une fois.
+MÊME SANS L'APP
+Envoie ton sweet par lien sur WhatsApp, Insta ou SMS : il se gratte directement dans le navigateur, sans rien installer. Le lien ne s'ouvre qu'une fois.
 
 GRATTE MON MOT, EN STORY
-Partage une photo floutée en story Instagram avec le lien : tes abonnés grattent pour lire ton mot pendant 24 h.
+Partage une photo floutée en story Instagram avec le lien : tout le monde peut gratter ton mot pendant 24 h.
 
 LES SÉRIES
 Envoyez-vous un sweet chaque jour pour faire grimper votre série. Elle fond à minuit si personne n'envoie. Et si c'est arrivé hier, tu peux la sauver une fois par mois.
-
-UN SEUL PASSAGE
-Active « un seul passage » : ton ami n'a qu'un geste pour lire. Il lève le doigt, c'est fini.
 
 LA SWEET HOUR
 Chaque jour, à une heure surprise, tout le monde reçoit la même notif. Tu as 2 minutes pour envoyer un sweet à tes amis, avec le compte à rebours sur ton écran verrouillé. Pas de filtre, pas de mise en scène.
 
 FAIT POUR RESTER ENTRE VOUS
 • Photos et mots effacés dès qu'ils sont lus, au plus tard après 7 jours
-• Captures d'écran signalées à l'expéditeur
+• Captures d'écran bloquées, et la personne qui a envoyé le sweet le sait
 • Seuls tes amis peuvent t'envoyer des sweets
 • Signalement et blocage en un geste
 • Pas de pub, pas de revente de données, pas de géolocalisation
@@ -74,7 +71,7 @@ Confidentialité : https://sweetin.app/confidentialite
 éphémère,mot,caché,gratter,surprise,ticket,selfie,partage,mystère,meilleur,pote,widget,série,fondre
 
 **Nouveautés (version 1.0)**
-Première version de Sweetin. Prends une photo, cache un mot dessous : ton ami gratte, lit, et ça fond.
+Première version de Sweetin. Prends une photo, cache un mot dessous : on gratte, on lit, et ça fond.
 
 ### English (UK et US)
 
@@ -108,9 +105,6 @@ Share a blurred photo as an Instagram story with the link: your followers scratc
 
 STREAKS
 Send each other a sweet every day to grow your streak. It melts at midnight if nobody sends. And if it did yesterday, you can save it once a month.
-
-ONE PASS
-Turn on “one pass” and your friend gets a single gesture to read. Lift the finger, it’s over.
 
 SWEET HOUR
 Every day, at a surprise time, everyone gets the same notification. You have 2 minutes to send a sweet to your friends, with the countdown on your Lock Screen. No filters, no staging.
@@ -203,7 +197,7 @@ Contacts are optional; phone numbers are hashed (SHA-256) on device and only com
 Sweetin : gratte le secret
 
 **Description courte (80)**
-Une photo, un secret derrière. Ton ami gratte pour le lire, puis tout disparaît.
+Une photo, un mot secret dessous. On gratte pour le lire, puis tout fond.
 
 **Description complète (4000)**
 Reprendre la description App Store française ci-dessus (identique).
@@ -274,9 +268,9 @@ Play Console › Règles et programmes › Contenu de l'app › Normes de sécur
 
 | Visuel | App Store | Google Play |
 | --- | --- | --- |
-| Captures d'écran | 6,9" (1320 × 2868) obligatoires ; 3 à 10 | 1080 × 1920 minimum ; 2 à 8 |
-| Icône | 1024 × 1024 (déjà dans `assets/icon.png`) | 512 × 512 |
-| Bannière | – | 1024 × 500 |
+| Captures d'écran | 6,9" (1320 × 2868) obligatoires ; 3 à 10 : `store/captures/appstore-*.png` | 1080 × 1920 minimum ; 2 à 8 : `store/captures/play-*.png` |
+| Icône | 1024 × 1024, intégrée au build (`assets/icon.png`, sans transparence) | 512 × 512 : `store/graphics/play-icon-512.png` |
+| Bannière (« image de présentation ») | – | 1024 × 500 : `store/graphics/play-feature-fr.png` et `-en.png` |
 
 
 ## Captures et fiches personnalisées (ASO 2026)
@@ -291,12 +285,12 @@ Captures prêtes dans `store/captures/` : 6 par langue, `appstore-<fr|en>-<n>.pn
 | 2 | création : le mot écrit sous la photo | cache un mot sous ta photo. | hide a word under your photo. | mot caché / hidden word |
 | 3 | fondu : la flaque, « ça t'a fait quoi ? » et les autocollants | lu une fois, puis ça fond. | read once, then it melts. | je fonds / i'm melting |
 | 4 | vitrine : ton tour, cartes au bord qui coule | des sweets t'attendent. | sweets are waiting for you. | 3 à gratter / 3 to scratch |
-| 5 | amis et séries | une série avec chaque meilleur ami. | a streak with every best friend. | 41j / 41d |
+| 5 | amis et séries | une série avec toute ta bande. | a streak with every best friend. | 41j / 41d |
 | 6 | à qui ? : séries à sauver, lien privé, story | à tes amis, même sans l'app. | to your friends, even without the app. | sans l'app / no app needed |
 
 À ajouter quand l'app tourne sur un vrai iPhone : Sweet Hour sur l'écran verrouillé et les widgets (captures réelles).
 
 Fiches personnalisées à créer (App Store Connect › Fiches produit personnalisées) :
-- **TikTok / Reels** : capture 1 en premier, texte promo « Dis-lui ce que tu n'oses pas dire. Il gratte, il lit, c'est effacé. » / « Say what you don't dare to say. They scratch, they read, it's gone. »
-- **Lien d'invitation** (pages `/f` et `/u`) : capture 4 en premier, « Un ami t'a caché un mot. Installe pour le gratter. » / « A friend hid a word for you. Get the app to scratch it. »
+- **TikTok / Reels** : capture 1 en premier, texte promo « Ce que tu n'oses pas dire, cache-le sous une photo. Gratté, lu, fondu. » / « Say what you don't dare to say. They scratch, they read, it's gone. »
+- **Lien d'invitation** (pages `/f` et `/u`) : capture 4 en premier, « Quelqu'un t'a caché un mot. Installe pour le gratter. » / « A friend hid a word for you. Get the app to scratch it. »
 - **Sweet Hour** (événement intégré, à relancer chaque mois) : capture 7 en premier.

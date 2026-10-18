@@ -1,5 +1,5 @@
 // Ouvre un flip pour le destinataire : URL signée de la photo (2 minutes) + message caché.
-import { admin, cors, currentUser, fail, json, rateHit } from '../_shared/util.ts';
+import { admin, cors, currentUser, fail, json } from '../_shared/util.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -10,8 +10,6 @@ Deno.serve(async (req) => {
   if (!flip_id) return fail('flip_id manquant');
 
   const db = admin();
-  // anti-énumération : 300 ouvertures par jour et par compte suffisent largement
-  if (!(await rateHit(db, user.id, 'open_flip', 300, 86_400))) return fail('Tu as ouvert beaucoup de sweets, réessaie demain', 429, 'RATE_LIMIT');
   const { data: rec } = await db
     .from('flip_recipients')
     .select('opened_at, scratched_at, flips(id, sender_id, photo_path, mode, expires_at, created_at, preview)')
@@ -39,7 +37,7 @@ Deno.serve(async (req) => {
   return json({
     id: flip.id,
     sender_id: flip.sender_id,
-    sender: sender?.username ?? 'un ami',
+    sender: sender?.username ?? 'quelqu’un',
     preview: (flip as { preview?: string | null }).preview ?? null,
     sender_avatar: sender?.avatar_path ? db.storage.from('avatars').getPublicUrl(sender.avatar_path).data.publicUrl : null,
     mode: flip.mode,

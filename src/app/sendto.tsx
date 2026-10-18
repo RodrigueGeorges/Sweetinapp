@@ -22,21 +22,20 @@ import { draft } from '../lib/draft';
 import { inviteBySms } from '../lib/invite';
 import { registerForPush, shouldAskPush } from '../lib/push';
 import { signature } from '../lib/haptics';
-import { colors, tx } from '../theme';
+import { colors, fonts, tx } from '../theme';
 
-/** « envoyer à » : ses potes d'abord (séries en danger en tête), puis le lien ou la story. */
+/** « envoyer à » : le lien privé et la story en tête, puis les amis (séries en danger d'abord). */
 export default function SendTo() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const [friends, setFriends] = useState<Profile[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(draft.replyTo ? [draft.replyTo] : []));
   const [q, setQ] = useState('');
-  const once = draft.mode === 'once';
   const { profile, session } = useSession();
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [failure, setFailure] = useState<{ message: string; retryable: boolean } | null>(null);
-  const [sent, setSent] = useState<{ to: string; sweet: boolean; streak: number; ask: boolean } | null>(null);
+  const [sent, setSent] = useState<{ to: string; askText: string; sweet: boolean; streak: number; ask: boolean } | null>(null);
   const [link, setLink] = useState<LinkKind | null>(null);
   const [streaks, setStreaks] = useState<Map<string, Streak>>(new Map());
 
@@ -93,10 +92,10 @@ export default function SendTo() {
     let preview: string | null = null;
     try {
       preview = await makePreview(uri);
-      const r = await sendFlip({ localUri: uri, message: draft.message, mode: once && link !== 'story' ? 'once' : 'free', recipients: [...selected], link, preview }, setProgress);
+      const r = await sendFlip({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], link, preview }, setProgress);
       signature();
       play(r.streak >= 2 ? 'streak' : 'sent');
-      track('flip_sent', { recipients: r.sent_to, once, sweet_hour: r.sweet_hour, reply: !!draft.replyTo, link: link ?? 'none' });
+      track('flip_sent', { recipients: r.sent_to, sweet_hour: r.sweet_hour, reply: !!draft.replyTo, link: link ?? 'none' });
 
       // partage du lien hors de l'app
       if (r.link === 'single' && r.link_url) {
@@ -113,17 +112,22 @@ export default function SendTo() {
         }
       }
 
-      const one = friends?.find((f) => selected.has(f.id))?.username ?? t('send.yourFriend');
-      const to = r.sent_to > 1 ? t('send.manyFriends', { n: r.sent_to }) : r.sent_to === 1 ? one : r.link === 'story' ? t('link.sentStory') : t('link.sentPrivate');
+      // la phrase entière dépend du cas : une personne, plusieurs, un lien, une story (« 3 amis peut le gratter » était faux)
+      const one = friends?.find((f) => selected.has(f.id))?.username;
+      const kind = r.sent_to > 1 ? 'many' : r.sent_to === 1 ? 'one' : r.link === 'story' ? 'story' : 'link';
+      const to =
+        kind === 'many' ? t('send.sentMany', { n: r.sent_to }) : kind === 'one' ? t('send.sentTo', { to: one ?? t('send.someone') }) : kind === 'story' ? t('send.sentStory') : t('send.sentLink');
+      const askText =
+        kind === 'many' ? t('notif.askMany') : kind === 'one' ? t('notif.ask', { to: one ?? t('send.someone') }) : kind === 'story' ? t('notif.askStory') : t('notif.askLink');
       draft.reset();
       const ask = await shouldAskPush();
-      setSent({ to, sweet: r.sweet_hour, streak: r.streak, ask });
+      setSent({ to, askText, sweet: r.sweet_hour, streak: r.streak, ask });
       if (!ask) setTimeout(leave, 1500);
     } catch (e) {
       const err = e instanceof ApiError ? e : new ApiError(undefined, (e as Error).message, true);
       // hors connexion : le sweet attend dans la file et partira tout seul (les liens doivent repasser par le partage)
       if (err.code === 'OFFLINE' && !link && selected.size && uri) {
-        await queueSend({ localUri: uri, message: draft.message, mode: once ? 'once' : 'free', recipients: [...selected], preview });
+        await queueSend({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], preview });
         draft.reset();
         track('send_queued', { recipients: selected.size });
         toast(t('queue.saved'));
@@ -139,7 +143,7 @@ export default function SendTo() {
   };
 
   const leave = () => {
-    router.dismissAll();
+    if (router.canDismiss()) router.dismissAll(); // sans pile (lien ouvert à froid), dismissAll lève une erreur
     router.replace('/inbox');
   };
 
@@ -159,6 +163,8 @@ export default function SendTo() {
               : link
                 ? t('send.ctaLink')
                 : t('send.pick');
+  const hasFriends = (friends?.length ?? 0) > 0;
+
   const linksBlock = (
     <View style={{ gap: 10 }}>
       <SectionLabel>{t('link.section')}</SectionLabel>
@@ -193,17 +199,15 @@ export default function SendTo() {
       <Title size={44} style={s.title}>
         {t('send.title')}
       </Title>
-      {/* la recherche n'a de sens qu'avec une liste assez longue */}
-      {friends === null || friends.length > 7 ? (
-        <View style={s.search}>
-          <Icon name="search" size={18} color={colors.muted} />
-          <TextInput value={q} onChangeText={setQ} placeholder={t('send.search')} accessibilityLabel={t('send.search')} placeholderTextColor={colors.muted} style={s.searchInput} autoCapitalize="none" autoCorrect={false} selectionColor={colors.cerise} />
-        </View>
-      ) : null}
+      <View style={s.search}>
+        <Icon name="search" size={18} color={colors.muted} />
+        <TextInput value={q} onChangeText={setQ} placeholder={t('send.search')} accessibilityLabel={t('send.search')} placeholderTextColor={colors.muted} style={s.searchInput} autoCapitalize="none" autoCorrect={false} selectionColor={colors.cerise} />
+      </View>
 
       <FlatList
         data={friends === null ? [] : rows}
-        ListHeaderComponent={friends !== null ? <View style={{ gap: 10, paddingBottom: 10 }}>{linksBlock}</View> : null}
+        // lien privé et story en tête, pour tous : c'est par là qu'on fait venir quelqu'un qui n'a pas l'app
+        ListHeaderComponent={friends !== null ? <View style={{ gap: 10, paddingBottom: hasFriends ? 18 : 10 }}>{linksBlock}</View> : null}
         keyExtractor={(r) => r.id}
         contentContainerStyle={s.list}
         ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
@@ -234,7 +238,7 @@ export default function SendTo() {
                 accessibilityLabel={st?.at_risk ? t('streak.atRisk', { n: st.days, name: item.username }) : item.username}
                 style={[s.row, st?.at_risk && { backgroundColor: colors.riskBg }, on && !st?.at_risk && { backgroundColor: colors.card }]}
               >
-                <Avatar name={item.username} uri={item.avatar_url} size={44} flavor />
+                <Avatar name={item.username} uri={item.avatar_url} size={44} />
                 <View style={{ flex: 1 }}>
                   <Text style={s.name}>{item.username}</Text>
                   {st?.at_risk ? <Text style={s.risk}>{t('contacts.atRiskSub')}</Text> : null}
@@ -276,7 +280,8 @@ export default function SendTo() {
       </BottomCTA>
       {sent && (
         <SentCelebration
-          to={sent.to}
+          line={sent.to}
+          askText={sent.askText}
           sweet={sent.sweet}
           streak={sent.streak}
           ask={

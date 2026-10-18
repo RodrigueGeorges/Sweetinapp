@@ -49,6 +49,7 @@ export function Sticker({ kind, size = 'md', on, dim }: { kind: ReactionKey; siz
           s.body,
           { backgroundColor: bg, borderRadius: look.shape === 'square' ? (sm ? 8 : 12) : 999 },
           round ? { width: sm ? 38 : 64, height: sm ? 38 : 64, paddingHorizontal: 0 } : { paddingVertical: sm ? 4 : 9, paddingHorizontal: sm ? 9 : 16 },
+          sm ? s.shadowSm : s.shadow,
           sm && { borderWidth: 2 },
         ]}
       >
@@ -66,8 +67,11 @@ export function ReactionFace({ kind }: { kind: ReactionKey; size?: number }) {
 }
 
 const s = StyleSheet.create({
-  wrap: { shadowColor: '#160F12', shadowOpacity: 0.25, shadowRadius: 7, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
-  wrapSm: { shadowOpacity: 0.15, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+  // l'ombre est portée par l'autocollant lui-même (arrondi, fond) : sur le conteneur, elle dessinait un rectangle (web) ou rien (Android)
+  wrap: {},
+  wrapSm: {},
+  shadow: { shadowColor: '#160F12', shadowOpacity: 0.25, shadowRadius: 7, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+  shadowSm: { shadowColor: '#160F12', shadowOpacity: 0.15, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
   body: { alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: colors.white },
   t: { fontFamily: fonts.display, includeFontPadding: false },
 });

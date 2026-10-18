@@ -7,12 +7,14 @@ import NetInfo from '@react-native-community/netinfo';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ToastProvider, useToast } from '../components/Toast';
 import { t } from '../i18n';
 import { track, wrapRoot } from '../lib/monitoring';
 import { notif } from '../lib/notif';
+import { checkInstallReferrer } from '../lib/referrer';
 import { initSounds, play } from '../lib/sounds';
 import { SessionProvider, useSession } from '../lib/session';
 import { flushSendQueue } from '../lib/sendQueue';
@@ -44,6 +46,11 @@ function Root() {
   useEffect(() => {
     if (ready && fontsLoaded) SplashScreen.hideAsync();
   }, [ready, fontsLoaded]);
+
+  // installé depuis un lien d'invitation : l'ami sera ajouté tout seul après l'inscription
+  useEffect(() => {
+    checkInstallReferrer();
+  }, []);
 
   // un tap sur une notification ouvre directement le flip ou la boîte de réception
   useEffect(() => {
@@ -108,7 +115,11 @@ function Root() {
       <StatusBar style={splash ? 'light' : 'dark'} />
       {/* transitions natives de chaque plateforme (glissé iOS, Material Android) ; les animations sur mesure sont réservées aux moments forts */}
       <Stack initialRouteName="index" screenOptions={{ headerShown: false, animation: 'default', contentStyle: { backgroundColor: colors.paper } }}>
-        <Stack.Screen name="read/[id]" options={{ animation: Platform.OS === 'ios' ? 'default' : 'slide_from_bottom', gestureEnabled: true }} />
+        {/* Android : écran transparent, c'est la carte de la vitrine qui s'agrandit (OriginZoom) ; iOS : Link.AppleZoom */}
+        <Stack.Screen
+          name="read/[id]"
+          options={Platform.OS === 'ios' ? { animation: 'default', gestureEnabled: true } : { presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }}
+        />
         {/* la carte s'ouvre sans transition de pile : c'est la photo elle-même qui se réduit en carte (voir create.tsx) */}
         <Stack.Screen name="create" options={{ animation: 'none' }} />
         <Stack.Screen name="sendto" options={{ animation: 'slide_from_bottom' }} />
@@ -131,7 +142,10 @@ function RootLayout() {
         <SessionProvider>
           <ToastProvider>
             <ErrorBoundary>
-              <Root />
+              {/* app en bord à bord sur Android (SDK 57) : barres translucides, et on le reste même module coupé */}
+              <KeyboardProvider statusBarTranslucent navigationBarTranslucent preserveEdgeToEdge>
+                <Root />
+              </KeyboardProvider>
             </ErrorBoundary>
           </ToastProvider>
         </SessionProvider>

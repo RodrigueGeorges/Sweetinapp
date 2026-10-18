@@ -4,13 +4,15 @@ import { Flaque } from '../../components/Flaque';
 import type { SkImage } from '@shopify/react-native-skia';
 import * as ScreenCapture from 'expo-screen-capture';
 import { Link, Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, BackHandler, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bounce } from '../../components/Bounce';
 import { Icon } from '../../components/Icon';
 import { ScratchCard } from '../../components/ScratchCard';
+import { Rolling } from '../../components/Rolling';
+import { OriginZoom, useOriginZoom } from '../../components/OriginZoom';
 import { Shimmer } from '../../components/Shimmer';
 import { Drip } from '../../components/Logo';
 import { NativeMenu } from '../../components/NativeMenu';
@@ -21,21 +23,23 @@ import { REACTIONS, Sticker } from '../../components/Reactions';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useToast } from '../../components/Toast';
 import { BackButton, Button, IconButton, Screen, Title } from '../../components/ui';
-import { t } from '../../i18n';
-import { markScratched, openFlip, react, report, reportScreenshot, type OpenedFlip } from '../../lib/api';
+import { t, humanError } from '../../i18n';
+import { isWelcome, loadWelcomePhoto, markWelcomeRead, welcomeFlip } from '../../lib/welcome';
+import { meltFor } from '../../lib/config';
+import { useSession } from '../../lib/session';
+import { listInbox, markScratched, openFlip, react, report, reportScreenshot, type InboxItem, type OpenedFlip } from '../../lib/api';
 import { loadImageInMemory } from '../../lib/image';
 import { track } from '../../lib/monitoring';
 import { draft } from '../../lib/draft';
 import { ago, agoShort, seconds } from '../../lib/format';
 import { useTilt } from '../../lib/useTilt';
-import { heat as heatHaptic, melt as meltHaptic, tick as tickHaptic } from '../../lib/haptics';
+import { melt as meltHaptic, tick as tickHaptic } from '../../lib/haptics';
 import { countRead, maybeAskReview } from '../../lib/review';
 import { play } from '../../lib/sounds';
 import { colors, fonts, tx } from '../../theme';
 
 const COACH_KEY = 'sweetin.coached';
 /** Le secret se savoure : lisible quelques secondes, puis il fond. */
-const MELT_S = 10;
 /** Les réactions arrivent après ce délai : on laisse d'abord le mot se lire. */
 const REACT_DELAY_MS = 2500;
 /** Les dernières secondes, ça chauffe : la jauge et le bas de l'écran passent en framboise. */
@@ -43,24 +47,46 @@ const HOT_S = 3;
 /** Hauteur réservée aux deux rangées d'autocollants (pour que le mot ne bouge pas quand ils arrivent). */
 const STICKERS_H = 146;
 
-/**
- * Lecture : on gratte la photo pour découvrir le message, puis « Répondre ».
- * Route montée sans id (lancement sans lien, deep link tronqué) : on repart à l'entrée
- * plutôt que d'afficher l'écran protégé en chargement perpétuel.
- */
+/** Android : la lecture s'ouvre depuis la carte touchée dans la vitrine (voir OriginZoom). */
 export default function Read() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  // monté sans paramètre (initialRouteName manquant, deep link cassé) : retour à l'aiguillage
   if (!id) return <Redirect href="/" />;
-  return <ReadScreen id={id} />;
+  return (
+    <OriginZoom>
+      <ReadScreen />
+    </OriginZoom>
+  );
 }
 
-function ReadScreen({ id }: { id: string }) {
+/** Lecture : on gratte la photo pour découvrir le message, puis « Répondre ». */
+function ReadScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const welcome = isWelcome(id); // sweet de bienvenue : local, rien n'est envoyé au serveur
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const tilt = useTilt();
+  const zoom = useOriginZoom();
+  const closeRead = () => zoom.close(() => (router.canGoBack() ? router.back() : router.replace('/inbox')));
+  // retour Android : la carte se referme vers la vitrine
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeRead();
+      return true;
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { width: screenW, height: screenH } = useWindowDimensions();
 
   const [flip, setFlip] = useState<OpenedFlip | null>(null);
+  const { session } = useSession();
+  // durée de lecture : réglable à distance (app_config « melt »), 10 s par défaut ; fixée une fois le mot connu
+  const meltConf = useMemo(() => meltFor(flip?.message ?? '', session?.user.id), [flip?.message, session?.user.id]);
+  const MELT_S = meltConf.seconds;
+  const meltProps = { melt_s: MELT_S, melt_group: meltConf.group };
+  // test de durée : quitter avant la fonte veut dire que c'était trop long (ou que le mot n'a pas accroché)
+  const leave = useRef({ done: false, melted: false, at: 0, props: meltProps, welcome: false });
   const [photo, setPhoto] = useState<SkImage | null>(null);
   const snapped = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +98,33 @@ function ReadScreen({ id }: { id: string }) {
   const [ms, setMs] = useState(0);
   // fonte : la vanille coule du haut de la carte jusqu'à tout recouvrir
   const [left, setLeft] = useState(MELT_S);
+  // la durée peut arriver après le premier rendu : le décompte repart sur la bonne base (ajustement pendant le rendu)
+  const [leftBase, setLeftBase] = useState(MELT_S);
+  if (leftBase !== MELT_S) {
+    setLeftBase(MELT_S);
+    if (!done) setLeft(MELT_S);
+  }
   const [melted, setMelted] = useState(false);
+  // d'autres sweets attendent ? on les enchaîne depuis « fondu. » au lieu de repasser par la vitrine
+  const [next, setNext] = useState<{ item: InboxItem; left: number } | null>(null);
+  useEffect(() => {
+    if (!melted || welcome) return;
+    let alive = true;
+    listInbox()
+      .then((list) => {
+        const rest = list.filter((x) => x.flip_id !== id && !isWelcome(x.flip_id));
+        if (alive && rest.length) setNext({ item: rest[0], left: rest.length });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [melted, welcome, id]);
+  const goNext = () => {
+    if (!next) return;
+    track('next_tapped', { left: next.left });
+    router.replace(`/read/${next.item.flip_id}`);
+  };
   const [meltingWord, setMeltingWord] = useState(false);
   const melt = useSharedValue(0);
   const meltStyle = useAnimatedStyle(() => ({ transform: [{ translateY: (melt.value - 1) * (screenH + 200) }] }));
@@ -86,7 +138,6 @@ function ReadScreen({ id }: { id: string }) {
   useEffect(() => {
     if (!done) return;
     count.value = withTiming(1, { duration: MELT_S * 1000, easing: Easing.linear });
-    // eslint-disable-next-line react-hooks/immutability -- shared value Reanimated mutée volontairement dans l'effet du compte à rebours
     hot.value = withDelay((MELT_S - HOT_S) * 1000, withTiming(1, { duration: HOT_S * 1000, easing: Easing.in(Easing.quad) }));
     const rt = setTimeout(() => setShowReacts(true), REACT_DELAY_MS);
     const iv = setInterval(() => setLeft((n) => Math.max(0, n - 1)), 1000);
@@ -103,17 +154,25 @@ function ReadScreen({ id }: { id: string }) {
       clearTimeout(to);
       clearTimeout(rt);
     };
-  }, [done, melt, screenH, count, hot]);
-  // un tic à chaque seconde ; les dernières, la pression monte (haptique en crescendo + petit son)
+  }, [done, melt, screenH, count, hot, MELT_S]);
+  // un tic à chaque seconde ; les dernières, un petit son en plus
   useEffect(() => {
     if (!done || left >= MELT_S || left <= 0) return;
-    if (left <= HOT_S) {
-      heatHaptic(left);
-      play('tap', 0.35);
-    } else {
-      tickHaptic();
-    }
+    tickHaptic();
+    if (left <= HOT_S) play('tap', 0.35);
   }, [done, left]);
+
+  useEffect(() => {
+    leave.current = { ...leave.current, done, melted, props: meltProps, welcome };
+    if (done && !leave.current.at) leave.current.at = Date.now();
+  });
+  useEffect(
+    () => () => {
+      const l = leave.current;
+      if (l.done && !l.melted && !l.welcome) track('flip_left_early', { ...l.props, after_ms: Date.now() - l.at });
+    },
+    [],
+  );
 
   // confidentialité : pas de capture, pas d'aperçu dans le sélecteur d'apps, photo jamais écrite sur le disque
   ScreenCapture.usePreventScreenCapture(`read-${id}`);
@@ -128,21 +187,21 @@ function ReadScreen({ id }: { id: string }) {
     snapped.current = true;
     track('screenshot_attempt');
     toast(t('read.screenshot', { name: flip.sender }));
-    reportScreenshot(flip.id).catch(() => {});
+    if (!welcome) reportScreenshot(flip.id).catch(() => {});
   });
 
   useEffect(() => {
     if (!id) return;
     let alive = true;
-    openFlip(id)
+    (welcome ? Promise.resolve(welcomeFlip()) : openFlip(id))
       .then(async (f) => {
         if (!alive) return;
         setFlip(f);
-        track('flip_opened', { once: f.mode === 'once' });
-        const img = await loadImageInMemory(f.photo_url);
+        track(welcome ? 'welcome_opened' : 'flip_opened');
+        const img = welcome ? await loadWelcomePhoto() : await loadImageInMemory(f.photo_url);
         if (alive) setPhoto(img);
       })
-      .catch((e) => alive && setError((e as Error).message));
+      .catch((e) => alive && setError(humanError(e)));
     AsyncStorage.getItem(COACH_KEY).then((v) => setCoach(!v));
     return () => {
       alive = false;
@@ -155,17 +214,22 @@ function ReadScreen({ id }: { id: string }) {
   const onReveal = (percent: number, ms: number) => {
     setDone(true);
     setMs(ms);
-    track('flip_scratched', { percent, ms, once: flip?.mode === 'once' });
-    markScratched(id, percent, ms).catch(() => {});
+    track(welcome ? 'welcome_scratched' : 'flip_scratched', { percent, ms, ...meltProps });
+    if (welcome) markWelcomeRead();
+    else markScratched(id!, percent, ms).catch(() => {});
     countRead();
   };
 
   const sendReaction = (r: string, word: string) => {
     if (!done || reaction) return;
     setReaction(r);
-    react(id, r)
+    if (welcome) {
+      toast(t('welcome.reacted', { e: word }));
+      return;
+    }
+    react(id!, r)
       .then(() => {
-        track('flip_reacted');
+        track('flip_reacted', meltProps);
         toast(t('read.reacted', { e: word, name: flip?.sender ?? '' }));
         maybeAskReview();
       })
@@ -174,20 +238,31 @@ function ReadScreen({ id }: { id: string }) {
 
   const reply = () => {
     draft.reset();
-    if (flip) draft.setReply(flip.sender_id, flip.sender);
-    track('reply_tapped');
-    router.dismissAll();
+    if (welcome) {
+      track('welcome_start');
+      if (router.canDismiss()) router.dismissAll(); // sans pile (lien ouvert à froid), dismissAll lève une erreur
+      router.replace('/camera');
+      return;
+    }
+    if (flip) {
+      draft.replyTo = flip.sender_id;
+      draft.replyName = flip.sender;
+    }
+    track('reply_tapped', meltProps);
+    if (router.canDismiss()) router.dismissAll(); // sans pile (lien ouvert à froid), dismissAll lève une erreur
     router.replace('/camera');
     toast(t('read.replyToast', { name: flip?.sender ?? '' }));
   };
 
-  const reportFlip = () =>
-    report({ flip_id: id, reason: 'Contenu inapproprié' })
+  // raison choisie dans le menu : la modération trie plus vite, et Google Play l'attend pour le contenu des utilisateurs
+  const REASONS = { harass: 'Harcèlement', sexual: 'Contenu sexuel', violence: 'Violence ou menace', other: 'Autre' } as const;
+  const reportFlip = (why: string) =>
+    report({ flip_id: id!, reason: REASONS[why as keyof typeof REASONS] ?? REASONS.other })
       .then(() => {
         toast(t('read.reported'));
         router.back();
       })
-      .catch((e) => toast((e as Error).message));
+      .catch((e) => toast(humanError(e)));
 
   // erreur (déjà gratté, expiré…) : écran de marque, pas de photo
   if (error) {
@@ -233,7 +308,7 @@ function ReadScreen({ id }: { id: string }) {
             <ScratchCard
               photo={photo}
               message={flip.message}
-              mode={flip.mode}
+              mode="free" // l'ancien mode « un seul passage » est retiré : tout se gratte librement
               width={screenW}
               height={screenH}
               radius={0}
@@ -268,7 +343,9 @@ function ReadScreen({ id }: { id: string }) {
 
       {/* invite de la coque : « gratte. » sur la photo, s'efface au premier coup de doigt */}
       {flip && photo && !done && progress === 0 && (
-        <Animated.View pointerEvents="none" entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} style={s.cover}>
+        <Animated.View pointerEvents="none" entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} style={[s.cover, { paddingBottom: insets.bottom + 130 }]}>
+          {/* en bas, sur un voile : le haut et le centre de la photo (souvent un visage) restent libres */}
+          <LinearGradient colors={['rgba(22,15,18,0)', 'rgba(22,15,18,0.5)']} style={StyleSheet.absoluteFill} />
           <Text style={s.coverT} allowFontScaling={false}>
             {t('inbox.scratch')}
           </Text>
@@ -279,7 +356,7 @@ function ReadScreen({ id }: { id: string }) {
       {/* en-tête : fermer, « de dan » au centre, options */}
       {!melted && !done && <LinearGradient pointerEvents="none" colors={['rgba(22,15,18,0.5)', 'rgba(22,15,18,0)']} style={[s.scrimTop, { height: insets.top + 110 }]} />}
       <View style={[s.head, { marginTop: insets.top + 4 }]} pointerEvents="box-none">
-        <IconButton icon="close" label={t('common.close')} tone={melted ? 'vanille' : 'cacao'} filled onPress={() => (router.canGoBack() ? router.back() : router.replace('/inbox'))} />
+        <IconButton icon="close" label={t('common.close')} tone={melted ? 'vanille' : 'cacao'} filled onPress={closeRead} />
         {flip ? (
           <View style={s.from} accessible accessibilityRole="header" accessibilityLabel={`${t('read.from', { name: flip.sender })}, ${ago(flip.created_at)}`}>
             <Text style={[s.fromName, { color: ink }]} numberOfLines={1}>
@@ -290,8 +367,11 @@ function ReadScreen({ id }: { id: string }) {
         ) : (
           <View />
         )}
-        {flip ? (
-          <NativeMenu title={t('read.menuTitle')} items={[{ id: 'report', title: t('read.report'), sf: 'exclamationmark.bubble', destructive: true }]} onSelect={reportFlip} label={t('read.more')}>
+        {flip && !welcome ? (
+          <NativeMenu
+            title={t('read.reportWhy')}
+            items={(['harass', 'sexual', 'violence', 'other'] as const).map((k) => ({ id: k, title: t(`report.${k}`), sf: 'exclamationmark.bubble' as const, destructive: true }))}
+            onSelect={reportFlip} label={t('read.more')}>
             {done ? (
               <View style={[s.glassBtn, { backgroundColor: melted ? colors.card : 'rgba(255,255,255,0.14)' }]}>
                 <Icon name="more" size={20} color={melted ? colors.ink : colors.vanille} />
@@ -314,7 +394,7 @@ function ReadScreen({ id }: { id: string }) {
             <Text style={s.meltT} allowFontScaling={false}>
               {t('read.melted')}
             </Text>
-            <Text style={s.meltSub}>{force ? t('read.readNoScratch', { name: flip.sender }) : t('read.readIn', { s: seconds(ms), name: flip.sender })}</Text>
+            <Text style={s.meltSub}>{welcome ? t('welcome.readSub') : force ? t('read.readNoScratch', { name: flip.sender }) : t('read.readIn', { s: seconds(ms), name: flip.sender })}</Text>
             {flaqueW >= 180 ? (
               <View style={s.flaque}>
                 <Flaque width={flaqueW} />
@@ -326,7 +406,17 @@ function ReadScreen({ id }: { id: string }) {
             <Text style={s.sheetT}>{t('read.howFelt')}</Text>
             <Text style={s.sheetSub}>{t('read.howFeltSub', { name: flip.sender })}</Text>
             <Stickers reaction={reaction} onPick={sendReaction} />
-            <Button label={t('read.replyTo', { name: flip.sender })} onPress={reply} style={{ alignSelf: 'stretch', marginTop: 6 }} />
+            <Button label={welcome ? t('welcome.start') : t('read.replyTo', { name: flip.sender })} onPress={reply} style={{ alignSelf: 'stretch', marginTop: 6 }} />
+            {next ? (
+              <Animated.View entering={FadeIn.delay(500)}>
+                <Bounce onPress={goNext} scaleTo={0.97} accessibilityRole="button" accessibilityLabel={next.left > 1 ? t('read.nextMany', { name: next.item.sender.username, n: next.left }) : t('read.next', { name: next.item.sender.username })} style={s.next}>
+                  <Text style={s.nextT} numberOfLines={1}>
+                    {next.left > 1 ? t('read.nextMany', { name: next.item.sender.username, n: next.left }) : t('read.next', { name: next.item.sender.username })}
+                  </Text>
+                  <Icon name="arrow" size={16} color={colors.ink} />
+                </Bounce>
+              </Animated.View>
+            ) : null}
           </Animated.View>
         </>
       ) : (
@@ -335,30 +425,34 @@ function ReadScreen({ id }: { id: string }) {
             <>
               {/* la place des réactions est réservée : elles arrivent après la lecture, sans faire bouger le mot */}
               <View style={s.stickersBox}>{showReacts ? <Stickers reaction={reaction} onPick={sendReaction} /> : null}</View>
-              {/* VoiceOver n'annonce que les dernières secondes, pas tout le décompte */}
-              <Text style={[s.status, left <= HOT_S && s.statusHot]} accessibilityLiveRegion={left <= HOT_S ? 'polite' : 'none'}>
-                {t('read.meltsIn', { s: left })}
-              </Text>
+              {/* le décompte roule seconde par seconde, comme un compteur */}
+              <View style={s.statusRow} accessible accessibilityLiveRegion="polite" accessibilityLabel={t('read.meltsIn', { s: left })}>
+                {t('read.meltsIn', { s: '\u0000' }).split('\u0000').map((part, i) =>
+                  i === 0 ? (
+                    <Text key={i} style={[s.status, left <= HOT_S && s.statusHot]}>
+                      {part}
+                    </Text>
+                  ) : (
+                    <View key={i} style={s.statusRow}>
+                      <Rolling value={left} style={[s.status, left <= HOT_S && s.statusHot]} lineHeight={20} />
+                      <Text style={[s.status, left <= HOT_S && s.statusHot]}>{part}</Text>
+                    </View>
+                  ),
+                )}
+              </View>
               <View style={s.meltBar}>
                 <Animated.View style={[s.meltFill, left <= HOT_S && s.meltFillHot, barStyle]} />
               </View>
-              <Button label={t('read.reply')} tone="vanille" onPress={reply} style={{ alignSelf: 'stretch' }} />
+              <Button label={welcome ? t('welcome.startShort') : t('read.reply')} tone="vanille" onPress={reply} style={{ alignSelf: 'stretch' }} />
             </>
           ) : flip && photo ? (
             progress === 0 ? (
               <>
                 {/* le geste, c'est gratter : « lire sans gratter » reste là (accessibilité) mais en simple lien discret */}
-                {flip.mode === 'once' ? (
-                  <Glass style={s.hintRow}>
-                    <Text style={s.hintT}>{t('read.onceHint')}</Text>
-                  </Glass>
-                ) : null}
                 <Text style={s.rule}>{t('read.meltRule', { s: MELT_S })}</Text>
-                {flip.mode !== 'once' ? (
-                  <Bounce onPress={() => setForce(true)} accessibilityRole="button" accessibilityLabel={t('read.noScratch')} style={s.noScratch}>
-                    <Text style={s.noScratchT}>{t('read.noScratch')}</Text>
-                  </Bounce>
-                ) : null}
+                <Bounce onPress={() => setForce(true)} accessibilityRole="button" accessibilityLabel={t('read.noScratch')} style={s.noScratch}>
+                  <Text style={s.noScratchT}>{t('read.noScratch')}</Text>
+                </Bounce>
               </>
             ) : (
               <Glass style={[s.hintRow, { marginBottom: 30 }]}>
@@ -410,11 +504,13 @@ const s = StyleSheet.create({
   fromAgo: { ...tx.bold, fontSize: 12, marginTop: 2 },
   scrimTop: { position: 'absolute', top: 0, left: 0, right: 0 },
   zone: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  cover: { position: 'absolute', left: 0, right: 0, top: '30%', alignItems: 'center', gap: 6 },
+  cover: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '52%', justifyContent: 'flex-end', alignItems: 'center', gap: 6 },
   coverT: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 52, color: colors.white, textShadowColor: 'rgba(22,15,18,0.35)', textShadowRadius: 22, textShadowOffset: { width: 0, height: 2 } },
   coverSub: { ...tx.bold, fontSize: 15, color: colors.white, textShadowColor: 'rgba(22,15,18,0.45)', textShadowRadius: 10 },
   meltBox: { position: 'absolute', top: 0, left: 0, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   meltLayer: { position: 'absolute', top: 0, left: 0 },
+  next: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 48, paddingHorizontal: 12 },
+  nextT: { ...tx.black, fontSize: 15, color: colors.ink, flexShrink: 1 },
   meltedBox: { position: 'absolute', left: 24, right: 24, gap: 10 },
   meltT: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 56, color: colors.ink },
   meltSub: { ...tx.text, fontSize: 15, color: colors.muted },
@@ -429,8 +525,9 @@ const s = StyleSheet.create({
   rule: { ...tx.bold, fontSize: 12, color: colors.mutedOnDark, marginBottom: 14 },
   progTrack: { width: 90, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.3)', overflow: 'hidden' },
   progFill: { height: 5, borderRadius: 3, backgroundColor: colors.cerise },
-  status: { ...tx.black, fontSize: 15, color: colors.vanille, fontVariant: ['tabular-nums'] },
+  status: { ...tx.black, fontSize: 15, lineHeight: 20, color: colors.vanille },
   statusHot: { color: '#FF8FA6' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   stickersBox: { minHeight: STICKERS_H, justifyContent: 'center' },
   noScratch: { paddingVertical: 6, paddingHorizontal: 12, marginTop: -8, marginBottom: 8 },
   noScratchT: { ...tx.bold, fontSize: 13, color: colors.mutedOnDark, textDecorationLine: 'underline' },

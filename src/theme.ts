@@ -43,7 +43,7 @@ const ui = isDark
       line: 'rgba(255,255,255,0.09)', // filets
       sand: '#2B2427', // bouton désactivé, piste d'interrupteur
       dashed: 'rgba(255,255,255,0.22)', // pointillés (emplacements vides)
-      placeholder: 'rgba(255,255,255,0.5)',
+      placeholder: '#958B8F', // 5,4:1 sur les cartes (AA)
       riskBg: 'rgba(255,46,91,0.16)', // série en danger
       okBg: 'rgba(255,255,255,0.08)', // gratté, vu
       brandTint: 'rgba(255,46,91,0.16)', // pastille framboise douce
@@ -58,7 +58,7 @@ const ui = isDark
       line: 'rgba(22,15,18,0.08)',
       sand: '#ECE6E8',
       dashed: 'rgba(22,15,18,0.2)',
-      placeholder: 'rgba(22,15,18,0.5)',
+      placeholder: '#736A6D', // 4,6:1 sur les cartes (AA)
       riskBg: '#FFE6EB',
       okBg: '#F4F0F1',
       brandTint: '#FFE6EB',
@@ -97,12 +97,12 @@ export const tx = {
 /** Les titres en Climate Crisis sont très larges : ce facteur ramène une taille pensée pour une fonte normale. */
 export const displayScale = 0.72;
 
-/** Trait des autocollants et pastilles posés sur photo. */
-export const ink = { border: 3, shadow: 4 } as const;
+/** Trait et ombre dure des stickers. */
+export const ink = { border: 2.5, shadow: 4 } as const;
 
 export const layout = {
   headerHeight: 56,
-  shutterDock: 50, // l'espace réservé au déclencheur de la vitrine, sous les contrôles caméra (hors zone sûre)
+  tabBarHeight: 50, // barre d'onglets native (hors zone sûre)
   cardWidth: 300,
   cardRatio: 4 / 3, // hauteur photo / largeur
   stripHeight: 52,

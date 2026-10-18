@@ -6,7 +6,8 @@
   "exclude": [
     "node_modules",
     "supabase",
-    "amelioration"
+    "amelioration",
+    "nouvelles-ameliorations"
   ],
   "include": [
     "**/*.ts",

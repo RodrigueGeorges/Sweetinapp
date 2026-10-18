@@ -1,7 +1,7 @@
 // Envoie un flip : photo déjà déposée dans le bucket + message caché + destinataires.
 // Destinataires possibles : des amis, un lien privé (ouvrable une fois, même sans l'app), une story (lien public 24 h).
 // Vérifie le profil, le quota, la modération, puis prévient les amis et entretient les séries.
-import { STREAK_MILESTONES, admin, cors, currentUser, fail, json, randomToken, rateHit, sendPush, SITE_URL } from '../_shared/util.ts';
+import { STREAK_MILESTONES, admin, cors, currentUser, fail, json, randomToken, sendPush, SITE_URL } from '../_shared/util.ts';
 import { blockingCategory, moderate } from '../_shared/moderation.ts';
 import { copy } from '../_shared/copy.ts';
 
@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
 
   if (!path.startsWith(`${user.id}/`) || !path.endsWith('.jpg')) return fail('Photo invalide', 400, 'PHOTO_INVALID');
   if (message.length < 1 || message.length > 90) return fail('Le message doit faire entre 1 et 90 caractères', 400, 'MESSAGE_LENGTH');
-  if (!recipients.length && !link) return fail('Choisis au moins un ami', 400, 'NO_RECIPIENT');
+  if (!recipients.length && !link) return fail('Choisis au moins une personne', 400, 'NO_RECIPIENT');
 
   const db = admin();
   const dropPhoto = () => db.storage.from('flips').remove([path]);
@@ -32,8 +32,10 @@ Deno.serve(async (req) => {
   const { data: me } = await db.from('profiles').select('username, onboarded').eq('id', user.id).single();
   if (!me?.onboarded) return fail('Termine ton profil d’abord', 403, 'PROFILE_INCOMPLETE');
 
-  // quota anti-spam (compteur atomique partagé, voir migration v7)
-  if (!(await rateHit(db, user.id, 'send_flip', DAILY_LIMIT, 86_400))) {
+  // quota anti-spam
+  const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { count: sentToday } = await db.from('flips').select('*', { count: 'exact', head: true }).eq('sender_id', user.id).gte('created_at', since);
+  if ((sentToday ?? 0) >= DAILY_LIMIT) {
     await dropPhoto();
     return fail('Tu as envoyé beaucoup de sweets aujourd’hui, réessaie demain', 429, 'RATE_LIMIT');
   }
@@ -51,15 +53,10 @@ Deno.serve(async (req) => {
     return fail('Aucun destinataire valide', 400, 'NO_RECIPIENT');
   }
 
-  // modération de la photo et du message avant toute livraison (fail-closed : indisponible = refusé)
+  // modération de la photo et du message avant toute livraison
   const signed = await db.storage.from('flips').createSignedUrl(path, 120);
   if (signed.error) return fail('Photo introuvable, renvoie-la', 400, 'PHOTO_INVALID');
-  const mod = await moderate(message, signed.data.signedUrl);
-  if (mod === 'unavailable') {
-    await dropPhoto();
-    return fail('Le contrôle de sécurité ne répond pas, réessaie dans un instant', 503, 'MODERATION_UNAVAILABLE');
-  }
-  const verdict = blockingCategory(mod ?? undefined);
+  const verdict = blockingCategory((await moderate(message, signed.data.signedUrl)) ?? undefined);
   if (verdict) {
     await dropPhoto();
     console.warn('flip refusé par la modération', user.id, verdict);
@@ -81,27 +78,26 @@ Deno.serve(async (req) => {
   let streak = 0;
   if (allowed.length) {
     await db.from('flip_recipients').insert(allowed.map((rid: string) => ({ flip_id: flip.id, recipient_id: rid })));
-    // un seul aller-retour pour toutes les séries (record_streaks = même logique, en lot)
-    const { data: rows } = await db.rpc('record_streaks', { p_sender: user.id, p_recipients: allowed });
     const milestones: { rid: string; days: number }[] = [];
-    for (const r of (rows ?? []) as { recipient: string; days: number }[]) {
-      streak = Math.max(streak, r.days);
+    for (const rid of allowed) {
+      const { data: days } = await db.rpc('record_streak', { p_sender: user.id, p_recipient: rid });
+      const d = (days as number) ?? 0;
+      streak = Math.max(streak, d);
       // palier atteint aujourd'hui : on prévient l'ami une seule fois
-      if (STREAK_MILESTONES.has(r.days)) {
-        const [a, b] = [user.id, r.recipient].sort();
-        const { data: row } = await db.from('streaks').update({ celebrated: r.days }).eq('user_a', a).eq('user_b', b).lt('celebrated', r.days).select('celebrated');
-        if (row?.length) milestones.push({ rid: r.recipient, days: r.days });
+      if (STREAK_MILESTONES.has(d)) {
+        const [a, b] = [user.id, rid].sort();
+        const { data: row } = await db.from('streaks').update({ celebrated: d }).eq('user_a', a).eq('user_b', b).lt('celebrated', d).select('celebrated');
+        if (row?.length) milestones.push({ rid, days: d });
       }
     }
     for (const m of milestones) {
-      await sendPush(db, [m.rid], (_uid, lang) => ({ title: 'sweetin', body: copy.streakMilestone(lang, m.days, me.username), sound: 'streak.wav', channelId: 'streaks', data: { screen: 'contacts', kind: 'streak' } }));
+      await sendPush(db, [m.rid], (_uid, lang) => ({ title: 'sweetin', body: copy.streakMilestone(lang, m.days, me.username), sound: 'streak.wav', channelId: 'streaks', data: { screen: 'contacts', kind: 'streak' } }), 'streaks');
     }
-    // wake : le sweet réveille l'app en arrière-plan pour rafraîchir le widget et le badge
     await sendPush(db, allowed, (_uid, lang) => ({
-      title: 'sweetin',
-      body: copy.flip(lang, me.username),
+      title: me.username,
+      body: copy.flipBody(lang),
       data: { flip_id: flip.id },
-    }), true);
+    }), 'flips');
   }
 
   let link_url: string | null = null;

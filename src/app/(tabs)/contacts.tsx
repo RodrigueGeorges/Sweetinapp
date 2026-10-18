@@ -2,22 +2,22 @@ import * as Haptics from 'expo-haptics';
 import { Fondue } from '../../components/Fondue';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Bounce } from '../../components/Bounce';
+import { Rolling } from '../../components/Rolling';
 import { Icon, type IconName } from '../../components/Icon';
 import { Shimmer } from '../../components/Shimmer';
 import { Mark } from '../../components/Logo';
 import { NativeMenu, type MenuItem } from '../../components/NativeMenu';
 import { useToast } from '../../components/Toast';
-import { Avatar, Button, Empty, IconButton, Pop, Row, Screen, SectionLabel, StreakNum, Title, Header } from '../../components/ui';
+import { Avatar, Button, Empty, IconBadge, IconButton, Pop, Row, Screen, SectionLabel, StreakNum, Title, Header } from '../../components/ui';
 import { t } from '../../i18n';
 import { addFriend, blockUser, report, listFriends, myLostStreaks, myStreaks, removeFriend, restoreStreak, type LostStreak, type Profile, type Streak } from '../../lib/api';
 import { draft } from '../../lib/draft';
 import { shareInviteLink } from '../../lib/invite';
 import { track } from '../../lib/monitoring';
 import { play } from '../../lib/sounds';
-import { syncStreakReminder } from '../../lib/reminders';
 import { useSession } from '../../lib/session';
 import { colors, fonts, tx } from '../../theme';
 
@@ -37,8 +37,6 @@ export default function Contacts() {
     listFriends().then(setFriends).catch(() => setFriends([]));
     myStreaks().then(setStreaks).catch(() => {});
     myLostStreaks().then(setLost).catch(() => {});
-    // rappel local ~20 h replanifié à chaque état des séries (annulé si plus rien en danger)
-    syncStreakReminder();
   }, []);
 
   const relight = async (l: LostStreak) => {
@@ -58,8 +56,6 @@ export default function Contacts() {
       load();
     }, [load]),
   );
-
-  const compact = (friends?.length ?? 0) >= 5;
 
   const { best, atRisk, others } = useMemo(() => {
     const list = friends ?? [];
@@ -90,7 +86,8 @@ export default function Contacts() {
 
   const flipTo = (f: Profile) => {
     draft.reset();
-    draft.setReply(f.id, f.username);
+    draft.replyTo = f.id;
+    draft.replyName = f.username;
     router.navigate('/camera');
   };
 
@@ -143,19 +140,38 @@ export default function Contacts() {
       )}
 
       {best ? (
+        <Bounce onPress={() => flipTo(best.friend)} accessibilityRole="button" accessibilityLabel={`${t('streak.days', { n: best.days })} ${t('contacts.with', { name: best.friend.username })}. ${t('contacts.sendFlip')}`} haptic="light" scaleTo={0.97}>
         <Pop bg={colors.coeur} radius={28} borderWidth={0} style={s.hero}>
           <View style={s.heroBadge}>
             <Mark size={34} cone={colors.cacao} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.heroDays} allowFontScaling={false}>
-              {t('streak.days', { n: best.days })}
-            </Text>
+            {/* la série monte jusqu'à son total à l'ouverture */}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }} accessible accessibilityLabel={t('streak.days', { n: best.days })}>
+              {t('streak.days', { n: '\u0000' }).split('\u0000').map((part, i) =>
+                i === 0 ? (
+                  <Text key={i} style={s.heroDays} allowFontScaling={false}>
+                    {part}
+                  </Text>
+                ) : (
+                  <View key={i} style={{ flexDirection: 'row' }}>
+                    <Rolling value={best.days} from={0} style={s.heroDays} lineHeight={34} />
+                    <Text style={s.heroDays} allowFontScaling={false}>
+                      {part}
+                    </Text>
+                  </View>
+                ),
+              )}
+            </View>
             <Text style={s.heroSub} numberOfLines={2}>
               {t('contacts.with', { name: `@${best.friend.username}` })} · {t('contacts.best')}
             </Text>
           </View>
+          <View style={s.heroGo}>
+            <Icon name="snap" size={22} color={colors.cacao} />
+          </View>
         </Pop>
+        </Bounce>
       ) : friends && friends.length > 0 ? (
         <Pop radius={20} style={s.tip}>
           <Icon name="scoop" size={24} color={colors.ceriseText} />
@@ -163,11 +179,10 @@ export default function Contacts() {
         </Pop>
       ) : null}
 
-      {/* la liste prime : les tuiles d'ajout se compactent dès qu'on a une vraie bande */}
       <View style={s.tiles}>
-        <Tile icon="share" label={t('contacts.shareLink')} compact={compact} onPress={() => me && shareInviteLink(me)} />
-        <Tile icon="users" label={t('contacts.find')} compact={compact} onPress={() => router.push({ pathname: '/friends-setup', params: { from: 'contacts' } })} />
-        <Tile icon="scan" label={t('friends.scan')} compact={compact} onPress={() => router.push('/scan')} />
+        <Tile icon="share" label={t('contacts.shareLink')} onPress={() => me && shareInviteLink(me)} />
+        <Tile icon="users" label={t('contacts.find')} onPress={() => router.push({ pathname: '/friends-setup', params: { from: 'contacts' } })} />
+        <Tile icon="scan" label={t('friends.scan')} onPress={() => router.push('/scan')} />
       </View>
 
       {lost.map((l) => {
@@ -175,7 +190,7 @@ export default function Contacts() {
         if (!f) return null;
         return (
           <Row key={`lost-${f.id}`} style={s.lost}>
-            <Avatar name={f.username} uri={f.avatar_url} size={46} flavor />
+            <Avatar name={f.username} uri={f.avatar_url} size={46} />
             <View style={{ flex: 1 }}>
               <Text style={s.name}>{f.username}</Text>
               <Text style={s.lostSub}>{l.can_save ? `${t('streak.lost', { n: l.days })} · ${t('streak.saveHint')}` : t('streak.lost', { n: l.days })}</Text>
@@ -191,7 +206,7 @@ export default function Contacts() {
             const st = streaks.get(f.id)!;
             return (
               <Row key={f.id} style={s.risk}>
-                <Avatar name={f.username} uri={f.avatar_url} size={46} flavor />
+                <Avatar name={f.username} uri={f.avatar_url} size={46} />
                 <View style={{ flex: 1 }} accessible accessibilityLabel={t('streak.atRisk', { n: st.days, name: f.username })}>
                   <Text style={s.name}>
                     {f.username} · {t('contacts.daysShort', { n: st.days })}
@@ -245,7 +260,7 @@ export default function Contacts() {
               <Row style={{ marginHorizontal: 0, paddingHorizontal: 4 }}>
                 {/* toucher la ligne : envoyer un flip ; le « … » ouvre le menu natif (pas de bouton dans un bouton) */}
                 <Pressable onPress={() => flipTo(item)} accessibilityRole="button" accessibilityLabel={`${item.username}. ${t('contacts.sendFlip')}`} style={({ pressed }) => [s.rowMain, pressed && { opacity: 0.7 }]}>
-                  <Avatar name={item.username} uri={item.avatar_url} size={46} flavor />
+                  <Avatar name={item.username} uri={item.avatar_url} size={46} />
                   <Text style={[s.name, { flex: 1 }]}>{item.username}</Text>
                   {st && st.days > 0 ? <StreakNum days={st.days} size={22} /> : null}
                 </Pressable>
@@ -263,11 +278,11 @@ export default function Contacts() {
   );
 }
 
-function Tile({ icon, label, onPress, compact }: { icon: IconName; label: string; onPress: () => void; compact?: boolean }) {
+function Tile({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   return (
-    <Bounce onPress={onPress} style={[s.tile, compact && s.tileCompact]} accessibilityRole="button" accessibilityLabel={label} haptic="light" scaleTo={0.95}>
-      <Icon name={icon} size={compact ? 16 : 18} />
-      <Text style={[s.tileT, compact && { fontSize: 12.5 }]} numberOfLines={1}>
+    <Bounce onPress={onPress} style={s.tile} accessibilityRole="button" accessibilityLabel={label} haptic="light" scaleTo={0.95}>
+      <Icon name={icon} size={18} />
+      <Text style={s.tileT} numberOfLines={1}>
         {label}
       </Text>
     </Bounce>
@@ -276,7 +291,8 @@ function Tile({ icon, label, onPress, compact }: { icon: IconName; label: string
 
 const s = StyleSheet.create({
   rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  moreBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  moreBtn: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }, // 48 dp : cible tactile Android
+  heroGo: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.cerise, alignItems: 'center', justifyContent: 'center' },
   list: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 150 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   addInput: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.card, paddingHorizontal: 16, ...tx.bold, fontSize: 15, color: colors.ink },
@@ -288,7 +304,6 @@ const s = StyleSheet.create({
   tipT: { flex: 1, ...tx.bold, fontSize: 14, lineHeight: 19, color: colors.ink },
   tiles: { flexDirection: 'row', gap: 8 },
   tile: { flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8, borderRadius: 22, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line },
-  tileCompact: { height: 34, borderRadius: 17 },
   tileT: { ...tx.bold, fontSize: 13.5, color: colors.ink, flexShrink: 1 },
   risk: { backgroundColor: colors.riskBg, paddingVertical: 10 },
   lost: { backgroundColor: colors.card, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.dashed, paddingVertical: 10 },

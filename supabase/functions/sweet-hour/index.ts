@@ -60,9 +60,9 @@ Deno.serve(async (req) => {
 
   let sent = 0;
   for (let from = 0; ; from += 1000) {
-    const { data: all } = await db.from('push_tokens').select('token, lang').range(from, from + 999);
+    const { data: all } = await db.from('push_tokens').select('token, lang, mute').range(from, from + 999);
     if (!all?.length) break;
-    const tokens = all.filter((t: { token: string }) => !covered.has(t.token));
+    const tokens = all.filter((t: { token: string; mute?: string[] }) => !covered.has(t.token) && !(t.mute ?? []).includes('sweethour'));
     for (let i = 0; i < tokens.length; i += 100) {
       // ttl : une notification de Sweet Hour arrivée après la fin ne sert à rien
       const batch = tokens.slice(i, i + 100).map((t: { token: string; lang: string }) => ({ to: t.token, title: 'sweetin', body: copy.sweetHour(asLang(t.lang)), sound: 'sweethour.wav', channelId: 'sweethour', priority: 'high', ttl: 120, data: { screen: 'camera' } }));

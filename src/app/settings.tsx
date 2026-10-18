@@ -3,14 +3,14 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from '../components/Icon';
-import { Loader } from '../components/Loader';
 import { useToast } from '../components/Toast';
 import { Avatar, Button, Header, Pop, Screen, SectionLabel, Toggle } from '../components/ui';
-import { lang, t } from '../i18n';
+import { t, humanError } from '../i18n';
+import { registerForPush } from '../lib/push';
+import { clearHasAccount, LOGIN_ROUTE } from '../lib/returning';
 import { legal } from '../lib/legal';
-import { deleteAccount, mySettings, setAvatar, setDiscoverable } from '../lib/api';
+import { deleteAccount, mySettings, setAvatar, setDiscoverable, myMute, setMute, type PushKind } from '../lib/api';
 import { pickSelfie } from '../components/AvatarPicker';
-import { pushWanted, setPushWanted, unregisterPush } from '../lib/push';
 import { useSession } from '../lib/session';
 import { updateWidget } from '../lib/widget';
 import { analyticsAvailable, analyticsEnabled, setAnalytics } from '../lib/monitoring';
@@ -30,10 +30,28 @@ export default function Settings() {
   const [stats, setStats] = useState(analyticsEnabled());
   const [sounds, setSounds] = useState(soundsEnabled());
   const [disc, setDisc] = useState<boolean | null>(null);
-  const [notifs, setNotifs] = useState<boolean | null>(null);
   const [hasPhone, setHasPhone] = useState(false);
+  // notifications par type : null tant qu'elles ne sont pas autorisées sur ce téléphone
+  const [mute, setMuteState] = useState<PushKind[] | null | undefined>(undefined);
   useEffect(() => {
-    pushWanted().then(setNotifs).catch(() => {});
+    myMute().then(setMuteState).catch(() => setMuteState(null));
+  }, []);
+  const toggleKind = (k: PushKind, on: boolean) => {
+    const prev = mute ?? [];
+    const next = on ? prev.filter((x) => x !== k) : [...prev.filter((x) => x !== k), k];
+    setMuteState(next);
+    setMute(next).catch((e) => {
+      setMuteState(prev);
+      toast(humanError(e));
+    });
+  };
+  const enablePush = async () => {
+    if (session) await registerForPush(session.user.id, true).catch(() => {});
+    const m = await myMute().catch(() => null);
+    if (m === null) Linking.openSettings();
+    setMuteState(m);
+  };
+  useEffect(() => {
     mySettings()
       .then((x) => {
         setDisc(x.discoverable);
@@ -44,10 +62,9 @@ export default function Settings() {
 
   const logout = async () => {
     updateWidget([]);
-    await unregisterPush().catch(() => {});
     await supabase.auth.signOut();
-    router.dismissAll();
-    router.replace('/welcome');
+    if (router.canDismiss()) router.dismissAll(); // sans pile (lien ouvert à froid), dismissAll lève une erreur
+    router.replace(LOGIN_ROUTE); // on revient se connecter, pas redécouvrir l'app
   };
 
   const remove = () =>
@@ -60,14 +77,14 @@ export default function Settings() {
           setBusy(true);
           try {
             await deleteAccount();
+            clearHasAccount();
             updateWidget([]);
-            await unregisterPush().catch(() => {});
             await supabase.auth.signOut();
-            router.dismissAll();
+            if (router.canDismiss()) router.dismissAll(); // sans pile (lien ouvert à froid), dismissAll lève une erreur
             router.replace('/welcome');
             toast(t('settings.deleted'));
           } catch (e) {
-            toast((e as Error).message);
+            toast(humanError(e));
           } finally {
             setBusy(false);
           }
@@ -111,7 +128,7 @@ export default function Settings() {
                   toast(t('avatar.saved'));
                 } catch (e) {
                   setAvatarUri(null);
-                  toast((e as Error).message);
+                  toast(humanError(e));
                 }
               }}
             >
@@ -121,7 +138,7 @@ export default function Settings() {
               </View>
             </Pressable>
           ) : (
-            <Loader size={26} />
+            <ActivityIndicator color={colors.ink} />
           )}
           <View style={{ flex: 1 }}>
             <Text style={s.meName} numberOfLines={1}>
@@ -139,14 +156,19 @@ export default function Settings() {
             setSounds(v);
             setSoundsEnabled(v);
           })}
-          {notifs !== null && (
-            <>
-              <View style={s.sep} />
-              {sw(t('settings.notifs'), t('settings.notifsHint'), notifs, (v) => {
-                setNotifs(v);
-                setPushWanted(v, session?.user.id);
-              })}
-            </>
+        </View>
+
+        <SectionLabel style={s.sec}>{t('settings.notifTitle')}</SectionLabel>
+        <View style={s.group}>
+          {mute === null ? (
+            row(t('settings.notifEnable'), enablePush, 'sparkle')
+          ) : mute === undefined ? null : (
+            (['flips', 'reads', 'streaks', 'sweethour'] as PushKind[]).map((k, i) => (
+              <View key={k}>
+                {i > 0 ? <View style={s.sep} /> : null}
+                {sw(t(`settings.notif_${k}`), t(`settings.notif_${k}Hint`), !mute.includes(k), (v) => toggleKind(k, v))}
+              </View>
+            ))
           )}
         </View>
 
@@ -179,13 +201,6 @@ export default function Settings() {
 
         <SectionLabel style={s.sec}>{t('settings.info')}</SectionLabel>
         <View style={s.group}>
-          {/* la langue se choisit dans les réglages système de l'app (iOS 13+ / Android 13+) */}
-          <Pressable style={s.row} onPress={() => Linking.openSettings()} accessibilityRole="button">
-            <Icon name="settings" size={19} />
-            <Text style={[s.label, { flex: 1 }]}>{t('settings.language')}</Text>
-            <Text style={s.add}>{lang === 'fr' ? 'français' : 'english'}</Text>
-          </Pressable>
-          <View style={s.sep} />
           {legal.privacyUrl ? row(t('settings.privacy'), () => Linking.openURL(legal.privacyUrl!), 'lock') : null}
           {legal.termsUrl ? (
             <>
@@ -203,8 +218,6 @@ export default function Settings() {
             <>
               <View style={s.sep} />
               {row(t('settings.contact'), () => Linking.openURL(`mailto:${legal.supportEmail}`), 'message')}
-              <View style={s.sep} />
-              {row(t('settings.data'), () => Linking.openURL(`mailto:${legal.supportEmail}?subject=${encodeURIComponent(t('settings.dataSubject'))}`), 'send')}
             </>
           ) : null}
         </View>

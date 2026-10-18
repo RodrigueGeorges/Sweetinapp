@@ -32,7 +32,7 @@ jest.mock('../src/lib/session', () => ({
 jest.mock('../src/lib/invite', () => ({ shareInviteLink: jest.fn(async () => {}), inviteBySms: jest.fn() }));
 jest.mock('../src/lib/reminders', () => ({ syncStreakReminder: jest.fn(async () => {}) }));
 jest.mock('../src/lib/sounds', () => ({ play: jest.fn(), scratchLoop: { start: jest.fn(), stop: jest.fn() }, soundsEnabled: () => true, setSoundsEnabled: jest.fn() }));
-jest.mock('../src/lib/monitoring', () => ({ track: jest.fn() }));
+jest.mock('../src/lib/monitoring', () => ({ track: jest.fn() , setTestGroup: jest.fn() }));
 
 // le menu « … » devient des boutons par action, pour pouvoir les tester
 jest.mock('../src/components/NativeMenu', () => ({

@@ -11,7 +11,7 @@ import { useToast } from '../components/Toast';
 import { Icon, type IconName } from '../components/Icon';
 import { Logo } from '../components/Logo';
 import { Avatar, BackButton, BottomCTA, Button, Chip, Pop, Screen, SectionLabel, Title } from '../components/ui';
-import { t } from '../i18n';
+import { t, humanError } from '../i18n';
 import { acceptInvite, addFriend, inviteUrl, listFriends, mySettings, type Profile } from '../lib/api';
 import { findFriendsInContacts, shareMoreContacts, type ContactsResult } from '../lib/contacts';
 import { draft } from '../lib/draft';
@@ -19,7 +19,7 @@ import { registerForPush, shouldAskPush } from '../lib/push';
 import { parseInvite, shareInviteLink } from '../lib/invite';
 import { track } from '../lib/monitoring';
 import { useSession } from '../lib/session';
-import { colors, tx } from '../theme';
+import { colors, fonts, tx } from '../theme';
 
 const GOAL = 3;
 
@@ -70,7 +70,7 @@ export default function FriendsSetup() {
         track('contacts_matched', { scanned: r.scanned, found: r.friends.length, limited: r.limited });
       }
     } catch (e) {
-      toast((e as Error).message);
+      toast(humanError(e));
     } finally {
       setSearching(false);
     }
@@ -84,7 +84,7 @@ export default function FriendsSetup() {
       setCount((c) => c + 1);
       track('friend_added', { source: 'contacts' });
     } catch (e) {
-      toast((e as Error).message);
+      toast(humanError(e));
     }
   };
 
@@ -98,7 +98,7 @@ export default function FriendsSetup() {
       track('invite_pasted', { source: inv.source });
       refresh();
     } catch (e) {
-      toast((e as Error).message);
+      toast(humanError(e));
     }
   };
 
@@ -160,7 +160,7 @@ export default function FriendsSetup() {
                   const on = added.has(p.id);
                   return (
                     <View key={p.id} style={s.row}>
-                      <Avatar name={p.username} uri={p.avatar_url} flavor />
+                      <Avatar name={p.username} uri={p.avatar_url} />
                       <Text style={s.name}>{p.username}</Text>
                       <Button size="sm" tone={on ? 'white' : 'nuit'} icon={on ? 'check' : undefined} label={on ? t('friends.added') : t('friends.add')} onPress={() => !on && add(p)} accessibilityLabel={`${t('friends.add')} ${p.username}`} />
                     </View>

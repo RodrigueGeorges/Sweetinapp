@@ -13,12 +13,15 @@ jest.mock('../src/lib/supabase', () => ({
 const mockDeleteAccount = jest.fn(async () => {});
 const mockSetDiscoverable = jest.fn(async (_v: boolean) => {});
 const mockSetAvatar = jest.fn(async (_u: string) => {});
+const mockSetMute = jest.fn(async (_m: string[]) => {});
 jest.mock('../src/lib/api', () => ({
   ...jest.requireActual('../src/lib/api'),
   deleteAccount: () => mockDeleteAccount(),
   mySettings: jest.fn(async () => ({ discoverable: true, has_phone: false })),
   setAvatar: (u: string) => mockSetAvatar(u),
   setDiscoverable: (v: boolean) => mockSetDiscoverable(v),
+  myMute: jest.fn(async () => []),
+  setMute: (m: string[]) => mockSetMute(m),
 }));
 
 const mockUnregisterPush = jest.fn(async () => {});
@@ -33,7 +36,7 @@ jest.mock('../src/lib/push', () => ({
 
 const mockUpdateWidget = jest.fn((_a: unknown) => {});
 jest.mock('../src/lib/widget', () => ({ updateWidget: (a: unknown) => mockUpdateWidget(a), widgetStateFrom: jest.fn(), readWidgetState: jest.fn(async () => null), APP_GROUP: 'group.test', WIDGET_KEY: 'k' }));
-jest.mock('../src/lib/monitoring', () => ({ track: jest.fn(), analyticsAvailable: false, analyticsEnabled: () => false, setAnalytics: jest.fn(async () => {}), identify: jest.fn(), report: jest.fn() }));
+jest.mock('../src/lib/monitoring', () => ({ track: jest.fn(), analyticsAvailable: false, analyticsEnabled: () => false, setAnalytics: jest.fn(async () => {}), identify: jest.fn(), report: jest.fn() , setTestGroup: jest.fn() }));
 jest.mock('../src/lib/sounds', () => ({ play: jest.fn(), scratchLoop: { start: jest.fn(), stop: jest.fn() }, soundsEnabled: () => true, setSoundsEnabled: jest.fn(async () => {}) }));
 jest.mock('../src/lib/session', () => ({
   useSession: () => ({ session: { user: { id: 'me', email: 'moi@test.fr' } }, profile: { username: 'moi' }, ready: true, refreshProfile: jest.fn(async () => null) }),
@@ -44,7 +47,7 @@ jest.mock('expo-constants', () => ({ expoConfig: { version: '1.0.0', extra: {} }
 const mockReplace = jest.fn();
 const mockDismissAll = jest.fn();
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: (...a: unknown[]) => mockReplace(...a), dismissAll: () => mockDismissAll(), canGoBack: () => true },
+  router: { push: jest.fn(), back: jest.fn(), replace: (...a: unknown[]) => mockReplace(...a), dismissAll: () => mockDismissAll(), canDismiss: () => true, canGoBack: () => true },
   useFocusEffect: (cb: () => void) => require('react').useEffect(cb, []),
 }));
 
@@ -99,19 +102,18 @@ describe('settings · compte', () => {
     expect(setSoundsEnabled).toHaveBeenCalledWith(false);
   });
 
-  it('l’interrupteur notifications informe le serveur du choix', async () => {
+  it('l’interrupteur « sweets reçus » informe le serveur du choix', async () => {
     const { findByLabelText } = await renderSettings();
-    fireEvent(await findByLabelText(t('settings.notifs')), 'valueChange', false);
-    expect(mockSetPushWanted).toHaveBeenCalledWith(false, 'me');
+    fireEvent(await findByLabelText(t('settings.notif_flips')), 'valueChange', false);
+    expect(mockSetMute).toHaveBeenCalledWith(['flips']);
   });
 });
 
 describe('settings · départ', () => {
-  it('déconnexion : push désinscrit, widget vidé, signOut, retour welcome', async () => {
+  it('déconnexion : widget vidé, signOut, retour au login', async () => {
     const { findByText } = await renderSettings();
     fireEvent.press(await findByText(t('settings.logout')));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/welcome'));
-    expect(mockUnregisterPush).toHaveBeenCalled();
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: '/auth', params: { mode: 'login' } }));
     expect(mockUpdateWidget).toHaveBeenCalledWith([]);
     expect(mockSignOut).toHaveBeenCalled();
     expect(mockDismissAll).toHaveBeenCalled();

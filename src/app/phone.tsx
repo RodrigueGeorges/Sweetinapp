@@ -1,50 +1,55 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View, type TextInput } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, type TextInput } from 'react-native';
+// suit le clavier image par image (Android compris), au lieu du saut de KeyboardAvoidingView
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { NativeMenu } from '../components/NativeMenu';
 import { useToast } from '../components/Toast';
 import { Body, BottomCTA, Button, Field, Header, Screen, Title } from '../components/ui';
-import { t } from '../i18n';
+import { humanError, t } from '../i18n';
 import { requestPhoneCode, verifyPhoneCode } from '../lib/api';
-import { toE164 } from '../lib/contacts';
+import { deviceCountry, toE164 } from '../lib/contacts';
+import type { CountryCode } from 'libphonenumber-js';
 import { track } from '../lib/monitoring';
-import { colors, tx } from '../theme';
+import { colors, fonts, tx } from '../theme';
+
+/** Indicatifs proposés : la francophonie d'abord, puis les voisins. Le pays du téléphone est choisi par défaut. */
+const COUNTRIES: { c: CountryCode; flag: string; dial: string }[] = [
+  { c: 'FR', flag: '🇫🇷', dial: '+33' }, { c: 'BE', flag: '🇧🇪', dial: '+32' }, { c: 'CH', flag: '🇨🇭', dial: '+41' }, { c: 'LU', flag: '🇱🇺', dial: '+352' },
+  { c: 'MC', flag: '🇲🇨', dial: '+377' }, { c: 'CA', flag: '🇨🇦', dial: '+1' }, { c: 'MA', flag: '🇲🇦', dial: '+212' }, { c: 'DZ', flag: '🇩🇿', dial: '+213' },
+  { c: 'TN', flag: '🇹🇳', dial: '+216' }, { c: 'SN', flag: '🇸🇳', dial: '+221' }, { c: 'CI', flag: '🇨🇮', dial: '+225' }, { c: 'RE', flag: '🇷🇪', dial: '+262' },
+  { c: 'GP', flag: '🇬🇵', dial: '+590' }, { c: 'MQ', flag: '🇲🇶', dial: '+596' }, { c: 'GB', flag: '🇬🇧', dial: '+44' }, { c: 'ES', flag: '🇪🇸', dial: '+34' },
+  { c: 'DE', flag: '🇩🇪', dial: '+49' }, { c: 'IT', flag: '🇮🇹', dial: '+39' }, { c: 'US', flag: '🇺🇸', dial: '+1' },
+];
 
 /** Ajout du numéro (vérifié par SMS) pour être retrouvé par ses amis. */
 export default function Phone() {
   const toast = useToast();
   const [raw, setRaw] = useState('');
+  const [country, setCountry] = useState<CountryCode>(() => (COUNTRIES.some((x) => x.c === deviceCountry()) ? deviceCountry() : 'FR'));
+  const cur = COUNTRIES.find((x) => x.c === country) ?? COUNTRIES[0];
   const [e164, setE164] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
   const codeRef = useRef<TextInput>(null);
 
-  // le renvoi a un tempo : un SMS toutes les 30 s maximum
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const iv = setTimeout(() => setCooldown((n) => n - 1), 1000);
-    return () => clearTimeout(iv);
-  }, [cooldown]);
-
   const send = async () => {
-    const n = toE164(raw);
+    const n = toE164(raw, country); // un numéro tapé avec + garde son propre indicatif
     if (!n) return toast(t('err.PHONE_INVALID'));
     setBusy(true);
     try {
       await requestPhoneCode(n);
       setE164(n);
-      setCode('');
-      setCooldown(30);
       setTimeout(() => codeRef.current?.focus(), 200);
     } catch (e) {
-      toast((e as Error).message);
+      toast(humanError(e));
     } finally {
       setBusy(false);
     }
   };
 
-  const verify = useCallback(async () => {
-    if (!e164 || code.length < 4 || busy) return;
+  const verify = async () => {
+    if (!e164 || code.length < 4) return;
     setBusy(true);
     try {
       await verifyPhoneCode(e164, code);
@@ -53,24 +58,11 @@ export default function Phone() {
       if (router.canGoBack()) router.back();
       else router.replace('/friends-setup');
     } catch (e) {
-      toast((e as Error).message);
+      toast(humanError(e));
     } finally {
       setBusy(false);
     }
-  }, [e164, code, busy, toast]);
-
-  // 6 chiffres tapés : on vérifie sans attendre le bouton (une seule tentative par saisie)
-  const tried = useRef(false);
-  useEffect(() => {
-    if (code.length < 6) {
-      tried.current = false;
-      return;
-    }
-    if (!tried.current && e164 && !busy) {
-      tried.current = true;
-      verify();
-    }
-  }, [code, e164, busy, verify]);
+  };
 
   return (
     <Screen>
@@ -79,6 +71,12 @@ export default function Phone() {
         <View style={s.form}>
           <Title size={48}>{t('phone.title')}</Title>
           <Body>{t('phone.sub')}</Body>
+          <NativeMenu title={t('phone.country')} items={COUNTRIES.map((x) => ({ id: x.c, title: `${x.flag}  ${x.dial}` }))} onSelect={(id) => { setCountry(id as CountryCode); setE164(null); }} label={t('phone.country')}>
+            <View style={s.country}>
+              <Text style={s.countryT}>{cur.flag}  {cur.dial}</Text>
+              <Text style={s.countryChange}>{t('phone.countryChange')}</Text>
+            </View>
+          </NativeMenu>
           <Field
             label={t('phone.number')}
             value={raw}
@@ -90,7 +88,7 @@ export default function Phone() {
             textContentType="telephoneNumber"
             autoComplete="tel"
             autoFocus
-            placeholder={t('phone.placeholder')}
+            placeholder={country === 'FR' ? t('phone.placeholder') : t('phone.placeholderOther')}
           />
           {e164 ? (
             <View style={{ gap: 10 }}>
@@ -106,8 +104,8 @@ export default function Phone() {
                 style={s.code}
                 onSubmitEditing={verify}
               />
-              <Pressable onPress={send} hitSlop={8} accessibilityRole="button" disabled={cooldown > 0 || busy}>
-                <Text style={[s.resend, (cooldown > 0 || busy) && { color: colors.muted, textDecorationLine: 'none' }]}>{cooldown > 0 ? t('phone.resendIn', { n: cooldown }) : t('phone.resend')}</Text>
+              <Pressable onPress={send} hitSlop={8} accessibilityRole="button">
+                <Text style={s.resend}>{t('phone.resend')}</Text>
               </Pressable>
             </View>
           ) : null}
@@ -124,4 +122,7 @@ const s = StyleSheet.create({
   form: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 20 },
   code: { letterSpacing: 10, textAlign: 'center', ...tx.black, fontSize: 22 },
   resend: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
+  country: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, alignSelf: 'flex-start' },
+  countryT: { ...tx.black, fontSize: 17, color: colors.ink },
+  countryChange: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
 });

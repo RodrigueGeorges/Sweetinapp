@@ -13,7 +13,7 @@ let mockPermGranted = false;
 jest.mock('expo-camera', () => {
   const React = require('react');
   return {
-    useCameraPermissions: () => [{ granted: mockPermGranted }, mockRequestPerm],
+    useCameraPermissions: () => [{ granted: mockPermGranted, canAskAgain: true }, mockRequestPerm],
     CameraView: React.forwardRef((_p: unknown, ref: unknown) => {
       React.useImperativeHandle(ref, () => ({ takePictureAsync: mockTakePicture, pausePreview: jest.fn(async () => {}), resumePreview: jest.fn(async () => {}) }));
       return null;
@@ -61,7 +61,7 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 jest.mock('../src/lib/sounds', () => ({ play: jest.fn(), initSounds: jest.fn(), scratchLoop: { start: jest.fn(), stop: jest.fn() }, soundsEnabled: () => true, setSoundsEnabled: jest.fn() }));
-jest.mock('../src/lib/monitoring', () => ({ track: jest.fn(), wrapRoot: (c: unknown) => c }));
+jest.mock('../src/lib/monitoring', () => ({ track: jest.fn(), wrapRoot: (c: unknown) => c , setTestGroup: jest.fn() }));
 jest.mock('../src/lib/useSweetHour', () => ({ useSweetHour: () => null }));
 
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
@@ -91,7 +91,7 @@ describe('caméra · permissions', () => {
   });
 
   it('permission refusée → toast, pas de capture', async () => {
-    mockRequestPerm.mockResolvedValue({ granted: false });
+    mockRequestPerm.mockResolvedValue({ granted: false, canAskAgain: false });
     const { getByLabelText, findByText } = await renderCam();
     fireEvent.press(getByLabelText(t('camera.allow')));
     expect(await findByText(t('camera.permissionDenied'))).toBeTruthy();
