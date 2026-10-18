@@ -43,3 +43,19 @@ appId: host.exp.exponent
       visible: "Fast Refresh"
     commands:
       - pressKey: back
+# le dev menu peut se rouvrir tardivement sur émulateur lent (après un ANR « Wait ») :
+# on attend l'écran final OU un menu, puis dernière passe de fermeture
+- extendedWaitUntil:
+    visible:
+      text: "send my first sweet|envoyer mon premier sweet|welcome back.|te revoilà.|à gratter.|Continue|Continuer|Fast Refresh|Take photo|Prendre la photo"
+    timeout: 120000
+- runFlow:
+    when:
+      visible: "Continue|Continuer"
+    commands:
+      - tapOn: "Continue|Continuer"
+- runFlow:
+    when:
+      visible: "Fast Refresh"
+    commands:
+      - pressKey: back
