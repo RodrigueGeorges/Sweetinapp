@@ -117,14 +117,14 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   };
 
   const path = useMemo(() => {
-    const p = Skia.Path.Make();
+    const b = Skia.PathBuilder.Make();
     for (const s of strokes.current) {
       if (!s.length) continue;
-      p.moveTo(s[0].x, s[0].y);
-      p.lineTo(s[0].x + 0.1, s[0].y);
-      for (let i = 1; i < s.length; i++) p.lineTo(s[i].x, s[i].y);
+      b.moveTo(s[0].x, s[0].y);
+      b.lineTo(s[0].x + 0.1, s[0].y);
+      for (let i = 1; i < s.length; i++) b.lineTo(s[i].x, s[i].y);
     }
-    return p;
+    return b.detach();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 

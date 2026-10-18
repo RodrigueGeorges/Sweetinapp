@@ -72,11 +72,15 @@ export default function Welcome() {
               markWelcomeRead();
             }} />
           {/* autocollants posés de travers : le côté fun de la marque */}
-          <Animated.View pointerEvents="none" entering={ZoomIn.delay(420).springify().damping(9)} style={[s.stick, { top: -6, right: -34, backgroundColor: colors.citron, transform: [{ rotate: '8deg' }] }]}>
-            <Text style={s.stickT}>{from ? `@${from}` : t('welcome.stick')}</Text>
+          <Animated.View pointerEvents="none" entering={ZoomIn.delay(420).springify().damping(9)} style={[s.stickPos, { top: -6, right: -34 }]}>
+            <View style={[s.stick, { backgroundColor: colors.citron, transform: [{ rotate: '8deg' }] }]}>
+              <Text style={s.stickT}>{from ? `@${from}` : t('welcome.stick')}</Text>
+            </View>
           </Animated.View>
-          <Animated.View pointerEvents="none" entering={ZoomIn.delay(560).springify().damping(9)} style={[s.stick, { bottom: 18, left: -30, borderRadius: 12, backgroundColor: colors.cerise, transform: [{ rotate: '-5deg' }] }]}>
-            <Text style={s.stickT}>{t('react.melt')}</Text>
+          <Animated.View pointerEvents="none" entering={ZoomIn.delay(560).springify().damping(9)} style={[s.stickPos, { bottom: 18, left: -30 }]}>
+            <View style={[s.stick, { borderRadius: 12, backgroundColor: colors.cerise, transform: [{ rotate: '-5deg' }] }]}>
+              <Text style={s.stickT}>{t('react.melt')}</Text>
+            </View>
           </Animated.View>
         </View>
         <Animated.Text key={revealed ? 'done' : 'hint'} entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={s.hint}>
@@ -107,7 +111,8 @@ export default function Welcome() {
 const s = StyleSheet.create({
   top: { alignItems: 'center' },
   hero: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, gap: 16 },
-  stick: { position: 'absolute', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 3, borderColor: colors.white, shadowColor: '#160F12', shadowOpacity: 0.22, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5 },
+  stickPos: { position: 'absolute' },
+  stick: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 3, borderColor: colors.white, shadowColor: '#160F12', shadowOpacity: 0.22, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5 },
   stickT: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 16, color: colors.cacao },
   hint: { ...tx.bold, fontSize: 14, color: colors.muted },
   bottom: { paddingHorizontal: 24, gap: 8 },
