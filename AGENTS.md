@@ -39,3 +39,28 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Local Android dev build (no EAS account needed)
+
+Known-good setup on this machine (Windows):
+
+```bash
+export JAVA_HOME='C:\Users\DELL\tools\jdk\jdk-21.0.12.1+1'
+export ANDROID_HOME='C:\Users\DELL\AppData\Local\Android\Sdk'
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export PATH="$PATH:/c/Users/DELL/AppData/Local/Android/Sdk/platform-tools"
+npx expo run:android --no-bundler   # generate android/, build APK, install on emulator
+npx expo start --dev-client --port 8081   # serve the bundle to the dev client
+```
+
+Prerequisites already installed once via sdkmanager: `ndk;27.1.12297006`, `cmake;3.22.1`
+(the NDK version comes from expo-autolinking-plugin's default). Skia prebuilt libs
+are installed by the `postinstall` script (`install-skia`).
+
+Emulator notes:
+- If the dev client ANRs on first cold start ("failed to complete startup") on a
+  loaded host, precompile the dex profile once:
+  `adb shell cmd package compile -m speed-profile -f app.sweetin.android`
+- Dev client package: `app.sweetin.android` (Expo Go is `host.exp.exponent`).
+- The dev client shows a floating dev-menu button; Expo Go shows a "Tools" FAB —
+  neither exists in production builds.

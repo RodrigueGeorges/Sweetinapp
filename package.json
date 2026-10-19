@@ -92,7 +92,7 @@
     "submit:android": "eas submit -p android --latest",
     "gen:types": "supabase gen types typescript --linked > src/lib/database.types.ts",
     "test": "jest --forceExit",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package && install-skia"
   },
   "private": true,
   "jest": {
