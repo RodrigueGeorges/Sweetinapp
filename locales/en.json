@@ -1,0 +1,7 @@
+{
+  "CFBundleDisplayName": "Sweetin",
+  "NSCameraUsageDescription": "Sweetin uses the camera to take the photo for your sweet and to scan a friend's QR code.",
+  "NSPhotoLibraryUsageDescription": "Sweetin opens your photos when you pick an image for your sweet or your profile photo.",
+  "NSContactsUsageDescription": "Sweetin compares encrypted fingerprints of your contacts' numbers to show you who is already on Sweetin. Nothing is stored.",
+  "NSUserNotificationsUsageDescription": "Sweetin sends you notifications for the Sweet Hour and your friends' sweets."
+}

@@ -3,7 +3,7 @@ import type { ExpoConfig } from 'expo/config';
 // Identifiants à adapter avant la première publication (voir README).
 const BUNDLE_ID = process.env.APP_BUNDLE_ID ?? 'app.sweetin.ios';
 const PACKAGE = process.env.APP_PACKAGE ?? 'app.sweetin.android';
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '';
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || '3f4fab34-ff2f-47eb-ab12-7341ee2925b5';
 // Domaine des liens d'invitation (https://sweetin.app/u/<pseudo>), voir web/.well-known
 const LINK_DOMAIN = process.env.APP_LINK_DOMAIN ?? 'sweetin.app';
 const APP_GROUP = `group.${BUNDLE_ID}`;
@@ -18,6 +18,7 @@ if (process.env.EAS_BUILD_PROFILE === 'production') {
 const config: ExpoConfig = {
   name: 'Sweetin',
   slug: 'sweetin',
+  owner: 'rodrigueetifiers-team',
   scheme: 'sweetin',
   version: '1.0.0',
   orientation: 'portrait',
@@ -28,7 +29,6 @@ const config: ExpoConfig = {
     bundleIdentifier: BUNDLE_ID,
     // identifiant d'équipe Apple (developer.apple.com > Membership), requis pour signer le widget
     appleTeamId: process.env.APPLE_TEAM_ID,
-    buildNumber: '1',
     // iOS 18+ : icône sombre et teintée (sinon iOS en fabrique une lui-même)
     icon: { light: './assets/icon.png', dark: './assets/icon-dark.png', tinted: './assets/icon-tinted.png' },
     supportsTablet: false,
@@ -59,7 +59,6 @@ const config: ExpoConfig = {
   locales: { fr: './locales/fr.json', en: './locales/en.json' },
   android: {
     package: PACKAGE,
-    versionCode: 1,
     adaptiveIcon: {
       backgroundColor: '#FF2E5B',
       foregroundImage: './assets/android-icon-foreground.png',
