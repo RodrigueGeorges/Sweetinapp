@@ -8,19 +8,10 @@ import { useToast } from '../components/Toast';
 import { Body, BottomCTA, Button, Field, Header, Screen, Title } from '../components/ui';
 import { humanError, t } from '../i18n';
 import { requestPhoneCode, verifyPhoneCode } from '../lib/api';
-import { deviceCountry, toE164 } from '../lib/contacts';
+import { deviceCountry, PHONE_COUNTRIES as COUNTRIES, toE164 } from '../lib/contacts';
 import type { CountryCode } from 'libphonenumber-js';
 import { track } from '../lib/monitoring';
 import { colors, fonts, tx } from '../theme';
-
-/** Indicatifs proposés : la francophonie d'abord, puis les voisins. Le pays du téléphone est choisi par défaut. */
-const COUNTRIES: { c: CountryCode; flag: string; dial: string }[] = [
-  { c: 'FR', flag: '🇫🇷', dial: '+33' }, { c: 'BE', flag: '🇧🇪', dial: '+32' }, { c: 'CH', flag: '🇨🇭', dial: '+41' }, { c: 'LU', flag: '🇱🇺', dial: '+352' },
-  { c: 'MC', flag: '🇲🇨', dial: '+377' }, { c: 'CA', flag: '🇨🇦', dial: '+1' }, { c: 'MA', flag: '🇲🇦', dial: '+212' }, { c: 'DZ', flag: '🇩🇿', dial: '+213' },
-  { c: 'TN', flag: '🇹🇳', dial: '+216' }, { c: 'SN', flag: '🇸🇳', dial: '+221' }, { c: 'CI', flag: '🇨🇮', dial: '+225' }, { c: 'RE', flag: '🇷🇪', dial: '+262' },
-  { c: 'GP', flag: '🇬🇵', dial: '+590' }, { c: 'MQ', flag: '🇲🇶', dial: '+596' }, { c: 'GB', flag: '🇬🇧', dial: '+44' }, { c: 'ES', flag: '🇪🇸', dial: '+34' },
-  { c: 'DE', flag: '🇩🇪', dial: '+49' }, { c: 'IT', flag: '🇮🇹', dial: '+39' }, { c: 'US', flag: '🇺🇸', dial: '+1' },
-];
 
 /** Ajout du numéro (vérifié par SMS) pour être retrouvé par ses amis. */
 export default function Phone() {

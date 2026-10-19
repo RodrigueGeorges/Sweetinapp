@@ -11,6 +11,7 @@ import { Bounce } from '../components/Bounce';
 import { HoloLayer } from '../components/Holo';
 import { Icon } from '../components/Icon';
 import { TiltCard } from '../components/TiltCard';
+import { useToast } from '../components/Toast';
 import { BottomCTA, Button, Header, Screen } from '../components/ui';
 import { t, type Key } from '../i18n';
 import { draft } from '../lib/draft';
@@ -29,6 +30,7 @@ const IDEAS: Key[] = ['create.idea1', 'create.idea2', 'create.idea3', 'create.id
 /** Carte polaroid : on valide la photo (recto), elle se retourne, on écrit le secret (verso). */
 export default function Create() {
   const { session } = useSession();
+  const toast = useToast();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const w = Math.max(160, Math.min(layout.cardWidth, screenW - 72, (screenH - 360) / layout.cardRatio));
   const photoH = w * layout.cardRatio;
@@ -43,7 +45,7 @@ export default function Create() {
   const tilt = { x: useDerivedValue(() => raw.x.value * on.value), y: useDerivedValue(() => raw.y.value * on.value) };
 
   // arrivée depuis la caméra : la photo plein écran se réduit et devient la carte (aucun flash, aucun fondu blanc)
-  const fromCam = useRef(draft.fromCamera && !reduce).current;
+  const [fromCam] = useState(() => !!(draft.fromCamera && !reduce));
   useEffect(() => {
     draft.fromCamera = false;
   }, []);
@@ -51,14 +53,27 @@ export default function Create() {
   const [introDone, setIntroDone] = useState(!fromCam);
   const photoRef = useRef<View>(null);
   const measured = useRef(false);
+  const doneRef = useRef(!fromCam);
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
   const tw = useSharedValue(screenW);
   const th = useSharedValue(screenH);
   const landed = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
     setIntroDone(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
+  // filet : si la mesure ou le ressort déraille (photo corrompue, frame sautée), la carte se pose quand même — sinon écran vide sans issue
+  useEffect(() => {
+    if (!fromCam) return;
+    const bail = setTimeout(() => {
+      intro.value = 1;
+      landed();
+    }, 1400);
+    return () => clearTimeout(bail);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const onPhotoLayout = () => {
     if (!fromCam || measured.current) return;
     measured.current = true;
@@ -122,6 +137,15 @@ export default function Create() {
     setText(t(k).slice(0, MAX));
   };
 
+  // photo illisible (fichier corrompu, décodage échoué) : on explique et on reprend au lieu d'une carte blanche
+  const photoGone = useRef(false);
+  const onPhotoError = () => {
+    if (photoGone.current) return;
+    photoGone.current = true;
+    toast(t('camera.failed'));
+    router.back();
+  };
+
   if (!draft.uri) return <Redirect href={session ? '/camera' : '/try'} />;
   const cardH = photoH + layout.stripHeight + 7;
 
@@ -139,7 +163,7 @@ export default function Create() {
                 <View style={s.plate} />
                 <View style={s.card}>
                   <View ref={photoRef} onLayout={onPhotoLayout} collapsable={false} style={{ width: w - 14, height: photoH, borderRadius: 16, overflow: 'hidden' }}>
-                    <Image source={{ uri: draft.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                    <Image source={{ uri: draft.uri }} style={StyleSheet.absoluteFill} contentFit="cover" onError={onPhotoError} />
                     {!reduce && <HoloLayer width={w - 14} height={photoH} tilt={tilt} strength={0.4} />}
                   </View>
                   <View style={s.strip}>

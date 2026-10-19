@@ -318,7 +318,7 @@ export const en: Record<Key, string> = {
   'phone.title': 'your number.',
   'phone.sub': 'so friends who have it saved can find you. never shown.',
   'phone.number': 'phone number',
-  'phone.placeholder': '+1 415 555 0123',
+  'phone.placeholder': '06 12 34 56 78',
   'phone.country': 'country code',
   'phone.countryChange': 'change',
   'phone.placeholderOther': 'your number',

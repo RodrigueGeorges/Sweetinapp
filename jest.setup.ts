@@ -26,6 +26,8 @@ jest.mock('react-native-reanimated', () => {
   if (typeof mock.useReducedMotion !== 'function') mock.useReducedMotion = () => false;
   return mock;
 });
+// @expo/ui est natif : MenuView affiche juste ses enfants en tests
+jest.mock('@expo/ui/community/menu', () => ({ MenuView: ({ children }: { children?: unknown }) => children ?? null }));
 // Skia est ESM + natif : chaque export devient un composant qui rend ses enfants,
 // et l'objet Skia une chaîne appelable (Path.Make, Paint, RuntimeEffect.Make…)
 jest.mock('@shopify/react-native-skia', () => {

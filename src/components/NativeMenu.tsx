@@ -1,4 +1,5 @@
 import { MenuView } from '@expo/ui/community/menu';
+import Constants from 'expo-constants';
 import type { ReactNode } from 'react';
 import { Alert, Platform, Pressable } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
@@ -11,7 +12,8 @@ export type MenuItem = { id: string; title: string; sf?: SFSymbol; destructive?:
  * Sur le web (aperçu), repli sur une alerte.
  */
 export function NativeMenu({ title, items, onSelect, children, longPress, label }: { title?: string; items: MenuItem[]; onSelect: (id: string) => void; children: ReactNode; longPress?: boolean; label?: string }) {
-  if (Platform.OS === 'web') {
+  // MenuView est natif : absent d'Expo Go (et du web) — repli sur une alerte, le déclencheur reste visible
+  if (Platform.OS === 'web' || Constants.appOwnership === 'expo') {
     return (
       <Pressable
         accessibilityRole="button"

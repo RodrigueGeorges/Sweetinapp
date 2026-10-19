@@ -23,6 +23,15 @@ export function toE164(raw: string, country: CountryCode = deviceCountry()): str
 /** Empreinte envoyée au serveur : SHA-256 des chiffres du numéro international (sans le +). */
 export const phoneHash = (e164: string) => digestStringAsync(CryptoDigestAlgorithm.SHA256, e164.replace(/\D/g, ''));
 
+/** Indicatifs proposés au choix : la francophonie d'abord, puis les voisins. */
+export const PHONE_COUNTRIES: { c: CountryCode; flag: string; dial: string }[] = [
+  { c: 'FR', flag: '🇫🇷', dial: '+33' }, { c: 'BE', flag: '🇧🇪', dial: '+32' }, { c: 'CH', flag: '🇨🇭', dial: '+41' }, { c: 'LU', flag: '🇱🇺', dial: '+352' },
+  { c: 'MC', flag: '🇲🇨', dial: '+377' }, { c: 'CA', flag: '🇨🇦', dial: '+1' }, { c: 'MA', flag: '🇲🇦', dial: '+212' }, { c: 'DZ', flag: '🇩🇿', dial: '+213' },
+  { c: 'TN', flag: '🇹🇳', dial: '+216' }, { c: 'SN', flag: '🇸🇳', dial: '+221' }, { c: 'CI', flag: '🇨🇮', dial: '+225' }, { c: 'RE', flag: '🇷🇪', dial: '+262' },
+  { c: 'GP', flag: '🇬🇵', dial: '+590' }, { c: 'MQ', flag: '🇲🇶', dial: '+596' }, { c: 'GB', flag: '🇬🇧', dial: '+44' }, { c: 'ES', flag: '🇪🇸', dial: '+34' },
+  { c: 'DE', flag: '🇩🇪', dial: '+49' }, { c: 'IT', flag: '🇮🇹', dial: '+39' }, { c: 'US', flag: '🇺🇸', dial: '+1' },
+];
+
 export type ContactsResult = { status: 'denied' } | { status: 'ok'; friends: Profile[]; scanned: number; shared: number; limited: boolean };
 
 /**

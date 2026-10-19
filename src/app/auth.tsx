@@ -9,10 +9,12 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Svg, { Path } from 'react-native-svg';
 import { useToast } from '../components/Toast';
 import { Icon } from '../components/Icon';
+import { NativeMenu } from '../components/NativeMenu';
 import { Sticker } from '../components/Reactions';
 import Animated, { ZoomIn } from 'react-native-reanimated';
+import type { CountryCode } from 'libphonenumber-js';
 import { Body, BottomCTA, Button, Field, Header, Pop, Screen, Title } from '../components/ui';
-import { toE164 } from '../lib/contacts';
+import { deviceCountry, PHONE_COUNTRIES, toE164 } from '../lib/contacts';
 import { legal } from '../lib/legal';
 import { t, humanError } from '../i18n';
 import { signInWithApple, signInWithGoogle } from '../lib/api';
@@ -40,6 +42,8 @@ export default function Auth() {
   const [appleOk, setAppleOk] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState<CountryCode>(() => (PHONE_COUNTRIES.some((x) => x.c === deviceCountry()) ? deviceCountry() : 'FR'));
+  const cur = PHONE_COUNTRIES.find((x) => x.c === country) ?? PHONE_COUNTRIES[0];
   const [e164, setE164] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [cooldown, setCooldown] = useState(0);
@@ -66,7 +70,7 @@ export default function Auth() {
   /** Code par SMS : inscription et connexion au même endroit (Supabase crée le compte si besoin). */
   const sendCode = async () => {
     if (busy) return;
-    const n = toE164(phone);
+    const n = toE164(phone, country); // un numéro tapé avec + garde son propre indicatif
     if (!n) return toast(t('auth.badPhone'));
     setBusy(true);
     try {
@@ -209,6 +213,12 @@ export default function Auth() {
           </View>
           {method === 'phone' ? (
             <>
+              <NativeMenu title={t('phone.country')} items={PHONE_COUNTRIES.map((x) => ({ id: x.c, title: `${x.flag}  ${x.dial}` }))} onSelect={(id) => { setCountry(id as CountryCode); setE164(null); }} label={t('phone.country')}>
+                <View style={s.country}>
+                  <Text style={s.countryT}>{cur.flag}  {cur.dial}</Text>
+                  <Text style={s.countryChange}>{t('phone.countryChange')}</Text>
+                </View>
+              </NativeMenu>
               <Field
                 label={t('phone.number')}
                 value={phone}
@@ -224,7 +234,7 @@ export default function Auth() {
                 autoCorrect={false}
                 returnKeyType="done"
                 onSubmitEditing={sendCode}
-                placeholder={t('phone.placeholder')}
+                placeholder={country === 'FR' ? t('phone.placeholder') : t('phone.placeholderOther')}
                 right={e164 ? <OkDot /> : null}
               />
               {e164 ? (
@@ -309,7 +319,7 @@ export default function Auth() {
             label={method === 'email' ? t('auth.validate') : e164 ? t('phone.verify') : t('phone.send')}
             arrow
             loading={busy}
-            disabled={method === 'email' ? !ready : e164 ? code.length < 6 : !toE164(phone)}
+            disabled={method === 'email' ? !ready : e164 ? code.length < 6 : !toE164(phone, country)}
             onPress={method === 'email' ? submit : e164 ? verify : sendCode}
             haptic="medium"
           />
@@ -367,6 +377,9 @@ const s = StyleSheet.create({
   links: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   code: { letterSpacing: 10, textAlign: 'center' as const, ...tx.black, fontSize: 22 },
   forgot: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
+  country: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, alignSelf: 'flex-start' },
+  countryT: { ...tx.black, fontSize: 17, color: colors.ink },
+  countryChange: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
   sent: { backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 20 },
   legal: { ...tx.text, fontSize: 12, lineHeight: 16, color: colors.muted, textAlign: 'center', textDecorationLine: 'underline' },
   ok: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.pistache, alignItems: 'center', justifyContent: 'center' },
