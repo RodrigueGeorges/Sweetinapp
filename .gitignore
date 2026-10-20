@@ -48,3 +48,7 @@ sweetinapp.zip
 amelioration/
 nouvelles-ameliorations/
 .ux-audit/
+
+# builds locaux
+*.apk
+*.aab
