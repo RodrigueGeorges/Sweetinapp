@@ -17,7 +17,7 @@ const mockSetMute = jest.fn(async (_m: string[]) => {});
 jest.mock('../src/lib/api', () => ({
   ...jest.requireActual('../src/lib/api'),
   deleteAccount: () => mockDeleteAccount(),
-  mySettings: jest.fn(async () => ({ discoverable: true, has_phone: false })),
+  mySettings: jest.fn(async () => ({ discoverable: true, has_phone: true })),
   setAvatar: (u: string) => mockSetAvatar(u),
   setDiscoverable: (v: boolean) => mockSetDiscoverable(v),
   myMute: jest.fn(async () => []),

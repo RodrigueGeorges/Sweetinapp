@@ -179,7 +179,7 @@ export default function Settings() {
             <Text style={[s.label, { flex: 1 }]}>{t('settings.phone')}</Text>
             {hasPhone ? <Icon name="check" size={18} stroke={3} /> : <Text style={s.add}>{t('settings.phoneAdd')}</Text>}
           </Pressable>
-          {disc !== null && (
+          {disc !== null && hasPhone && (
             <>
               <View style={s.sep} />
               {sw(t('settings.discoverable'), t('settings.discoverableHint'), disc, (v) => {
