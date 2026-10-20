@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiError, forgetLocalPhoto, sendFlip, type Mode } from './api';
+import { ApiError, forgetLocalPhoto, sendFlip, type Mode, type WordStyle } from './api';
 
 const KEY = 'sweetin.sendQueue';
 const MAX = 5;
@@ -7,7 +7,7 @@ const MAX = 5;
 const TTL_MS = 7 * 24 * 3600 * 1000;
 
 /** Un sweet accepté mais pas encore parti (envoi tenté hors connexion). */
-export type QueuedSend = { localUri: string; message: string; mode: Mode; recipients: string[]; preview: string | null; queued_at: number };
+export type QueuedSend = { localUri: string; message: string; mode: Mode; recipients: string[]; preview: string | null; wordStyle?: WordStyle | null; queued_at: number };
 
 export async function pendingSends(): Promise<QueuedSend[]> {
   try {
@@ -70,7 +70,7 @@ export async function flushSendQueue(): Promise<number> {
     for (let i = 0; i < list.length; i++) {
       const q = list[i];
       try {
-        await sendFlip({ localUri: q.localUri, message: q.message, mode: q.mode, recipients: q.recipients, preview: q.preview });
+        await sendFlip({ localUri: q.localUri, message: q.message, mode: q.mode, recipients: q.recipients, preview: q.preview, wordStyle: q.wordStyle });
         sent++;
       } catch (e) {
         const code = e instanceof ApiError ? e.code : undefined;

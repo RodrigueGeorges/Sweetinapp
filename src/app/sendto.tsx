@@ -92,7 +92,7 @@ export default function SendTo() {
     let preview: string | null = null;
     try {
       preview = await makePreview(uri);
-      const r = await sendFlip({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], link, preview }, setProgress);
+      const r = await sendFlip({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], link, preview, wordStyle: draft.wordStyle }, setProgress);
       signature();
       play(r.streak >= 2 ? 'streak' : 'sent');
       track('flip_sent', { recipients: r.sent_to, sweet_hour: r.sweet_hour, reply: !!draft.replyTo, link: link ?? 'none' });
@@ -127,7 +127,7 @@ export default function SendTo() {
       const err = e instanceof ApiError ? e : new ApiError(undefined, (e as Error).message, true);
       // hors connexion : le sweet attend dans la file et partira tout seul (les liens doivent repasser par le partage)
       if (err.code === 'OFFLINE' && !link && selected.size && uri) {
-        await queueSend({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], preview });
+        await queueSend({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], preview, wordStyle: draft.wordStyle });
         draft.reset();
         track('send_queued', { recipients: selected.size });
         toast(t('queue.saved'));

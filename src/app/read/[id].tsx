@@ -308,6 +308,7 @@ function ReadScreen() {
             <ScratchCard
               photo={photo}
               message={flip.message}
+              wordStyle={flip.word_style}
               mode="free" // l'ancien mode « un seul passage » est retiré : tout se gratte librement
               width={screenW}
               height={screenH}

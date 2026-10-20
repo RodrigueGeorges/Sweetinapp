@@ -55,13 +55,15 @@ type Props = {
   /** Place prise en haut (en-tête) et en bas (réactions, compte à rebours, bouton) : le mot se centre entre les deux, sans jamais passer dessous. */
   safeTop?: number;
   safeBottom?: number;
+  /** Placement choisi par l'expéditeur (décalage relatif au centre + échelle), sinon le mot se centre tout seul. */
+  wordStyle?: { x: number; y: number; scale: number } | null;
 };
 
 /**
  * La photo est dessinée sur le GPU (Skia) au-dessus du dos de la carte, avec un reflet holographique qui suit l'inclinaison.
  * Le doigt efface la photo avec un pinceau doux et laisse des paillettes ; au moment où le message apparaît, la carte éclate en confettis.
  */
-export function ScratchCard({ photo, message, mode, width, height, radius = 16, showHint, tilt, onFirstTouch, onProgress, onReveal, forceReveal, melting, safeTop = 0, safeBottom = 0 }: Props) {
+export function ScratchCard({ photo, message, mode, width, height, radius = 16, showHint, tilt, onFirstTouch, onProgress, onReveal, forceReveal, melting, safeTop = 0, safeBottom = 0, wordStyle }: Props) {
   const reduce = useReducedMotion();
   const texture = useScratchTexture();
   const strokes = useRef<{ x: number; y: number }[][]>([]);
@@ -82,7 +84,10 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   const front = useSharedValue(1);
   const msg = useSharedValue(0.9);
   const frontStyle = useAnimatedStyle(() => ({ opacity: front.value }));
-  const msgStyle = useAnimatedStyle(() => ({ transform: [{ scale: msg.value }] }));
+  const wx = wordStyle?.x ?? 0;
+  const wy = wordStyle?.y ?? 0;
+  const ws = wordStyle?.scale ?? 1;
+  const msgStyle = useAnimatedStyle(() => ({ transform: [{ translateX: wx * width }, { translateY: wy * height }, { scale: msg.value * ws }] }));
   // fonte du mot, de 0 à 1
   const meltP = useSharedValue(0);
   useEffect(() => {

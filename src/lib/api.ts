@@ -34,7 +34,10 @@ export type SentItem = {
   preview?: string | null;
 };
 
-export type OpenedFlip = { id: string; sender_id: string; sender: string; sender_avatar?: string | null; preview?: string | null; mode: Mode; created_at: string; photo_url: string; message: string };
+/** Placement du mot sur le verso : décalage relatif au centre (fraction de la taille de la carte) et échelle. */
+export type WordStyle = { x: number; y: number; scale: number };
+
+export type OpenedFlip = { id: string; sender_id: string; sender: string; sender_avatar?: string | null; preview?: string | null; mode: Mode; created_at: string; photo_url: string; message: string; word_style?: WordStyle | null };
 
 /** Erreur lisible par l'utilisateur. `code` vient du serveur (voir i18n `err.*`). */
 export class ApiError extends Error {
@@ -270,11 +273,11 @@ export function forgetLocalPhoto(uri: string) {
 
 export type SendResult = { id: string; sent_to: number; sweet_hour: boolean; link_url: string | null; link: LinkKind | null; streak: number };
 
-export async function sendFlip(input: { localUri: string; message: string; mode: Mode; recipients: string[]; link?: LinkKind | null; preview?: string | null }, onProgress?: (p: number) => void) {
+export async function sendFlip(input: { localUri: string; message: string; mode: Mode; recipients: string[]; link?: LinkKind | null; preview?: string | null; wordStyle?: WordStyle | null }, onProgress?: (p: number) => void) {
   if (!(await isOnline())) throw new ApiError('OFFLINE', undefined, true);
   const photo_path = await uploadPhoto(input.localUri, (p) => onProgress?.(p * 0.9));
   const res = await withRetry(() =>
-    call<SendResult>('send-flip', { photo_path, message: input.message, mode: input.mode, recipients: input.recipients, link: input.link ?? null, preview: input.preview ?? null }),
+    call<SendResult>('send-flip', { photo_path, message: input.message, mode: input.mode, recipients: input.recipients, link: input.link ?? null, preview: input.preview ?? null, word_style: input.wordStyle ?? null }),
   );
   onProgress?.(1);
   // la photo locale sert encore à fabriquer l'image de story : on l'efface après le partage

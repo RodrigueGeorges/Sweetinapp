@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 // suit le clavier image par image (Android compris), au lieu du saut de KeyboardAvoidingView
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, FadeInUp, interpolate, runOnJS, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Bounce } from '../components/Bounce';
 import { HoloLayer } from '../components/Holo';
@@ -34,10 +35,19 @@ export default function Create() {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const w = Math.max(160, Math.min(layout.cardWidth, screenW - 72, (screenH - 360) / layout.cardRatio));
   const photoH = w * layout.cardRatio;
+  const cardH = photoH + layout.stripHeight + 7;
   const [flipped, setFlipped] = useState(false);
   const [text, setText] = useState(draft.message);
   const rot = useSharedValue(0);
   const reduce = useReducedMotion();
+
+  // mot façon Insta : on le fait glisser pour le placer, on le pince pour changer sa taille
+  const wx = useSharedValue(0);
+  const wy = useSharedValue(0);
+  const wscale = useSharedValue(1);
+  const gStartX = useSharedValue(0);
+  const gStartY = useSharedValue(0);
+  const gStartS = useSharedValue(1);
 
   // la carte suit l'inclinaison du téléphone, sauf pendant qu'on écrit au dos
   const raw = useTilt();
@@ -120,11 +130,35 @@ export default function Create() {
     opacity: interpolate(rot.value, [89, 91], [0, 1], 'clamp'),
   }));
 
+  // le mot reste dans la carte : bornes du déplacement en fonction de la taille du verso
+  const limX = (w - 14) / 2 - 60;
+  const limY = cardH / 2 - 60;
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  const drag = Gesture.Pan()
+    .onStart(() => {
+      gStartX.value = wx.value;
+      gStartY.value = wy.value;
+    })
+    .onUpdate((e) => {
+      wx.value = clamp(gStartX.value + e.translationX, -limX, limX);
+      wy.value = clamp(gStartY.value + e.translationY, -limY, limY);
+    });
+  const pinch = Gesture.Pinch()
+    .onStart(() => {
+      gStartS.value = wscale.value;
+    })
+    .onUpdate((e) => {
+      wscale.value = clamp(gStartS.value * e.scale, 0.55, 2.4);
+    });
+  const move = Gesture.Simultaneous(drag, pinch);
+  const wordMove = useAnimatedStyle(() => ({ transform: [{ translateX: wx.value }, { translateY: wy.value }, { scale: wscale.value }] }));
+
   const next = () => {
     const m = text.trim();
     if (!m) return;
     draft.message = m;
     draft.mode = 'free'; // une seule règle : on gratte librement, le mot apparaît passé un seuil
+    draft.setWordStyle(wx.value !== 0 || wy.value !== 0 || wscale.value !== 1 ? { x: wx.value / (w - 14), y: wy.value / cardH, scale: wscale.value } : null);
     if (session) return router.push('/sendto');
     // premier secret sans compte : on le garde de côté et on crée le compte pour l'envoyer
     draft.save();
@@ -147,7 +181,6 @@ export default function Create() {
   };
 
   if (!draft.uri) return <Redirect href={session ? '/camera' : '/try'} />;
-  const cardH = photoH + layout.stripHeight + 7;
 
   return (
     <Screen>
@@ -182,9 +215,10 @@ export default function Create() {
                 {/* le cœur (DA Fondant) : nuit, le mot en display blanc, une pointe de citron */}
                 <View style={s.heart}>
                   <Text style={s.over}>{t('create.hiddenUnder')}</Text>
-                  <View style={s.inputWrap}>
-                    {flipped && (
-                      <TextInput
+                  <GestureDetector gesture={move}>
+                    <Animated.View style={[s.inputWrap, wordMove]}>
+                      {flipped && (
+                        <TextInput
                         value={text}
                         onChangeText={(v) => setText(v.slice(0, MAX))}
                         placeholder={t('create.placeholder')}
@@ -196,9 +230,10 @@ export default function Create() {
                         cursorColor={colors.citron}
                         style={[s.input, { fontSize: fit(text.length), lineHeight: fit(text.length) * 1.12 }]}
                         accessibilityLabel={t('create.secretA11y')}
-                      />
-                    )}
-                  </View>
+                        />
+                      )}
+                    </Animated.View>
+                  </GestureDetector>
                   <Text style={[s.countT, text.length > MAX - 10 && { color: colors.citron }]}>
                     {text.length}/{MAX}
                   </Text>
@@ -209,6 +244,7 @@ export default function Create() {
 
           {flipped ? (
             <Animated.View entering={FadeInDown.delay(250).springify()} style={{ alignSelf: 'stretch', gap: 12 }}>
+              <Text style={s.hint}>{t('create.moveHint')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={s.ideas} keyboardShouldPersistTaps="always">
                 {IDEAS.map((k) => (
                   <Pressable key={k} onPress={() => idea(k)} accessibilityRole="button" style={({ pressed }) => [s.idea, pressed && { backgroundColor: colors.pistache }]}>
@@ -259,5 +295,6 @@ const s = StyleSheet.create({
   ideas: { gap: 8, paddingHorizontal: 20 },
   idea: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
   ideaT: { ...tx.bold, fontSize: 14, color: colors.ink },
+  hint: { ...tx.bold, fontSize: 12, color: colors.muted, textAlign: 'center' },
   tip: { ...tx.text, fontSize: 14, lineHeight: 20, color: colors.muted, textAlign: 'center', paddingHorizontal: 24 },
 });

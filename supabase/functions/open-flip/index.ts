@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
   if (!flip.photo_path || new Date(flip.expires_at) < new Date()) return fail('Ce sweet a fondu', 410, 'EXPIRED');
 
   const [{ data: secret }, { data: sender }, signed] = await Promise.all([
-    db.from('flip_secrets').select('message').eq('flip_id', flip_id).single(),
+    db.from('flip_secrets').select('message, word_style').eq('flip_id', flip_id).single(),
     db.from('profiles').select('username, avatar_path').eq('id', flip.sender_id).single(),
     db.storage.from('flips').createSignedUrl(flip.photo_path, 120),
   ]);
@@ -44,5 +44,6 @@ Deno.serve(async (req) => {
     created_at: flip.created_at,
     photo_url: signed.data.signedUrl,
     message: secret.message,
+    word_style: (secret as { word_style?: unknown }).word_style ?? null,
   });
 });

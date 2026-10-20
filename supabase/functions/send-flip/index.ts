@@ -5,7 +5,17 @@ import { STREAK_MILESTONES, admin, cors, currentUser, fail, json, randomToken, s
 import { blockingCategory, moderate } from '../_shared/moderation.ts';
 import { copy } from '../_shared/copy.ts';
 
-type Body = { photo_path?: string; message?: string; mode?: 'free' | 'once'; recipients?: string[]; link?: 'single' | 'story' | null; preview?: string };
+type WordStyle = { x?: number; y?: number; scale?: number };
+type Body = { photo_path?: string; message?: string; mode?: 'free' | 'once'; recipients?: string[]; link?: 'single' | 'story' | null; preview?: string; word_style?: WordStyle | null };
+
+/** Placement du mot validé : borné au domaine attendu, sinon ignoré (jamais bloquant). */
+function sanitizeWordStyle(v: WordStyle | null | undefined) {
+  if (!v || typeof v !== 'object') return null;
+  const x = Number(v.x), y = Number(v.y), scale = Number(v.scale);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(scale)) return null;
+  if (Math.abs(x) > 1 || Math.abs(y) > 1 || scale < 0.3 || scale > 3) return null;
+  return { x, y, scale };
+}
 
 const DAILY_LIMIT = 150;
 
@@ -73,7 +83,7 @@ Deno.serve(async (req) => {
   const { data: flip, error } = await db.from('flips').insert({ sender_id: user.id, photo_path: path, mode, sweet_hour: sweet, preview, expires_at: expires }).select('id').single();
   if (error || !flip) return fail('Envoi impossible, réessaie', 500, 'SERVER');
 
-  await db.from('flip_secrets').insert({ flip_id: flip.id, message });
+  await db.from('flip_secrets').insert({ flip_id: flip.id, message, word_style: sanitizeWordStyle(body.word_style) });
 
   let streak = 0;
   if (allowed.length) {

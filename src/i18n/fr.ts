@@ -130,6 +130,7 @@ export const fr = {
   'create.idea4': 'ce soir ?',
   'create.idea5': 'devine qui c’est',
   'create.next': 'choisir à qui',
+  'create.moveHint': 'glisse pour déplacer · pince pour la taille',
   'create.tip': 'ensuite, elle se retourne : tu écris ton mot dessous.',
 
   // envoi

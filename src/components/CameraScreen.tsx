@@ -122,8 +122,10 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
       <GestureDetector gesture={doubleTap}>
         <View style={StyleSheet.absoluteFill} />
       </GestureDetector>
-      <LinearGradient colors={['rgba(22,15,18,0.7)', 'rgba(22,15,18,0)']} style={[s.shade, { height: 200 }]} pointerEvents="none" />
-      <LinearGradient colors={sweet !== null ? ['rgba(255,46,91,0)', 'rgba(255,46,91,0.8)'] : ['rgba(22,15,18,0)', 'rgba(22,15,18,0.65)']} style={[s.shade, { bottom: 0, height: 320 }]} pointerEvents="none" />
+      {/* léger fondu bas uniquement pendant le Sweet Hour (compte à rebours lisible) */}
+      {sweet !== null && (
+        <LinearGradient colors={['rgba(255,46,91,0)', 'rgba(255,46,91,0.8)']} style={[s.shade, { bottom: 0, height: 320 }]} pointerEvents="none" />
+      )}
 
       <View style={[s.top, { marginTop: insets.top + 6 }]}>
         {guest ? (

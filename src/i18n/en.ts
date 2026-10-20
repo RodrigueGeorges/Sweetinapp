@@ -129,6 +129,7 @@ export const en: Record<Key, string> = {
   'create.idea4': 'tonight?',
   'create.idea5': 'guess who',
   'create.next': 'choose who',
+  'create.moveHint': 'drag to move · pinch to resize',
   'create.tip': 'next, it flips over and you write your word underneath.',
 
   // send
