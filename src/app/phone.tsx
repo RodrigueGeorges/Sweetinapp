@@ -11,7 +11,7 @@ import { requestPhoneCode, verifyPhoneCode } from '../lib/api';
 import { deviceCountry, PHONE_COUNTRIES as COUNTRIES, toE164 } from '../lib/contacts';
 import type { CountryCode } from 'libphonenumber-js';
 import { track } from '../lib/monitoring';
-import { colors, fonts, tx } from '../theme';
+import { colors, tx } from '../theme';
 
 /** Ajout du numéro (vérifié par SMS) pour être retrouvé par ses amis. */
 export default function Phone() {

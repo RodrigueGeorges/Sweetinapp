@@ -9,6 +9,7 @@ module.exports = defineConfig([
       'dist/*',
       '.expo/*',
       'amelioration/**', // paquet de patches livré à part : les fichiers sources sont dans le repo
+      'nouvelles-ameliorations/**', // idem : overlay de patches, pas du code app
       'supabase/**', // fonctions Deno — imports npm: et API Deno, pas du code app
       'targets/**', // extensions natives + config Node (__dirname)
       'web/**', // pages statiques hors bundle
@@ -34,6 +35,8 @@ module.exports = defineConfig([
       // jest.mock() doit rester au-dessus des imports (hoisting).
       'import/first': 'off',
       '@typescript-eslint/no-require-imports': 'off',
+      // les mocks anonymes (forwardRef, createElement) n'ont pas besoin de displayName
+      'react/display-name': 'off',
     },
   },
 ]);

@@ -175,7 +175,6 @@ export function BottomCTA({ children, tone = 'vanille', style }: { children: Rea
 
 /** Bouton rond à icône (retour, menu…). */
 export function IconButton({ icon, label, onPress, tone = 'vanille', size = 40, filled }: { icon: IconName; label: string; onPress: () => void; tone?: Tone; size?: number; filled?: boolean }) {
-  const c = TONE[tone];
   const reduce = useReducedMotion();
   const sc = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));

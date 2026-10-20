@@ -22,7 +22,7 @@ import { draft } from '../lib/draft';
 import { inviteBySms } from '../lib/invite';
 import { registerForPush, shouldAskPush } from '../lib/push';
 import { signature } from '../lib/haptics';
-import { colors, fonts, tx } from '../theme';
+import { colors, tx } from '../theme';
 
 /** « envoyer à » : le lien privé et la story en tête, puis les amis (séries en danger d'abord). */
 export default function SendTo() {

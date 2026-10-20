@@ -10,7 +10,7 @@ import { AvatarPicker } from '../components/AvatarPicker';
 import { Logo } from '../components/Logo';
 import { useToast } from '../components/Toast';
 import { Icon } from '../components/Icon';
-import { Body, BottomCTA, Button, Field, IconBadge, Screen, SectionLabel, Title } from '../components/ui';
+import { Body, BottomCTA, Button, Field, Screen, SectionLabel, Title } from '../components/ui';
 import { lang, t, humanError } from '../i18n';
 import { clearHasAccount } from '../lib/returning';
 import { ApiError, completeProfile, deleteAccount, setAvatar } from '../lib/api';
@@ -19,7 +19,7 @@ import { ageAt, isoDate, parseBirth } from '../lib/format';
 import { track } from '../lib/monitoring';
 import { consumePendingInvite, useSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
-import { colors, fonts, tx } from '../theme';
+import { colors, tx } from '../theme';
 import { MIN_AGE } from '../lib/constants';
 
 /** Pseudo + date de naissance, après la création du compte (email, Apple ou Google). */

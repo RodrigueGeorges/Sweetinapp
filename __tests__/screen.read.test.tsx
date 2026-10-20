@@ -129,7 +129,7 @@ describe('read · lecture', () => {
 
   it('gratter révèle le mot, notifie le serveur, affiche le compte à rebours', async () => {
     mockOpenFlip.mockResolvedValue(flip);
-    const { findByLabelText, findByText } = await renderRead();
+    const { findByLabelText } = await renderRead();
     fireEvent.press(await findByLabelText('zone de grattage'));
     expect(mockMarkScratched).toHaveBeenCalledWith('flip9', 62, 3400);
     expect(await findByLabelText(t('read.meltsIn', { s: 10 }))).toBeTruthy();

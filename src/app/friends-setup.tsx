@@ -19,7 +19,7 @@ import { registerForPush, shouldAskPush } from '../lib/push';
 import { parseInvite, shareInviteLink } from '../lib/invite';
 import { track } from '../lib/monitoring';
 import { useSession } from '../lib/session';
-import { colors, fonts, tx } from '../theme';
+import { colors, tx } from '../theme';
 
 const GOAL = 3;
 
