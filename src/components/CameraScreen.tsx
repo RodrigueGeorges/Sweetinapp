@@ -131,10 +131,12 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
     AsyncStorage.setItem(COACH_FLIP, '1').catch(() => {});
   };
   useEffect(() => {
-    if (!coach) return;
+    // le timer ne part que quand la pastille est visible (après l'accord caméra) :
+    // sinon le prompt de permission la consomme avant qu'on la voie
+    if (!coach || !perm?.granted) return;
     const to = setTimeout(seenCoach, 8000);
     return () => clearTimeout(to);
-  }, [coach]);
+  }, [coach, perm?.granted]);
 
   return (
     <Screen tone="cacao">
