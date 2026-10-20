@@ -81,7 +81,8 @@ export default function Auth() {
       setCooldown(30);
       setTimeout(() => codeRef.current?.focus(), 200);
     } catch (e) {
-      toast(humanError(e));
+      const msg = (e as Error).message ?? '';
+      toast(/phone_provider_disabled|unsupported phone provider/i.test(msg) ? t('err.PHONE_DISABLED') : humanError(e));
     } finally {
       setBusy(false);
     }

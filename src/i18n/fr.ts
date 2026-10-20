@@ -391,6 +391,7 @@ export const fr = {
   'err.OFFLINE': 'pas de réseau pour l’instant.',
   'err.MODERATION_UNAVAILABLE': 'la vérification est en panne. réessaie dans un instant.',
   'err.PHONE_INVALID': 'ce numéro a l’air bizarre.',
+  'err.PHONE_DISABLED': 'les sms sont coupés pour l’instant. passe par l’email.',
   'err.CODE_INVALID': 'code faux ou expiré.',
   'err.ALREADY_OPENED': 'déjà ouvert.',
   'err.NOT_AUTHENTICATED': 'reconnecte-toi.',

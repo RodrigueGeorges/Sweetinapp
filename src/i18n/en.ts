@@ -390,6 +390,7 @@ export const en: Record<Key, string> = {
   'err.OFFLINE': 'no connection right now.',
   'err.MODERATION_UNAVAILABLE': 'the safety check isn’t responding. try again in a moment.',
   'err.PHONE_INVALID': 'that number looks off.',
+  'err.PHONE_DISABLED': 'sms is down right now. use email instead.',
   'err.CODE_INVALID': 'wrong or expired code.',
   'err.ALREADY_OPENED': 'already opened.',
   'err.NOT_AUTHENTICATED': 'log in again to continue.',
