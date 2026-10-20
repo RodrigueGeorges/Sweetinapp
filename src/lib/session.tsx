@@ -16,9 +16,11 @@ type Ctx = {
   profile: MyProfile | null;
   /** Session et profil chargés (le profil peut être null si déconnecté). */
   ready: boolean;
+  /** Le profil de la session courante a été récupéré au moins une fois (succès ou échec). */
+  profileReady: boolean;
   refreshProfile: () => Promise<MyProfile | null>;
 };
-const SessionContext = createContext<Ctx>({ session: null, profile: null, ready: false, refreshProfile: async () => null });
+const SessionContext = createContext<Ctx>({ session: null, profile: null, ready: false, profileReady: false, refreshProfile: async () => null });
 
 /** Garde un pseudo d'invitation à traiter quand l'utilisateur aura un profil complet. */
 export const rememberInvite = (username: string, source: InviteSource = 'link') => AsyncStorage.setItem(PENDING_INVITE, `${username}|${source}`).catch(() => {});
@@ -49,6 +51,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [ready, setReady] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
 
   const refreshProfile = useCallback(async () => {
     try {
@@ -57,6 +60,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return p;
     } catch {
       return null;
+    } finally {
+      setProfileReady(true);
     }
   }, []);
 
@@ -70,9 +75,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
     const { data } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      if (s) markHasAccount();
-      if (s) refreshProfile();
-      else setProfile(null);
+      if (s) {
+        markHasAccount();
+        // nouveau compte : on attend son profil avant d'aiguiller vers le setup
+        setProfileReady(false);
+        refreshProfile();
+      } else {
+        setProfile(null);
+        setProfileReady(false);
+      }
     });
     return () => data.subscription.unsubscribe();
   }, [refreshProfile]);
@@ -84,7 +95,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return watchLiveTokens(session.user.id);
   }, [session?.user.id]);
 
-  return <SessionContext.Provider value={{ session, profile, ready, refreshProfile }}>{children}</SessionContext.Provider>;
+  return <SessionContext.Provider value={{ session, profile, ready, profileReady, refreshProfile }}>{children}</SessionContext.Provider>;
 }
 
 export const useSession = () => useContext(SessionContext);

@@ -18,12 +18,14 @@ import { colors } from '../../theme';
 export default function InviteLink() {
   const { username, src } = useLocalSearchParams<{ username: string; src?: string }>();
   const source: InviteSource = (['link', 'flip', 'story', 'qr', 'contacts'] as const).find((x) => x === src) ?? 'link';
-  const { session, profile } = useSession();
+  const { session, profile, profileReady } = useSession();
   const toast = useToast();
   const name = String(username ?? '').replace(/^@/, '').toLowerCase();
 
   useEffect(() => {
     if (!name) return void router.replace('/');
+    // profil encore en cours de chargement : on attend plutôt que de différer l'ajout à tort
+    if (session && !profileReady) return;
     if (!session || !profile?.onboarded) {
       rememberInvite(name, source).then(() => {
         toast(t('invite.later', { name }));
@@ -38,7 +40,7 @@ export default function InviteLink() {
       })
       .catch((e: Error) => toast(humanError(e)))
       .finally(() => router.replace('/contacts'));
-  }, [name, source, session, profile?.onboarded, toast]);
+  }, [name, source, session, profile?.onboarded, profileReady, toast]);
 
   return (
     <Screen tone="cerise" style={s.center}>

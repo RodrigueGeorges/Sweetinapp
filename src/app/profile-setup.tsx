@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { Fondue } from '../components/Fondue';
 import { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -26,7 +26,7 @@ import { MIN_AGE } from '../lib/constants';
 export default function ProfileSetup() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const { refreshProfile } = useSession();
+  const { refreshProfile, profile } = useSession();
   const [username, setUsername] = useState('');
   const [d, setD] = useState('');
   const [m, setM] = useState('');
@@ -106,6 +106,9 @@ export default function ProfileSetup() {
       {...extra}
     />
   );
+
+  // aiguillé ici par erreur alors que le profil est complet (course au login, lien profond) : on rentre
+  if (profile?.onboarded) return <Redirect href="/" />;
 
   if (underage) {
     return (
