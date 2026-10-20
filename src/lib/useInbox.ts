@@ -1,3 +1,4 @@
+import NetInfo from '@react-native-community/netinfo';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { listInbox, type InboxItem } from './api';
@@ -16,7 +17,10 @@ export function useInbox() {
   const [tag] = useState(() => Math.random().toString(36).slice(2, 8));
 
   const refresh = useCallback(async () => {
-    if (!session) return;
+    if (!session) {
+      setLoading(false);
+      return;
+    }
     try {
       const list = await listInbox();
       setItems(list);
@@ -29,6 +33,16 @@ export function useInbox() {
       setLoading(false);
     }
   }, [session]);
+
+  // le réseau revient → on recharge la vitrine (sinon les squelettes restent figés)
+  useEffect(() => {
+    let wasOffline = false;
+    return NetInfo.addEventListener((s) => {
+      const off = s.isConnected === false || s.isInternetReachable === false;
+      if (wasOffline && !off) refresh();
+      wasOffline = off;
+    });
+  }, [refresh]);
 
   useFocusEffect(
     useCallback(() => {

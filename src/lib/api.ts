@@ -234,7 +234,7 @@ function putWithProgress(url: string, bytes: ArrayBuffer, onProgress?: (p: numbe
     xhr.setRequestHeader('cache-control', 'max-age=0');
     xhr.setRequestHeader('x-upsert', 'false');
     xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+      if (e.lengthComputable) onProgress?.(Math.min(1, e.loaded / e.total));
     };
     xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new ApiError('UPLOAD', undefined, xhr.status >= 500)));
     xhr.onerror = () => reject(new ApiError('UPLOAD', undefined, true));
