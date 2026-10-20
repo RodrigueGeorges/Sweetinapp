@@ -83,12 +83,13 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
       play('tap', 0.7);
       blink.value = withSequence(withTiming(0.32, { duration: 70, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 220 }));
-      const shot = cam.current?.takePictureAsync({ quality: 0.82, shutterSound: false });
-      // l'aperçu se fige tout de suite : retour visuel immédiat, même si l'enregistrement prend une demi-seconde
-      cam.current?.pausePreview().then(() => (paused.current = true)).catch(() => {});
-      const photo = await shot;
-      if (photo?.uri) await go(photo.uri);
-      else throw new Error('no photo');
+      // pausePreview() fait unbindAll() côté natif : l'appeler pendant la capture détache ImageCapture
+      // et la promesse ne se résout jamais — on fige l'aperçu seulement une fois la photo en main.
+      const photo = await cam.current?.takePictureAsync({ quality: 0.82, shutterSound: false });
+      if (photo?.uri) {
+        cam.current?.pausePreview().then(() => (paused.current = true)).catch(() => {});
+        await go(photo.uri);
+      } else throw new Error('no photo');
     } catch {
       if (paused.current) {
         paused.current = false;
