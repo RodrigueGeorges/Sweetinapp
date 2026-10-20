@@ -378,15 +378,26 @@ export async function setDiscoverable(on: boolean) {
   if (error) throw rpcError(error);
 }
 
+/**
+ * Classe une erreur d'envoi SMS Supabase Auth : le code machine (sms_send_failed,
+ * phone_provider_disabled…) est dans `error.code`, le message reste une heuristique.
+ */
+export function phoneSendError(error: { message: string; code?: string }): ApiError {
+  const code = (error.code ?? '').toLowerCase();
+  const m = error.message.toLowerCase();
+  if (code.includes('rate') || m.includes('rate')) return new ApiError('RATE_LIMIT', undefined, false);
+  if (
+    /sms_send_failed|phone_provider|unsupported_phone/.test(code) ||
+    /sms_send_failed|to provider|phone provider|provider.*(disabled|not enabled)|sms.*(provider|not configured|failed)/i.test(error.message)
+  )
+    return new ApiError('PHONE_DISABLED', undefined, false);
+  return new ApiError('PHONE_INVALID', undefined, false);
+}
+
 /** Étape 1 : envoie un code par SMS au numéro (format international, ex. +33612345678). */
 export async function requestPhoneCode(phone: string) {
   const { error } = await supabase.auth.updateUser({ phone });
-  if (!error) return;
-  const m = error.message.toLowerCase();
-  if (m.includes('rate')) throw new ApiError('RATE_LIMIT', undefined, false);
-  if (/sms_send_failed|phone provider|provider.*(disabled|not enabled)|sms.*(provider|not configured)/i.test(error.message))
-    throw new ApiError('PHONE_DISABLED', undefined, false);
-  throw new ApiError('PHONE_INVALID', undefined, false);
+  if (error) throw phoneSendError(error);
 }
 
 /** Étape 2 : vérifie le code reçu. Le numéro devient alors trouvable par tes amis. */

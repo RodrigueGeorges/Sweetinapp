@@ -14,7 +14,7 @@ jest.mock('../src/lib/supabase', () => ({
 }));
 
 import NetInfo from '@react-native-community/netinfo';
-import { addFriend, ApiError, avatarUrl, inviteUrl, isOnline, matchContacts, myId, openFlip, sendFlip } from '../src/lib/api';
+import { addFriend, ApiError, avatarUrl, inviteUrl, isOnline, matchContacts, myId, openFlip, phoneSendError, sendFlip } from '../src/lib/api';
 
 const edgeError = (status: number, body?: { code?: string; error?: string }) => ({
   context: { status, json: async () => body },
@@ -105,6 +105,26 @@ describe('rpc', () => {
     expect(mockRpc.mock.calls[2][1].p_hashes).toHaveLength(500);
     expect(out).toHaveLength(1);
     expect(out[0].username).toBe('lea');
+  });
+});
+
+describe('phoneSendError', () => {
+  it('sms_send_failed (code machine) → PHONE_DISABLED', () => {
+    const e = phoneSendError({ message: 'Error sending confirmation OTP to provider: Authentication Error', code: 'sms_send_failed' });
+    expect(e).toBeInstanceOf(ApiError);
+    expect(e.code).toBe('PHONE_DISABLED');
+  });
+
+  it('provider désactivé dans le message → PHONE_DISABLED', () => {
+    expect(phoneSendError({ message: 'Unsupported phone provider' }).code).toBe('PHONE_DISABLED');
+  });
+
+  it('rate limit → RATE_LIMIT', () => {
+    expect(phoneSendError({ message: 'too many requests', code: 'over_sms_send_rate_limit' }).code).toBe('RATE_LIMIT');
+  });
+
+  it('numéro invalide → PHONE_INVALID', () => {
+    expect(phoneSendError({ message: 'Invalid phone number format', code: 'validation_failed' }).code).toBe('PHONE_INVALID');
   });
 });
 

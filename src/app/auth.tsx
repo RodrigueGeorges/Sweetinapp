@@ -17,7 +17,7 @@ import { Body, BottomCTA, Button, Field, Header, Pop, Screen, Title } from '../c
 import { deviceCountry, PHONE_COUNTRIES, toE164 } from '../lib/contacts';
 import { legal } from '../lib/legal';
 import { t, humanError } from '../i18n';
-import { signInWithApple, signInWithGoogle } from '../lib/api';
+import { phoneSendError, signInWithApple, signInWithGoogle } from '../lib/api';
 import { track } from '../lib/monitoring';
 import { supabase } from '../lib/supabase';
 import { colors, tx } from '../theme';
@@ -75,14 +75,13 @@ export default function Auth() {
     setBusy(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({ phone: n });
-      if (error) throw new Error(error.message);
+      if (error) throw phoneSendError(error);
       setE164(n);
       setCode('');
       setCooldown(30);
       setTimeout(() => codeRef.current?.focus(), 200);
     } catch (e) {
-      const msg = (e as Error).message ?? '';
-      toast(/phone_provider_disabled|unsupported phone provider/i.test(msg) ? t('err.PHONE_DISABLED') : humanError(e));
+      toast(humanError(e));
     } finally {
       setBusy(false);
     }
