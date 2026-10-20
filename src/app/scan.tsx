@@ -2,7 +2,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useToast } from '../components/Toast';
 import { Icon } from '../components/Icon';
@@ -55,7 +55,10 @@ export default function Scan() {
           <Body style={{ textAlign: 'center' }}>{t('scan.permission')}</Body>
         </View>
         <BottomCTA>
-          <Button label={t('camera.allow')} onPress={request} />
+          <Button
+            label={perm && !perm.canAskAgain ? t('camera.openSettings') : t('camera.allow')}
+            onPress={() => (perm && !perm.canAskAgain ? Linking.openSettings() : request())}
+          />
         </BottomCTA>
       </Screen>
     );

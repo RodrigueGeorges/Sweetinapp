@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bounce } from '../components/Bounce';
@@ -174,7 +174,11 @@ export default function FriendsSetup() {
                 <Button label={t('friends.limitedMore')} tone="white" size="md" icon="userPlus" loading={searching} onPress={() => searchContacts(true)} />
               </View>
             ) : null}
-            {denied ? <Text style={s.empty}>{t('friends.contactsDenied')}</Text> : null}
+            {denied ? (
+              <Pressable onPress={() => Linking.openSettings()} accessibilityRole="button">
+                <Text style={[s.empty, s.deniedLink]}>{t('friends.contactsDenied')}</Text>
+              </Pressable>
+            ) : null}
             <Pressable onPress={() => router.push('/phone')} style={s.link} accessibilityRole="button" disabled={hasPhone}>
               <Icon name={hasPhone ? 'check' : 'phone'} size={17} color={hasPhone ? colors.muted : colors.ink} />
               <Text style={[s.linkT, hasPhone && { color: colors.muted }]}>{hasPhone ? t('friends.phoneDone') : t('friends.phone')}</Text>
@@ -282,6 +286,7 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
   name: { flex: 1, ...tx.bold, fontSize: 15, color: colors.ink },
   empty: { ...tx.text, fontSize: 13, lineHeight: 19, color: colors.muted, marginTop: 4 },
+  deniedLink: { ...tx.bold, color: colors.ink, textDecorationLine: 'underline' },
   limited: { gap: 8, marginTop: 4 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 10 },
   linkT: { flex: 1, ...tx.bold, fontSize: 13, color: colors.ink, textDecorationLine: 'underline' },
