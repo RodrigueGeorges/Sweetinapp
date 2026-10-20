@@ -1,10 +1,10 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from '../components/Icon';
 import { useToast } from '../components/Toast';
-import { Avatar, Button, Header, Pop, Screen, SectionLabel, Toggle } from '../components/ui';
+import { Avatar, Body, Button, Field, Header, Pop, Screen, SectionLabel, Title, Toggle } from '../components/ui';
 import { t, humanError } from '../i18n';
 import { registerForPush } from '../lib/push';
 import { clearHasAccount, LOGIN_ROUTE } from '../lib/returning';
@@ -67,30 +67,30 @@ export default function Settings() {
     router.replace(LOGIN_ROUTE); // on revient se connecter, pas redécouvrir l'app
   };
 
-  const remove = () =>
-    Alert.alert(t('settings.deleteTitle'), t('settings.deleteBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await deleteAccount();
-            clearHasAccount();
-            updateWidget([]);
-            await supabase.auth.signOut();
-            if (router.canDismiss()) router.dismissAll(); // sans pile (lien ouvert à froid), dismissAll lève une erreur
-            router.replace('/welcome');
-            toast(t('settings.deleted'));
-          } catch (e) {
-            toast(humanError(e));
-          } finally {
-            setBusy(false);
-          }
-        },
-      },
-    ]);
+  // suppression irréversible : il faut retaper son pseudo, pas un simple oui/non (footgun)
+  const [confirming, setConfirming] = useState(false);
+  const [typed, setTyped] = useState('');
+  const remove = () => {
+    setTyped('');
+    setConfirming(true);
+  };
+  const confirmDelete = async () => {
+    setBusy(true);
+    try {
+      await deleteAccount();
+      clearHasAccount();
+      updateWidget([]);
+      await supabase.auth.signOut();
+      setConfirming(false);
+      if (router.canDismiss()) router.dismissAll(); // sans pile (lien ouvert à froid), dismissAll lève une erreur
+      router.replace('/welcome');
+      toast(t('settings.deleted'));
+    } catch (e) {
+      toast(humanError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const row = (label: string, onPress: () => void, icon?: IconName) => (
     <Pressable style={({ pressed }) => [s.row, pressed && { opacity: 0.6 }]} onPress={onPress} accessibilityRole="button">
@@ -230,6 +230,30 @@ export default function Settings() {
         </View>
         <Text style={s.version}>sweetin {Constants.expoConfig?.version}</Text>
       </ScrollView>
+
+      <Modal visible={confirming} transparent animationType="fade" onRequestClose={() => setConfirming(false)}>
+        <Pressable style={s.modalBg} onPress={() => !busy && setConfirming(false)} accessibilityRole="button" accessibilityLabel={t('common.close')}>
+          <Pressable onPress={(e) => e.stopPropagation()} accessibilityViewIsModal>
+            <Pop style={s.modalCard} radius={28} bg={colors.white}>
+              <Title size={30}>{t('settings.deleteTitle')}</Title>
+              <Body>{t('settings.deleteBody')}</Body>
+              <Field label={t('settings.deleteConfirm')} value={typed} onChangeText={setTyped} autoCapitalize="none" autoCorrect={false} placeholder={username ? `@${username}` : ''} />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Button label={t('common.cancel')} tone="white" size="md" style={{ flex: 1 }} onPress={() => setConfirming(false)} />
+                <Button
+                  label={t('common.delete')}
+                  tone="cerise"
+                  size="md"
+                  style={{ flex: 1 }}
+                  loading={busy}
+                  disabled={!username || typed.trim().replace(/^@/, '').toLowerCase() !== username.toLowerCase()}
+                  onPress={confirmDelete}
+                />
+              </View>
+            </Pop>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -248,6 +272,8 @@ const s = StyleSheet.create({
   hint: { ...tx.text, fontSize: 12.5, lineHeight: 17, color: colors.muted, marginTop: 2 },
   add: { ...tx.black, fontSize: 14, color: colors.ink },
   delete: { alignSelf: 'center', paddingVertical: 10 },
+  modalBg: { flex: 1, backgroundColor: 'rgba(22,15,18,0.55)', justifyContent: 'flex-start', paddingTop: '22%', paddingHorizontal: 24 },
+  modalCard: { padding: 22, gap: 14 },
   deleteT: { ...tx.bold, fontSize: 14, color: colors.ceriseDeep, textDecorationLine: 'underline' },
   version: { fontFamily: fonts.display, fontSize: 12, color: colors.muted, textAlign: 'center', paddingTop: 22 },
 });

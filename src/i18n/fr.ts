@@ -263,6 +263,9 @@ export const fr = {
   'invite.added': '{name} est dans tes amis.',
   'invite.later': 'connecte-toi pour ajouter {name}.',
 
+  // liens privés (web-first)
+  'flip.opening': 'ton sweet s’ouvre…',
+
   // widget
   'widget.none': 'rien à gratter.',
   'widget.noneSub': 'envoie le premier sweet',
@@ -367,6 +370,7 @@ export const fr = {
   'settings.delete': 'supprimer mon compte',
   'settings.deleteTitle': 'supprimer ton compte ?',
   'settings.deleteBody': 'tes sweets, tes séries et tes amis seront effacés pour de bon.',
+  'settings.deleteConfirm': 'tape ton pseudo pour confirmer',
   'settings.deleted': 'ton compte est supprimé.',
 
   // erreurs renvoyées par le serveur

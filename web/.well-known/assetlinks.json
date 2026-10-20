@@ -4,7 +4,7 @@
     "target": {
       "namespace": "android_app",
       "package_name": "app.sweetin.android",
-      "sha256_cert_fingerprints": ["REMPLACER:PAR:L'EMPREINTE:SHA256:DU:CERTIFICAT:DE:SIGNATURE:EAS"]
+      "sha256_cert_fingerprints": ["16:59:62:38:88:DB:9E:C6:F8:98:B2:32:FF:30:18:33:CF:9E:56:0E:D3:70:30:03:69:D1:C2:57:9C:77:EA:39"]
     }
   }
 ]

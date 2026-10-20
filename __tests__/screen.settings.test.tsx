@@ -74,7 +74,6 @@ jest.mock('react-native-svg', () => {
 });
 
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
 import Settings from '../src/app/settings';
 import { ToastProvider } from '../src/components/Toast';
 import { setSoundsEnabled } from '../src/lib/sounds';
@@ -119,15 +118,22 @@ describe('settings · départ', () => {
     expect(mockDismissAll).toHaveBeenCalled();
   });
 
-  it('suppression : confirmation puis deleteAccount + déconnexion complète', async () => {
-    const spy = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, buttons) => {
-      buttons?.find((b) => b.style === 'destructive')?.onPress?.();
-    });
-    const { findByText } = await renderSettings();
+  it('suppression : il faut retaper son pseudo, puis deleteAccount + déconnexion complète', async () => {
+    const { findByText, findByPlaceholderText } = await renderSettings();
     fireEvent.press(await findByText(t('settings.delete')));
+    fireEvent.changeText(await findByPlaceholderText('@moi'), 'moi');
+    fireEvent.press(await findByText(t('common.delete')));
     await waitFor(() => expect(mockDeleteAccount).toHaveBeenCalled());
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/welcome'));
     expect(await findByText(t('settings.deleted'))).toBeTruthy();
-    spy.mockRestore();
+  });
+
+  it('suppression refusée tant que le pseudo ne correspond pas', async () => {
+    const { findByText, findByPlaceholderText } = await renderSettings();
+    fireEvent.press(await findByText(t('settings.delete')));
+    fireEvent.changeText(await findByPlaceholderText('@moi'), 'autre');
+    fireEvent.press(await findByText(t('common.delete')));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockDeleteAccount).not.toHaveBeenCalled();
   });
 });

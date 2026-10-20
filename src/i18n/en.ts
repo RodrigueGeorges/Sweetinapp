@@ -262,6 +262,9 @@ export const en: Record<Key, string> = {
   'invite.added': '{name} is now your friend.',
   'invite.later': 'log in to add {name}.',
 
+  // private links (web-first)
+  'flip.opening': 'opening your sweet…',
+
   // widget
   'widget.none': 'nothing to scratch.',
   'widget.noneSub': 'send the first sweet',
@@ -366,6 +369,7 @@ export const en: Record<Key, string> = {
   'settings.delete': 'delete my account',
   'settings.deleteTitle': 'delete your account?',
   'settings.deleteBody': 'your sweets, streaks and friends will be gone for good.',
+  'settings.deleteConfirm': 'type your username to confirm',
   'settings.deleted': 'your account is deleted.',
 
   // server errors
