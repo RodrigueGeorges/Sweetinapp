@@ -201,10 +201,13 @@ export default function SendTo() {
       <Title size={44} style={s.title}>
         {t('send.title')}
       </Title>
-      <View style={s.search}>
-        <Icon name="search" size={18} color={colors.muted} />
-        <TextInput value={q} onChangeText={setQ} placeholder={t('send.search')} accessibilityLabel={t('send.search')} placeholderTextColor={colors.muted} style={s.searchInput} autoCapitalize="none" autoCorrect={false} selectionColor={colors.cerise} />
-      </View>
+      {/* chercher n'a de sens qu'avec des amis : la barre disparaît quand la liste est vide */}
+      {hasFriends || friends === null ? (
+        <View style={s.search}>
+          <Icon name="search" size={18} color={colors.muted} />
+          <TextInput value={q} onChangeText={setQ} placeholder={t('send.search')} accessibilityLabel={t('send.search')} placeholderTextColor={colors.muted} style={s.searchInput} autoCapitalize="none" autoCorrect={false} selectionColor={colors.cerise} />
+        </View>
+      ) : null}
 
       <FlatList
         data={friends === null ? [] : rows}

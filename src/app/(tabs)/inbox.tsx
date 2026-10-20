@@ -126,9 +126,12 @@ export default function Inbox() {
         showsVerticalScrollIndicator={false}
       >
         {offline && (
-          <Animated.View entering={FadeInDown.springify()} style={s.offline} accessibilityLiveRegion="polite">
-            <Icon name="hourglass" size={13} color={colors.cacao} stroke={2.6} />
-            <Text style={s.offlineT}>{t('common.offline')}</Text>
+          <Animated.View entering={FadeInDown.springify()} accessibilityLiveRegion="polite">
+            <Pressable onPress={onRefresh} accessibilityRole="button" accessibilityLabel={`${t('common.offline')} ${t('common.retry')}`} hitSlop={8} style={s.offline}>
+              <Icon name="hourglass" size={13} color={colors.cacao} stroke={2.6} />
+              <Text style={s.offlineT}>{t('common.offline')}</Text>
+              <Icon name="retake" size={13} color={colors.cacao} stroke={2.6} />
+            </Pressable>
           </Animated.View>
         )}
         <View style={s.pills} accessibilityRole="tablist">
@@ -185,15 +188,19 @@ export default function Inbox() {
           ) : items.length === 0 ? (
             <Animated.View entering={FadeInDown.springify()}>
               <Empty
-                art={<Fondue mood="wait" size={130} />}
-                title={t('inbox.emptyTitle')}
-                body={t('inbox.emptyBody')}
+                art={<Fondue mood={offline ? 'sad' : 'wait'} size={130} />}
+                title={offline ? t('inbox.offlineTitle') : t('inbox.emptyTitle')}
+                body={offline ? t('inbox.offlineBody') : t('inbox.emptyBody')}
                 // le plus sûr moyen d'en recevoir un : en envoyer un. L'action principale ouvre l'appareil photo.
                 action={
-                  <View style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
-                    <Button label={t('inbox.emptyCta2')} icon="snap" size="md" haptic="medium" onPress={() => router.push('/camera')} />
-                    {profile?.username ? <Button label={t('inbox.emptyCta')} icon="share" tone="white" size="sm" onPress={() => shareInviteLink(profile.username)} /> : null}
-                  </View>
+                  offline ? (
+                    <Button label={t('common.retry')} icon="retake" size="md" onPress={onRefresh} />
+                  ) : (
+                    <View style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
+                      <Button label={t('inbox.emptyCta2')} icon="snap" size="md" haptic="medium" onPress={() => router.push('/camera')} />
+                      {profile?.username ? <Button label={t('inbox.emptyCta')} icon="share" tone="white" size="sm" onPress={() => shareInviteLink(profile.username)} /> : null}
+                    </View>
+                  )
                 }
               />
             </Animated.View>

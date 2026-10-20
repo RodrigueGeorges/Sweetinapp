@@ -1,12 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import Reanimated, { Easing, FadeOutUp, useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
+import Reanimated, { Easing, FadeInDown, FadeOut, FadeOutUp, useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bounce } from '../components/Bounce';
@@ -20,6 +21,8 @@ import { draft } from '../lib/draft';
 import { useSweetHour } from '../lib/useSweetHour';
 import { play } from '../lib/sounds';
 import { colors, fonts, layout, tx } from '../theme';
+
+const COACH_FLIP = 'sweetin.coach.camflip';
 
 /**
  * La caméra plein écran, le déclencheur cerise, et le Sweet Hour quand il tombe.
@@ -104,6 +107,7 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
 
   const flipCam = () => {
     Haptics.selectionAsync();
+    seenCoach();
     setFacing((f) => (f === 'back' ? 'front' : 'back'));
   };
   const doubleTap = Gesture.Tap().numberOfTaps(2).runOnJS(true).onEnd(flipCam);
@@ -114,6 +118,23 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
   };
 
   const mm = sweet !== null ? `${Math.floor(sweet / 60)}:${String(sweet % 60).padStart(2, '0')}` : '';
+
+  // le double-tap pour retourner la caméra est invisible : on le souffle une seule fois, au premier passage
+  const [coach, setCoach] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem(COACH_FLIP)
+      .then((v) => setCoach(!v))
+      .catch(() => {});
+  }, []);
+  const seenCoach = () => {
+    setCoach(false);
+    AsyncStorage.setItem(COACH_FLIP, '1').catch(() => {});
+  };
+  useEffect(() => {
+    if (!coach) return;
+    const to = setTimeout(seenCoach, 8000);
+    return () => clearTimeout(to);
+  }, [coach]);
 
   return (
     <Screen tone="cacao">
@@ -196,6 +217,11 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
       )}
 
       <View style={[s.bottom, { bottom: (guest ? 40 : layout.tabBarHeight + 34) + Math.max(insets.bottom, 12) }]}>
+        {coach && perm?.granted ? (
+          <Reanimated.View entering={FadeInDown.springify()} exiting={FadeOut.duration(180)} style={s.coach} pointerEvents="none" accessibilityLiveRegion="polite">
+            <Text style={s.coachT}>{t('camera.coachFlip')}</Text>
+          </Reanimated.View>
+        ) : null}
         <View style={s.controls}>
           <Bounce onPress={pick} accessibilityRole="button" accessibilityLabel={t('camera.gallery')} scaleTo={0.88}>
             <Glass style={s.side}>
@@ -232,6 +258,8 @@ const s = StyleSheet.create({
   bottom: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: 14 },
   permSub: { ...tx.bold, fontSize: 15, lineHeight: 21, color: colors.mutedOnDark, textAlign: 'center' },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 36 },
+  coach: { paddingVertical: 9, paddingHorizontal: 16, borderRadius: 999, backgroundColor: 'rgba(22,15,18,0.72)' },
+  coachT: { ...tx.bold, fontSize: 14, color: colors.vanille },
   side: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   // 84 de framboise + 6 d'espace + 3 d'anneau blanc (comme Shutter, en version sombre)
   shutter: { width: 102, height: 102, alignItems: 'center', justifyContent: 'center' },
