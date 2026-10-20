@@ -381,7 +381,12 @@ export async function setDiscoverable(on: boolean) {
 /** Étape 1 : envoie un code par SMS au numéro (format international, ex. +33612345678). */
 export async function requestPhoneCode(phone: string) {
   const { error } = await supabase.auth.updateUser({ phone });
-  if (error) throw new ApiError(error.message.toLowerCase().includes('rate') ? 'RATE_LIMIT' : 'PHONE_INVALID', undefined, false);
+  if (!error) return;
+  const m = error.message.toLowerCase();
+  if (m.includes('rate')) throw new ApiError('RATE_LIMIT', undefined, false);
+  if (/sms_send_failed|phone provider|provider.*(disabled|not enabled)|sms.*(provider|not configured)/i.test(error.message))
+    throw new ApiError('PHONE_DISABLED', undefined, false);
+  throw new ApiError('PHONE_INVALID', undefined, false);
 }
 
 /** Étape 2 : vérifie le code reçu. Le numéro devient alors trouvable par tes amis. */
