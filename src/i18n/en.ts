@@ -143,6 +143,7 @@ export const en: Record<Key, string> = {
   'send.noMatch': 'no one with that username.',
   'send.empty': 'no friends here yet. send your sweet as a link, or invite them.',
   'send.pick': 'pick a friend',
+  'send.pickLink': 'pick a link or story above',
   'send.cta': 'send',
   'send.ctaTo': 'send to {name}',
   'send.ctaTwo': 'send to {a} and {b}',

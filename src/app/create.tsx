@@ -117,6 +117,8 @@ export default function Create() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     play('tap', 0.8);
     setFlipped(to);
+    // autoFocus peut rater la monture pendant l'animation de flip : on re-focus une fois la carte posée
+    if (to) setTimeout(() => inputRef.current?.focus(), 450);
     on.value = withTiming(to ? 0 : 1, { duration: 300 });
     rot.value = withSpring(to ? 180 : 0, motion.card);
   };
@@ -133,6 +135,12 @@ export default function Create() {
   // le mot reste dans la carte : bornes du déplacement en fonction de la taille du verso
   const limX = (w - 14) / 2 - 60;
   const limY = cardH / 2 - 60;
+  const inputRef = useRef<TextInput>(null);
+  // tap n'importe où sur le verso → le champ prend le focus (la zone de texte seule était trop petite)
+  const tapFocus = Gesture.Tap()
+    .enabled(flipped)
+    .maxDuration(300)
+    .onEnd(() => runOnJS(() => inputRef.current?.focus())());
   const drag = Gesture.Pan()
     .enabled(flipped)
     .onStart(() => {
@@ -153,7 +161,7 @@ export default function Create() {
       'worklet';
       wscale.value = Math.min(2.4, Math.max(0.55, gStartS.value * e.scale));
     });
-  const move = Gesture.Simultaneous(drag, pinch);
+  const move = Gesture.Simultaneous(drag, pinch, tapFocus);
   const wordMove = useAnimatedStyle(() => ({ transform: [{ translateX: wx.value }, { translateY: wy.value }, { scale: wscale.value }] }));
 
   const next = () => {
@@ -222,6 +230,7 @@ export default function Create() {
                   <Animated.View style={[s.inputWrap, wordMove]}>
                     {flipped && (
                       <TextInput
+                        ref={inputRef}
                         value={text}
                         onChangeText={(v) => setText(v.slice(0, MAX))}
                         placeholder={t('create.placeholder')}

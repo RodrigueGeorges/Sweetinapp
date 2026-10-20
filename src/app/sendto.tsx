@@ -162,7 +162,9 @@ export default function SendTo() {
               ? t('send.ctaStory')
               : link
                 ? t('send.ctaLink')
-                : t('send.pick');
+                : friends !== null && friends.length === 0
+                  ? t('send.pickLink')
+                  : t('send.pick');
   const hasFriends = (friends?.length ?? 0) > 0;
 
   const linksBlock = (

@@ -17,9 +17,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       setText(message);
       if (timer.current) clearTimeout(timer.current);
       Animated.spring(y, { toValue: 0, useNativeDriver: true, damping: 13, stiffness: 190 }).start();
+      // les messages longs (erreurs lisibles) restent un peu plus : ~30 ms par caractère au-delà de 40
+      const hold = 2800 + Math.min(1200, Math.max(0, message.length - 40) * 30);
       timer.current = setTimeout(() => {
         Animated.timing(y, { toValue: -140, duration: 220, useNativeDriver: true }).start();
-      }, 2600);
+      }, hold);
     },
     [y],
   );

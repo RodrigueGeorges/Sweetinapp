@@ -144,6 +144,7 @@ export const fr = {
   'send.noMatch': 'personne avec ce pseudo.',
   'send.empty': 'pas encore d’amis ici. envoie ton sweet par lien, ou invite-les.',
   'send.pick': 'coche quelqu’un',
+  'send.pickLink': 'choisis un lien ou story au-dessus',
   'send.cta': 'envoyer',
   'send.ctaTo': 'envoyer à {name}',
   'send.ctaTwo': 'envoyer à {a} et {b}',
