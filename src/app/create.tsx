@@ -133,22 +133,23 @@ export default function Create() {
   // le mot reste dans la carte : bornes du déplacement en fonction de la taille du verso
   const limX = (w - 14) / 2 - 60;
   const limY = cardH / 2 - 60;
-  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
   const drag = Gesture.Pan()
     .onStart(() => {
       gStartX.value = wx.value;
       gStartY.value = wy.value;
     })
     .onUpdate((e) => {
-      wx.value = clamp(gStartX.value + e.translationX, -limX, limX);
-      wy.value = clamp(gStartY.value + e.translationY, -limY, limY);
+      'worklet';
+      wx.value = Math.min(limX, Math.max(-limX, gStartX.value + e.translationX));
+      wy.value = Math.min(limY, Math.max(-limY, gStartY.value + e.translationY));
     });
   const pinch = Gesture.Pinch()
     .onStart(() => {
       gStartS.value = wscale.value;
     })
     .onUpdate((e) => {
-      wscale.value = clamp(gStartS.value * e.scale, 0.55, 2.4);
+      'worklet';
+      wscale.value = Math.min(2.4, Math.max(0.55, gStartS.value * e.scale));
     });
   const move = Gesture.Simultaneous(drag, pinch);
   const wordMove = useAnimatedStyle(() => ({ transform: [{ translateX: wx.value }, { translateY: wy.value }, { scale: wscale.value }] }));
