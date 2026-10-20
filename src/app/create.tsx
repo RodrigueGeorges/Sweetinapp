@@ -134,6 +134,7 @@ export default function Create() {
   const limX = (w - 14) / 2 - 60;
   const limY = cardH / 2 - 60;
   const drag = Gesture.Pan()
+    .enabled(flipped)
     .onStart(() => {
       gStartX.value = wx.value;
       gStartY.value = wy.value;
@@ -144,6 +145,7 @@ export default function Create() {
       wy.value = Math.min(limY, Math.max(-limY, gStartY.value + e.translationY));
     });
   const pinch = Gesture.Pinch()
+    .enabled(flipped)
     .onStart(() => {
       gStartS.value = wscale.value;
     })
@@ -191,6 +193,7 @@ export default function Create() {
         </Animated.View>
         <ScrollView contentContainerStyle={s.zone} keyboardShouldPersistTaps="handled" scrollEnabled={false}>
           <Animated.View entering={fromCam ? undefined : FadeInUp.springify().damping(14)} style={[{ transform: [{ rotate: '-1.5deg' }] }, cardIn]}>
+            <GestureDetector gesture={move}>
             <TiltCard tilt={tilt} style={{ width: w, height: cardH }}>
               {/* recto */}
               <Animated.View style={[s.cardWrap, front]} pointerEvents={flipped ? 'none' : 'auto'}>
@@ -216,10 +219,9 @@ export default function Create() {
                 {/* le cœur (DA Fondant) : nuit, le mot en display blanc, une pointe de citron */}
                 <View style={s.heart}>
                   <Text style={s.over}>{t('create.hiddenUnder')}</Text>
-                  <GestureDetector gesture={move}>
-                    <Animated.View style={[s.inputWrap, wordMove]}>
-                      {flipped && (
-                        <TextInput
+                  <Animated.View style={[s.inputWrap, wordMove]}>
+                    {flipped && (
+                      <TextInput
                         value={text}
                         onChangeText={(v) => setText(v.slice(0, MAX))}
                         placeholder={t('create.placeholder')}
@@ -231,16 +233,16 @@ export default function Create() {
                         cursorColor={colors.citron}
                         style={[s.input, { fontSize: fit(text.length), lineHeight: fit(text.length) * 1.12 }]}
                         accessibilityLabel={t('create.secretA11y')}
-                        />
-                      )}
-                    </Animated.View>
-                  </GestureDetector>
+                      />
+                    )}
+                  </Animated.View>
                   <Text style={[s.countT, text.length > MAX - 10 && { color: colors.citron }]}>
                     {text.length}/{MAX}
                   </Text>
                 </View>
               </Animated.View>
             </TiltCard>
+            </GestureDetector>
           </Animated.View>
 
           {flipped ? (
