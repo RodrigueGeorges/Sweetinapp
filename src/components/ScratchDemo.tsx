@@ -69,7 +69,7 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     const f = (d - cum[i - 1]) / Math.max(1, cum[i] - cum[i - 1]);
     const x = pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f;
     const y = pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f;
-    const on = t.value > 0.08 && t.value < 0.66 && !reduce;
+    const on = t.value > 0.08 && t.value < 0.66 && !reduce && !down.value;
     return { opacity: on ? 1 : 0, transform: [{ translateX: x - 20 }, { translateY: y - 20 }] };
   });
 
@@ -85,6 +85,8 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
   const frame = useRef<number | null>(null);
   const pop = useSharedValue(1);
   const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
+  // doigt posé : le fantôme se cache pendant le grattage réel et reprend si on lâche sans avoir lu
+  const down = useSharedValue(0);
 
   const userPath = useMemo(() => {
     const b = Skia.PathBuilder.Make();
@@ -146,6 +148,7 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     .maxPointers(1)
     .onBegin((e) => {
       if (done.current) return;
+      down.value = 1;
       if (!user) {
         setUser(true);
         cancelAnimation(t);
@@ -165,6 +168,9 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     .onFinalize(() => {
       scratchLoop.stop();
       texture?.end();
+      down.value = 0;
+      // lâché avant la lecture : la boucle fantôme reprend par-dessus les traces laissées
+      if (!done.current) t.value = withRepeat(withTiming(1, { duration: CYCLE, easing: Easing.linear }), -1, false);
     });
 
   useEffect(() => () => scratchLoop.stop(), []);
@@ -209,7 +215,7 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
                 )}
               </Canvas>
             )}
-            {!user && <Animated.View pointerEvents="none" style={[s.finger, finger]} />}
+            {!full && <Animated.View pointerEvents="none" style={[s.finger, finger]} />}
           </View>
         </GestureDetector>
       </View>

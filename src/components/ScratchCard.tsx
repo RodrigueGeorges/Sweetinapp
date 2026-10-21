@@ -17,7 +17,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { t } from '../i18n';
-import type { Mode } from '../lib/api';
+import type { Mode, WordStyle } from '../lib/api';
 import { signature, tick as scratchTick } from '../lib/haptics';
 import { useScratchTexture } from '../lib/texture';
 import { colors, fonts, motion } from '../theme';
@@ -55,8 +55,8 @@ type Props = {
   /** Place prise en haut (en-tête) et en bas (réactions, compte à rebours, bouton) : le mot se centre entre les deux, sans jamais passer dessous. */
   safeTop?: number;
   safeBottom?: number;
-  /** Placement choisi par l'expéditeur (décalage relatif au centre + échelle), sinon le mot se centre tout seul. */
-  wordStyle?: { x: number; y: number; scale: number } | null;
+  /** Placement et style choisis par l'expéditeur (décalage relatif au centre, échelle, encre, pastille, fonte). */
+  wordStyle?: WordStyle | null;
 };
 
 /**
@@ -276,7 +276,13 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
       {/* dos de la carte : le cœur (DA Fondant), nuit, le message en display blanc */}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.coeur }]}>
         <Animated.View style={[s.msgWrap, { paddingTop: safeTop, paddingBottom: safeBottom }, msgStyle]} accessibilityElementsHidden={!revealed.current} importantForAccessibility={revealed.current ? 'auto' : 'no-hide-descendants'}>
-          <MeltingWord text={message} style={[s.msg, msgSize(message, width, height - safeTop - safeBottom)]} melt={meltP} reduce={reduce} />
+          <MeltingWord
+            text={message}
+            style={[s.msg, msgSize(message, width, height - safeTop - safeBottom), wordStyle?.face === 'sans' && { fontFamily: fonts.black }, { color: wordStyle?.bubble ? colors.coeur : (wordStyle?.ink ?? colors.onCoeur) }]}
+            bubble={wordStyle?.bubble ? (wordStyle.ink ?? '#FFFFFF') : undefined}
+            melt={meltP}
+            reduce={reduce}
+          />
         </Animated.View>
       </View>
 
@@ -322,12 +328,12 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
  * Le mot, lettre par lettre, pour pouvoir le faire fondre : chaque lettre coule vers le bas, s'étire et s'efface,
  * en cascade de la première à la dernière. Le lecteur d'écran lit le mot entier.
  */
-function MeltingWord({ text, style, melt, reduce }: { text: string; style: StyleProp<TextStyle>; melt: SharedValue<number>; reduce: boolean }) {
+function MeltingWord({ text, style, melt, reduce, bubble }: { text: string; style: StyleProp<TextStyle>; melt: SharedValue<number>; reduce: boolean; bubble?: string }) {
   const words = text.split(/(\s+)/).filter((w) => w.length > 0);
   const total = text.length;
   let i = 0;
   return (
-    <View style={s.word} accessible accessibilityLabel={text}>
+    <View style={[s.word, bubble && { backgroundColor: bubble, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 }]} accessible accessibilityLabel={text}>
       {words.map((w, wi) => {
         if (/^\s+$/.test(w)) {
           i += w.length;

@@ -15,6 +15,7 @@ import { TiltCard } from '../components/TiltCard';
 import { useToast } from '../components/Toast';
 import { BottomCTA, Button, Header, Screen } from '../components/ui';
 import { t, type Key } from '../i18n';
+import { wordInks, type WordFace, type WordInk } from '../lib/api';
 import { draft } from '../lib/draft';
 import { track } from '../lib/monitoring';
 import { useSession } from '../lib/session';
@@ -38,13 +39,18 @@ export default function Create() {
   const cardH = photoH + layout.stripHeight + 7;
   const [flipped, setFlipped] = useState(false);
   const [text, setText] = useState(draft.message);
+  // vrai tant que le clavier est ouvert : les gestes du mot se coupent pour laisser le curseur tranquille
+  const [editing, setEditing] = useState(false);
+  const [ink, setInk] = useState<WordInk>(draft.wordStyle?.ink ?? '#FFFFFF');
+  const [bubble, setBubble] = useState(draft.wordStyle?.bubble ?? false);
+  const [face, setFace] = useState<WordFace>(draft.wordStyle?.face ?? 'display');
   const rot = useSharedValue(0);
   const reduce = useReducedMotion();
 
   // mot façon Insta : on le fait glisser pour le placer, on le pince pour changer sa taille
-  const wx = useSharedValue(0);
-  const wy = useSharedValue(0);
-  const wscale = useSharedValue(1);
+  const wx = useSharedValue(draft.wordStyle ? draft.wordStyle.x * (w - 14) : 0);
+  const wy = useSharedValue(draft.wordStyle ? draft.wordStyle.y * cardH : 0);
+  const wscale = useSharedValue(draft.wordStyle?.scale ?? 1);
   const gStartX = useSharedValue(0);
   const gStartY = useSharedValue(0);
   const gStartS = useSharedValue(1);
@@ -136,13 +142,22 @@ export default function Create() {
   const limX = (w - 14) / 2 - 60;
   const limY = cardH / 2 - 60;
   const inputRef = useRef<TextInput>(null);
-  // tap n'importe où sur le verso → le champ prend le focus (la zone de texte seule était trop petite)
+  // bornes du mot dans la carte, mesurées au layout : un tap en dehors quitte l'édition au lieu de déplacer le curseur
+  const wordArea = useRef({ x: 0, y: 0, w: 0, h: 0 });
+  // tap sur le verso : hors édition → le clavier s'ouvre ; en édition mais hors du mot → le clavier se ferme (mode placement)
   const tapFocus = Gesture.Tap()
     .enabled(flipped)
     .maxDuration(300)
-    .onEnd(() => runOnJS(() => inputRef.current?.focus())());
+    .onEnd((e) =>
+      runOnJS(() => {
+        if (!editing) return inputRef.current?.focus();
+        const a = wordArea.current;
+        const inside = e.x >= a.x - 24 && e.x <= a.x + a.w + 24 && e.y >= a.y - 24 && e.y <= a.y + a.h + 24;
+        if (!inside) inputRef.current?.blur();
+      })(),
+    );
   const drag = Gesture.Pan()
-    .enabled(flipped)
+    .enabled(flipped && !editing)
     .onStart(() => {
       gStartX.value = wx.value;
       gStartY.value = wy.value;
@@ -153,7 +168,7 @@ export default function Create() {
       wy.value = Math.min(limY, Math.max(-limY, gStartY.value + e.translationY));
     });
   const pinch = Gesture.Pinch()
-    .enabled(flipped)
+    .enabled(flipped && !editing)
     .onStart(() => {
       gStartS.value = wscale.value;
     })
@@ -169,12 +184,21 @@ export default function Create() {
     if (!m) return;
     draft.message = m;
     draft.mode = 'free'; // une seule règle : on gratte librement, le mot apparaît passé un seuil
-    draft.setWordStyle(wx.value !== 0 || wy.value !== 0 || wscale.value !== 1 ? { x: wx.value / (w - 14), y: wy.value / cardH, scale: wscale.value } : null);
+    const styled = wx.value !== 0 || wy.value !== 0 || wscale.value !== 1 || ink !== '#FFFFFF' || bubble || face !== 'display';
+    draft.setWordStyle(styled ? { x: wx.value / (w - 14), y: wy.value / cardH, scale: wscale.value, ink, bubble: bubble || undefined, face: face === 'display' ? undefined : face } : null);
     if (session) return router.push('/sendto');
     // premier secret sans compte : on le garde de côté et on crée le compte pour l'envoyer
     draft.save();
     track('guest_signup');
     router.push({ pathname: '/auth', params: { mode: 'signup', next: 'send' } });
+  };
+
+  /** « recadrer » : le mot revient au centre, taille normale. */
+  const resetWord = () => {
+    Haptics.selectionAsync();
+    wx.value = withSpring(0, motion.settle);
+    wy.value = withSpring(0, motion.settle);
+    wscale.value = withSpring(1, motion.settle);
   };
 
   const idea = (k: Key) => {
@@ -227,20 +251,27 @@ export default function Create() {
                 {/* le cœur (DA Fondant) : nuit, le mot en display blanc, une pointe de citron */}
                 <View style={s.heart}>
                   <Text style={s.over}>{t('create.hiddenUnder')}</Text>
-                  <Animated.View style={[s.inputWrap, wordMove]}>
+                  <Animated.View style={[s.inputWrap, wordMove]} onLayout={(e) => (wordArea.current = { x: e.nativeEvent.layout.x, y: e.nativeEvent.layout.y, w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
                     {flipped && (
                       <TextInput
                         ref={inputRef}
                         value={text}
                         onChangeText={(v) => setText(v.slice(0, MAX))}
+                        onFocus={() => setEditing(true)}
+                        onBlur={() => setEditing(false)}
                         placeholder={t('create.placeholder')}
-                        placeholderTextColor="rgba(255,255,255,0.6)"
+                        placeholderTextColor={bubble ? 'rgba(22,15,18,0.45)' : 'rgba(255,255,255,0.6)'}
                         multiline
                         autoFocus
                         maxLength={MAX}
-                        selectionColor={colors.citron}
-                        cursorColor={colors.citron}
-                        style={[s.input, { fontSize: fit(text.length), lineHeight: fit(text.length) * 1.12 }]}
+                        selectionColor={bubble ? colors.coeur : colors.citron}
+                        cursorColor={bubble ? colors.coeur : colors.citron}
+                        style={[
+                          s.input,
+                          { fontSize: fit(text.length), lineHeight: fit(text.length) * 1.12 },
+                          face === 'sans' && { fontFamily: fonts.black },
+                          bubble ? { color: colors.coeur, backgroundColor: ink, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 } : { color: ink },
+                        ]}
                         accessibilityLabel={t('create.secretA11y')}
                       />
                     )}
@@ -256,7 +287,22 @@ export default function Create() {
 
           {flipped ? (
             <Animated.View entering={FadeInDown.delay(250).springify()} style={{ alignSelf: 'stretch', gap: 12 }}>
-              <Text style={s.hint}>{t('create.moveHint')}</Text>
+              <Text style={s.hint}>{editing ? t('create.editHint') : t('create.moveHint')}</Text>
+              {/* style du mot façon stories : encre, pastille, fonte — puis les gestes pour placer */}
+              <View style={s.styler}>
+                {wordInks.map((c) => (
+                  <Pressable key={c} onPress={() => { Haptics.selectionAsync(); setInk(c); }} accessibilityRole="button" accessibilityLabel={t('create.inkA11y')} accessibilityState={{ selected: ink === c }} hitSlop={6} style={[s.swatch, { backgroundColor: c }, ink === c && s.swatchOn]} />
+                ))}
+                <Pressable onPress={() => { Haptics.selectionAsync(); setBubble(!bubble); }} accessibilityRole="button" accessibilityLabel={t('create.bubbleA11y')} accessibilityState={{ selected: bubble }} hitSlop={6} style={[s.chipBtn, bubble && { backgroundColor: ink, borderColor: ink }]}>
+                  <Text style={[s.chipAa, bubble && { color: colors.coeur }]}>Aa</Text>
+                </Pressable>
+                <Pressable onPress={() => { Haptics.selectionAsync(); setFace(face === 'display' ? 'sans' : 'display'); }} accessibilityRole="button" accessibilityLabel={t('create.faceA11y')} accessibilityState={{ selected: face === 'sans' }} hitSlop={6} style={[s.chipBtn, face === 'sans' && { borderColor: colors.ink, borderWidth: 2 }]}>
+                  <Text style={[s.chipAa, { fontFamily: face === 'display' ? fonts.display : fonts.black }]}>Ag</Text>
+                </Pressable>
+                <Pressable onPress={resetWord} accessibilityRole="button" accessibilityLabel={t('create.recenterA11y')} hitSlop={6} style={s.chipBtn}>
+                  <Icon name="retake" size={16} color={colors.ink} />
+                </Pressable>
+              </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={s.ideas} keyboardShouldPersistTaps="always">
                 {IDEAS.map((k) => (
                   <Pressable key={k} onPress={() => idea(k)} accessibilityRole="button" style={({ pressed }) => [s.idea, pressed && { backgroundColor: colors.pistache }]}>
@@ -305,6 +351,12 @@ const s = StyleSheet.create({
   input: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 23, lineHeight: 26, color: colors.onCoeur, textAlign: 'left', textAlignVertical: 'center', maxHeight: '100%' },
   countT: { alignSelf: 'flex-end', ...tx.bold, fontSize: 11, color: 'rgba(255,255,255,0.6)' },
   ideas: { gap: 8, paddingHorizontal: 20 },
+  // barre de style : pastilles d'encre + bulle + fonte + recentrer
+  styler: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 2 },
+  swatch: { width: 26, height: 26, borderRadius: 13, borderWidth: 2.5, borderColor: 'transparent' },
+  swatchOn: { borderColor: colors.ink, transform: [{ scale: 1.12 }] },
+  chipBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.card },
+  chipAa: { ...tx.black, fontSize: 14, color: colors.ink, includeFontPadding: false },
   idea: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
   ideaT: { ...tx.bold, fontSize: 14, color: colors.ink },
   hint: { ...tx.bold, fontSize: 12, color: colors.muted, textAlign: 'center' },

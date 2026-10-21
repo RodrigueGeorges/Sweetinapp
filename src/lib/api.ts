@@ -34,8 +34,13 @@ export type SentItem = {
   preview?: string | null;
 };
 
-/** Placement du mot sur le verso : décalage relatif au centre (fraction de la taille de la carte) et échelle. */
-export type WordStyle = { x: number; y: number; scale: number };
+/** Encres du mot : toutes lisibles sur la nuit du cœur ; en bulle, la pastille prend l'encre et le texte passe en nuit. */
+export const wordInks = ['#FFFFFF', '#E8FF5A', '#FF6B88', '#CFE4FF', '#FFC9D6', '#FFD6C2'] as const;
+export type WordInk = (typeof wordInks)[number];
+export type WordFace = 'display' | 'sans';
+
+/** Placement et style du mot sur le verso, façon stories : décalage relatif au centre, échelle, couleur, pastille, fonte. */
+export type WordStyle = { x: number; y: number; scale: number; ink?: WordInk; bubble?: boolean; face?: WordFace };
 
 export type OpenedFlip = { id: string; sender_id: string; sender: string; sender_avatar?: string | null; preview?: string | null; mode: Mode; created_at: string; photo_url: string; message: string; word_style?: WordStyle | null };
 

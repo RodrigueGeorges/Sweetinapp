@@ -17,6 +17,7 @@ export default function Index() {
   if (!profileReady) return null;
   if (!profile?.onboarded) return <Redirect href="/profile-setup" />;
   if (pending === null) return null;
-  if (pending) return <Redirect href="/sendto" />;
+  // brouillon remis à plus tard : l'inbox le propose, on ne force plus l'envoi
+  if (pending && !draft.deferred) return <Redirect href="/sendto" />;
   return <Redirect href="/inbox" />;
 }

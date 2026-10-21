@@ -147,6 +147,14 @@ export default function SendTo() {
     router.replace('/inbox');
   };
 
+  /** « plus tard » : le brouillon est gardé, l'envoi n'est plus forcé — l'inbox propose de le reprendre. */
+  const later = () => {
+    draft.defer();
+    draft.save();
+    track('send_deferred');
+    leave();
+  };
+
   const n = selected.size;
   const names = (friends ?? []).filter((f) => selected.has(f.id)).map((f) => f.username);
   const cta =
@@ -195,7 +203,8 @@ export default function SendTo() {
   return (
     <Screen>
       <Header
-        back
+        // pas de pile (brouillon rouvert au lancement) : retour = remettre à plus tard, jamais une boucle vers l'accueil
+        back={() => (router.canGoBack() ? router.back() : later())}
         right={draft.uri ? <Image source={{ uri: draft.uri }} style={s.thumb} contentFit="cover" accessibilityIgnoresInvertColors /> : undefined}
       />
       <Title size={44} style={s.title}>
@@ -282,6 +291,12 @@ export default function SendTo() {
             <View style={[s.fill, { width: `${Math.max(4, progress * 100)}%` }]} />
           </View>
         ) : null}
+        {/* passer l'envoi sans perdre le sweet : l'inbox propose de le reprendre */}
+        {!sending && draft.uri ? (
+          <Pressable onPress={later} accessibilityRole="button" hitSlop={10} style={s.later}>
+            <Text style={s.laterT}>{t('send.later')}</Text>
+          </Pressable>
+        ) : null}
       </BottomCTA>
       {sent && (
         <SentCelebration
@@ -326,6 +341,8 @@ const s = StyleSheet.create({
   invite: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14 },
   inviteT: { ...tx.black, fontSize: 15, color: colors.ink },
   ctaBar: { position: 'absolute', left: 0, right: 0, bottom: 0, gap: 10 },
+  later: { alignSelf: 'center', paddingVertical: 6 },
+  laterT: { ...tx.bold, fontSize: 14, color: colors.muted, textDecorationLine: 'underline' },
   track: { height: 6, borderRadius: 3, backgroundColor: colors.sand, overflow: 'hidden', marginHorizontal: 8 },
   fill: { height: 6, borderRadius: 3, backgroundColor: colors.cerise },
   fail: { position: 'absolute', left: 20, right: 24 },

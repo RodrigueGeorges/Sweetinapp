@@ -131,6 +131,11 @@ export const en: Record<Key, string> = {
   'create.idea5': 'guess who',
   'create.next': 'choose who',
   'create.moveHint': 'drag to move · pinch to resize',
+  'create.editHint': 'tap outside the word to place it',
+  'create.inkA11y': 'Word colour',
+  'create.bubbleA11y': 'Coloured bubble behind the word',
+  'create.faceA11y': 'Word font',
+  'create.recenterA11y': 'Recenter the word',
   'create.tip': 'next, it flips over and you write your word underneath.',
 
   // send
@@ -153,6 +158,7 @@ export const en: Record<Key, string> = {
   'send.ctaLink': 'send the link',
   'send.ctaStory': 'post to story',
   'send.uploading': 'sending… {p}%',
+  'send.later': 'send it later',
   'send.sent': 'sent.',
   'send.sentTo': '{to}’s turn to scratch.',
   'send.sentMany': '{n} people can scratch it.',
@@ -185,6 +191,7 @@ export const en: Record<Key, string> = {
   'inbox.scratch': 'scratch.',
   'inbox.yourTurn': 'your turn',
   'inbox.waiting': '{name} is waiting · {n}d streak',
+  'inbox.draftWait': 'your sweet is waiting',
   'inbox.profile': 'Your profile and settings',
   'inbox.shoot': 'Take a photo',
   'inbox.shootSweet': 'Take a photo, sweet hour {t} left',

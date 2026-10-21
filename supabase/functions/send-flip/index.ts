@@ -5,16 +5,24 @@ import { STREAK_MILESTONES, admin, cors, currentUser, fail, json, randomToken, s
 import { blockingCategory, moderate } from '../_shared/moderation.ts';
 import { copy } from '../_shared/copy.ts';
 
-type WordStyle = { x?: number; y?: number; scale?: number };
+const WORD_INKS = new Set(['#FFFFFF', '#E8FF5A', '#FF6B88', '#CFE4FF', '#FFC9D6', '#FFD6C2']);
+type WordStyle = { x?: number; y?: number; scale?: number; ink?: string; bubble?: boolean; face?: string };
 type Body = { photo_path?: string; message?: string; mode?: 'free' | 'once'; recipients?: string[]; link?: 'single' | 'story' | null; preview?: string; word_style?: WordStyle | null };
 
-/** Placement du mot validé : borné au domaine attendu, sinon ignoré (jamais bloquant). */
+/** Placement et style du mot validés : bornés aux domaines attendus, sinon ignorés (jamais bloquant). */
 function sanitizeWordStyle(v: WordStyle | null | undefined) {
   if (!v || typeof v !== 'object') return null;
   const x = Number(v.x), y = Number(v.y), scale = Number(v.scale);
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(scale)) return null;
   if (Math.abs(x) > 1 || Math.abs(y) > 1 || scale < 0.3 || scale > 3) return null;
-  return { x, y, scale };
+  return {
+    x,
+    y,
+    scale,
+    ink: typeof v.ink === 'string' && WORD_INKS.has(v.ink) ? v.ink : undefined,
+    bubble: v.bubble === true ? true : undefined,
+    face: v.face === 'sans' ? 'sans' : undefined,
+  };
 }
 
 const DAILY_LIMIT = 150;

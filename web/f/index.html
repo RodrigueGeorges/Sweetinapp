@@ -263,6 +263,24 @@
       msg.appendChild(w);
     });
     msg.setAttribute('aria-label', f.message);
+    // placement et style choisis par l'expéditeur : décalage depuis le centre, échelle, encre, pastille, fonte
+    var ws = f.word_style;
+    if (ws && typeof ws === 'object') {
+      var stage = $('card').getBoundingClientRect();
+      var tx = (Number(ws.x) || 0) * stage.width, ty = (Number(ws.y) || 0) * stage.height, sc = Number(ws.scale) || 1;
+      msg.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')';
+      msg.style.transition = 'none';
+      if (ws.face === 'sans') msg.style.fontFamily = "'Sweetin Text', system-ui, sans-serif", msg.style.fontWeight = '800';
+      if (ws.bubble) {
+        msg.style.background = ws.ink || '#fff';
+        msg.style.color = '#160F12';
+        msg.style.borderRadius = '18px';
+        msg.style.padding = '8px 14px';
+        msg.style.textShadow = 'none';
+      } else if (ws.ink) {
+        msg.style.color = ws.ink;
+      }
+    }
     sugarImg = new Image(); sugarImg.src = '/sucre-givre.png';
     img = new Image(); img.crossOrigin = 'anonymous';
     img.onload = function () {

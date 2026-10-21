@@ -49,6 +49,7 @@ type Event =
   | 'screenshot_attempt'
   | 'send_failed'
   | 'send_queued'
+  | 'send_deferred'
   | 'send_queue_flushed'
   | 'intro_completed'
   | 'link_shared'

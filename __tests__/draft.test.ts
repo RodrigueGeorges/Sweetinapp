@@ -61,6 +61,39 @@ describe('draft', () => {
     expect(draft.mode).toBe('once');
   });
 
+  it('defer garde le brouillon mais arrête de forcer l’envoi ; reset annule le report', async () => {
+    draft.setPhoto('file:///cache/p.jpg');
+    draft.setMessage('un mot', false);
+    expect(draft.mustSend).toBe(true);
+    draft.defer();
+    expect(draft.pending).toBe(true);
+    expect(draft.mustSend).toBe(false);
+    draft.reset();
+    expect(draft.deferred).toBe(false);
+  });
+
+  it('defer survit à la sauvegarde/restauration du brouillon', async () => {
+    draft.setPhoto('file:///cache/p.jpg');
+    draft.setMessage('mot gardé', false);
+    draft.defer();
+    await draft.save();
+
+    draft.uri = '';
+    draft.message = '';
+    draft.deferred = false;
+    await expect(draft.restore()).resolves.toBe(true);
+    expect(draft.pending).toBe(true);
+    expect(draft.mustSend).toBe(false);
+  });
+
+  it('une nouvelle photo annule le report : l’envoi redevient proposé', () => {
+    draft.setPhoto('file:///cache/p.jpg');
+    draft.setMessage('un mot', false);
+    draft.defer();
+    draft.setPhoto('file:///cache/q.jpg');
+    expect(draft.deferred).toBe(false);
+  });
+
   it('restore renvoie false sans brouillon, et ne touche pas un brouillon déjà prêt', async () => {
     await expect(draft.restore()).resolves.toBe(false);
     draft.setPhoto('file:///cache/p.jpg');

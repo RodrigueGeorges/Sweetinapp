@@ -110,9 +110,14 @@ export default function FriendsSetup() {
       track('push_prompt', { at: 'friends_step' });
     }
     if (fromContacts && router.canGoBack()) router.back();
-    // premier secret écrit avant l'inscription : on va l'envoyer
-    else if (draft.pending) router.replace('/sendto');
-    else router.replace('/camera');
+    // assez d'amis : on enchaîne vers l'envoi du premier secret (s'il n'a pas été remis)
+    else if (draft.mustSend && count >= GOAL) router.replace('/sendto');
+    // « plus tard » ou brouillon remis : la vitrine (le sweet de bienvenue s'y gratte), le brouillon y attend
+    else if (draft.pending) {
+      draft.defer();
+      draft.save();
+      router.replace('/inbox');
+    } else router.replace('/camera');
   };
 
   return (

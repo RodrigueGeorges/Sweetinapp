@@ -132,6 +132,11 @@ export const fr = {
   'create.idea5': 'devine qui c’est',
   'create.next': 'choisir à qui',
   'create.moveHint': 'glisse pour déplacer · pince pour la taille',
+  'create.editHint': 'touche hors du mot pour le placer',
+  'create.inkA11y': 'Couleur du mot',
+  'create.bubbleA11y': 'Pastille de couleur derrière le mot',
+  'create.faceA11y': 'Fonte du mot',
+  'create.recenterA11y': 'Recentrer le mot',
   'create.tip': 'ensuite, elle se retourne : tu écris ton mot dessous.',
 
   // envoi
@@ -154,6 +159,7 @@ export const fr = {
   'send.ctaLink': 'envoyer le lien',
   'send.ctaStory': 'publier en story',
   'send.uploading': 'envoi… {p} %',
+  'send.later': 'envoyer plus tard',
   'send.sent': 'envoyé.',
   'send.sentTo': 'à {to} de gratter.',
   'send.sentMany': '{n} personnes peuvent le gratter.',
@@ -186,6 +192,7 @@ export const fr = {
   'inbox.scratch': 'gratte.',
   'inbox.yourTurn': 'ton tour',
   'inbox.waiting': '{name} t’attend · {n}j de série',
+  'inbox.draftWait': 'ton sweet t’attend',
   'inbox.profile': 'Ton profil et les réglages',
   'inbox.shoot': 'Prendre une photo',
   'inbox.shootSweet': 'Prendre une photo, sweet hour encore {t}',

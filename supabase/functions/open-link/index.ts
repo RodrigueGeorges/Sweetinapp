@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
   }
 
   const [{ data: secret }, { data: sender }, signed] = await Promise.all([
-    db.from('flip_secrets').select('message').eq('flip_id', flip.id).single(),
+    db.from('flip_secrets').select('message, word_style').eq('flip_id', flip.id).single(),
     db.from('profiles').select('username').eq('id', flip.sender_id).single(),
     db.storage.from('flips').createSignedUrl(flip.photo_path, 300),
   ]);
@@ -64,5 +64,6 @@ Deno.serve(async (req) => {
     created_at: flip.created_at,
     photo_url: signed.data.signedUrl,
     message: secret.message,
+    word_style: (secret as { word_style?: unknown }).word_style ?? null,
   });
 });

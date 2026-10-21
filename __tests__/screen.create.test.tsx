@@ -113,3 +113,25 @@ describe('create · suite du parcours', () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/auth', params: { mode: 'signup', next: 'send' } });
   });
 });
+
+describe('create · style du mot', () => {
+  it('le choix d’une encre est conservé dans le brouillon à l’envoi', async () => {
+    draft.setCameraPhoto('file:///shot.jpg');
+    const screen = await render(<Create />);
+    fireEvent.press(await screen.findByLabelText(t('create.validate')));
+    fireEvent.changeText(await screen.findByLabelText(t('create.secretA11y')), 'stylé');
+    // la deuxième encre (citron) plutôt que le blanc par défaut
+    fireEvent.press((await screen.findAllByLabelText(t('create.inkA11y')))[1]);
+    fireEvent.press(await screen.findByText(t('create.next')));
+    expect(draft.wordStyle?.ink).toBe('#E8FF5A');
+  });
+
+  it('sans personnalisation, aucun wordStyle n’est envoyé (mot centré par défaut)', async () => {
+    draft.setCameraPhoto('file:///shot.jpg');
+    const screen = await render(<Create />);
+    fireEvent.press(await screen.findByLabelText(t('create.validate')));
+    fireEvent.changeText(await screen.findByLabelText(t('create.secretA11y')), 'simple');
+    fireEvent.press(await screen.findByText(t('create.next')));
+    expect(draft.wordStyle).toBeNull();
+  });
+});

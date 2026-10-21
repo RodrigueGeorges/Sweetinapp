@@ -1,4 +1,5 @@
 import NetInfo from '@react-native-community/netinfo';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -64,7 +65,10 @@ export default function Inbox() {
     return NetInfo.addEventListener(sync);
   }, []);
 
+  const [draftWaiting, setDraftWaiting] = useState(draft.pending && draft.deferred);
+
   const load = useCallback(() => {
+    setDraftWaiting(draft.pending && draft.deferred);
     pendingSends().then(setQueued).catch(() => {});
     listFriends().then(setFriends).catch(() => {});
     myStreaks().then(setStreaks).catch(() => {});
@@ -138,6 +142,30 @@ export default function Inbox() {
           <Pill on={tab === 'in'} label={t('inbox.received')} count={received.length} onPress={() => setTab('in')} />
           <Pill on={tab === 'out'} label={t('inbox.sent')} onPress={() => setTab('out')} />
         </View>
+
+        {/* brouillon remis à plus tard : on le propose sans forcer */}
+        {draftWaiting ? (
+          <Animated.View entering={FadeInDown.springify()}>
+            <Bounce
+              onPress={() => router.push('/sendto')}
+              scaleTo={0.97}
+              accessibilityRole="button"
+              accessibilityLabel={t('inbox.draftWait')}
+              style={[s.banner, { backgroundColor: isDark ? colors.card2 : colors.cacao }]}
+            >
+              <Image source={{ uri: draft.uri }} style={s.draftThumb} contentFit="cover" />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[s.bannerTitle, { color: colors.white }]}>{t('inbox.draftWait')}</Text>
+                <Text style={[s.bannerSub, { color: 'rgba(255,255,255,0.8)' }]} numberOfLines={1}>
+                  {draft.message}
+                </Text>
+              </View>
+              <View style={s.turnGo}>
+                <Icon name="arrow" size={20} color={colors.cacao} stroke={2.8} />
+              </View>
+            </Bounce>
+          </Animated.View>
+        ) : null}
 
         {sweet !== null ? (
           <Animated.View entering={FadeInDown.springify()}>
@@ -393,6 +421,7 @@ const s = StyleSheet.create({
   pillN: { minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: colors.cerise, alignItems: 'center', justifyContent: 'center' },
   pillNT: { ...tx.black, fontSize: 12, color: colors.cacao },
   banner: { minHeight: 76, borderRadius: 22, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 16 },
+  draftThumb: { width: 40, height: 52, borderRadius: 10, transform: [{ rotate: '-4deg' }], borderWidth: 2, borderColor: colors.white },
   bannerTitle: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 20, lineHeight: 22, color: colors.cacao },
   bannerSub: { marginTop: 3, ...tx.bold, fontSize: 13, lineHeight: 18, color: colors.cacao },
   bannerClock: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 26, color: colors.cacao },
