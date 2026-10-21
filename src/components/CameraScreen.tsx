@@ -52,7 +52,7 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
       setActive(true);
       setReplyName(draft.replyName);
       return () => setActive(false);
-    }, []),
+    }, [draft.replyName]),
   );
 
   const go = async (uri: string) => {
