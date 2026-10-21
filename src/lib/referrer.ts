@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from './kv';
 import * as Application from 'expo-application';
 import { Platform } from 'react-native';
 import type { InviteSource } from './api';
@@ -38,8 +38,8 @@ export function checkInstallReferrer() {
 async function readReferrer() {
   if (Platform.OS !== 'android') return;
   try {
-    if (await AsyncStorage.getItem(KEY)) return;
-    await AsyncStorage.setItem(KEY, '1');
+    if (await kv.getItem(KEY)) return;
+    await kv.setItem(KEY, '1');
     const inv = parseReferrer(await Application.getInstallReferrerAsync());
     if (!inv) return;
     await rememberInvite(inv.name, inv.source);

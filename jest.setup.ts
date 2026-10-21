@@ -3,11 +3,29 @@
 process.env.EXPO_PUBLIC_SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
 process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'jest-anon-key';
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
+jest.mock('react-native-mmkv', () => {
+  const map = new Map<string, string>();
+  return { createMMKV: () => ({ getString: (k: string) => map.get(k), set: (k: string, v: string) => void map.set(k, v), remove: (k: string) => map.delete(k) }) };
+});
 jest.mock('@react-native-community/netinfo', () => ({ fetch: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })), addEventListener: jest.fn(() => () => {}) }));
 jest.mock('expo-contacts', () => ({ Contact: { getAllDetails: jest.fn(async () => []) }, ContactField: { PHONES: 'phones' }, getPermissionsAsync: jest.fn(), requestPermissionsAsync: jest.fn() }));
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
 jest.mock('react-native-pulsar', () => require('react-native-pulsar/jest-mock'));
 jest.mock('react-native-keyboard-controller', () => require('react-native-keyboard-controller/jest'));
+jest.mock('@gorhom/bottom-sheet', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const wrap = ({ children }: { children?: unknown }) => React.createElement(View, null, children);
+  return {
+    BottomSheetModalProvider: wrap,
+    BottomSheetView: wrap,
+    BottomSheetBackdrop: () => null,
+    BottomSheetModal: React.forwardRef((_p: unknown, ref: unknown) => {
+      React.useImperativeHandle(ref, () => ({ present: jest.fn(), dismiss: jest.fn() }));
+      return null;
+    }),
+  };
+});
 // Toast allégé : le vrai provider garde un setTimeout qui survit au teardown Jest (crash « Animated undefined »).
 // Le texte reste rendu dans un <Text> pour que les tests puissent l'affirmer.
 jest.mock('./src/components/Toast', () => {

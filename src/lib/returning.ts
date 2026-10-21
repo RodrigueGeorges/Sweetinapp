@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from './kv';
 import { useEffect, useState } from 'react';
 
 /**
@@ -11,13 +11,13 @@ let known: boolean | null = null;
 export function markHasAccount() {
   if (known) return;
   known = true;
-  AsyncStorage.setItem(KEY, '1').catch(() => {});
+  kv.setItem(KEY, '1').catch(() => {});
 }
 
 /** Après une suppression de compte : le prochain passage repart de l'accueil. */
 export function clearHasAccount() {
   known = false;
-  AsyncStorage.removeItem(KEY).catch(() => {});
+  kv.removeItem(KEY).catch(() => {});
 }
 
 /** Où envoyer quelqu'un sans session : la connexion si un compte a déjà existé ici, sinon l'accueil. null pendant la lecture. */
@@ -25,7 +25,7 @@ export function useLanding(): '/welcome' | '/auth?mode=login' | null {
   const [has, setHas] = useState<boolean | null>(known);
   useEffect(() => {
     if (has !== null) return;
-    AsyncStorage.getItem(KEY)
+    kv.getItem(KEY)
       .then((v) => {
         known = !!v;
         setHas(known);

@@ -8,5 +8,13 @@
     "NSPhotoLibraryUsageDescription": "Sweetin ouvre tes photos quand tu choisis une image pour ton sweet ou ta photo de profil.",
     "NSContactsUsageDescription": "Sweetin compare les empreintes chiffrées des numéros de tes contacts pour te montrer qui est déjà sur Sweetin. Rien n'est conservé.",
     "NSUserNotificationsUsageDescription": "Sweetin t'envoie des notifications pour le Sweet Hour et les sweets de tes amis."
+  },
+  "filters": {
+    "none": "original",
+    "dore": "doré",
+    "neon": "néon",
+    "nuit": "nuit",
+    "noir": "noir",
+    "poudre": "poudre"
   }
 }

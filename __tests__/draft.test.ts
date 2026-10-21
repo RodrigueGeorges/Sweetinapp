@@ -1,13 +1,24 @@
 /// <reference types="jest" />
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+const mockStore = new Map<string, string>();
+jest.mock('../src/lib/kv', () => ({
+  __esModule: true,
+  kv: {
+    getItem: jest.fn(async (k: string) => mockStore.get(k) ?? null),
+    setItem: jest.fn(async (k: string, v: string) => void mockStore.set(k, v)),
+    removeItem: jest.fn(async (k: string) => void mockStore.delete(k)),
+  },
+}));
+
+import { kv } from '../src/lib/kv';
 import { draft } from '../src/lib/draft';
 
-const mocked = jest.mocked(AsyncStorage);
+const mocked = jest.mocked(kv);
 
 beforeEach(() => {
+  jest.clearAllMocks();
+  mockStore.clear();
   draft.reset();
-  mocked.clear();
 });
 
 describe('draft', () => {

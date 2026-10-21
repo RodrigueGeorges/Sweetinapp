@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from './kv';
 import * as StoreReview from 'expo-store-review';
 import { track } from './monitoring';
 
@@ -9,8 +9,8 @@ const EVERY_MS = 60 * 24 * 3600 * 1000;
 
 /** Compte un secret gratté (sert à ne demander une note qu'à quelqu'un qui a vraiment utilisé l'app). */
 export async function countRead() {
-  const n = Number((await AsyncStorage.getItem(READS).catch(() => null)) ?? 0) + 1;
-  await AsyncStorage.setItem(READS, String(n)).catch(() => {});
+  const n = Number((await kv.getItem(READS).catch(() => null)) ?? 0) + 1;
+  await kv.setItem(READS, String(n)).catch(() => {});
 }
 
 /**
@@ -19,11 +19,11 @@ export async function countRead() {
  */
 export async function maybeAskReview() {
   try {
-    const n = Number((await AsyncStorage.getItem(READS)) ?? 0);
-    const last = Number((await AsyncStorage.getItem(ASKED)) ?? 0);
+    const n = Number((await kv.getItem(READS)) ?? 0);
+    const last = Number((await kv.getItem(ASKED)) ?? 0);
     if (n < MIN_READS || Date.now() - last < EVERY_MS) return;
     if (!(await StoreReview.isAvailableAsync()) || !(await StoreReview.hasAction())) return;
-    await AsyncStorage.setItem(ASKED, String(Date.now()));
+    await kv.setItem(ASKED, String(Date.now()));
     setTimeout(() => {
       track('review_prompt');
       StoreReview.requestReview().catch(() => {});

@@ -15,7 +15,11 @@ import { TiltCard } from '../components/TiltCard';
 import { useToast } from '../components/Toast';
 import { BottomCTA, Button, Header, Screen } from '../components/ui';
 import { t, type Key } from '../i18n';
-import { wordInks, type WordFace, type WordInk } from '../lib/api';
+import { wordInks, type FilterId, type WordFace, type WordInk } from '../lib/api';
+import { FILTERS, matrixOf } from '../lib/filters';
+import { loadImageFromFile } from '../lib/image';
+import type { SkImage } from '@shopify/react-native-skia';
+import { Canvas, ColorMatrix, Image as SkiaImage } from '@shopify/react-native-skia';
 import { draft } from '../lib/draft';
 import { track } from '../lib/monitoring';
 import { useSession } from '../lib/session';
@@ -44,6 +48,19 @@ export default function Create() {
   const [ink, setInk] = useState<WordInk>(draft.wordStyle?.ink ?? '#FFFFFF');
   const [bubble, setBubble] = useState(draft.wordStyle?.bubble ?? false);
   const [face, setFace] = useState<WordFace>(draft.wordStyle?.face ?? 'display');
+  // filtre photo façon stories : matrice Skia appliquée au recto, transportée jusqu'au destinataire
+  const [filter, setFilter] = useState<FilterId>(draft.wordStyle?.filter ?? 'none');
+  const [skImg, setSkImg] = useState<SkImage | null>(null);
+  useEffect(() => {
+    let on = true;
+    loadImageFromFile(draft.uri)
+      .then((img) => on && setSkImg(img))
+      .catch(() => {});
+    return () => {
+      on = false;
+    };
+  }, []);
+  const filterMatrix = matrixOf(filter);
   const rot = useSharedValue(0);
   const reduce = useReducedMotion();
 
@@ -187,8 +204,8 @@ export default function Create() {
     if (!m) return;
     draft.message = m;
     draft.mode = 'free'; // une seule règle : on gratte librement, le mot apparaît passé un seuil
-    const styled = wx.value !== 0 || wy.value !== 0 || wscale.value !== 1 || ink !== '#FFFFFF' || bubble || face !== 'display';
-    draft.setWordStyle(styled ? { x: wx.value / (w - 14), y: wy.value / cardH, scale: wscale.value, ink, bubble: bubble || undefined, face: face === 'display' ? undefined : face } : null);
+    const styled = wx.value !== 0 || wy.value !== 0 || wscale.value !== 1 || ink !== '#FFFFFF' || bubble || face !== 'display' || filter !== 'none';
+    draft.setWordStyle(styled ? { x: wx.value / (w - 14), y: wy.value / cardH, scale: wscale.value, ink, bubble: bubble || undefined, face: face === 'display' ? undefined : face, filter: filter === 'none' ? undefined : filter } : null);
     if (session) return router.push('/sendto');
     // premier secret sans compte : on le garde de côté et on crée le compte pour l'envoyer
     draft.save();
@@ -236,6 +253,14 @@ export default function Create() {
                 <View style={s.card}>
                   <View ref={photoRef} onLayout={onPhotoLayout} collapsable={false} style={{ width: w - 14, height: photoH, borderRadius: 16, overflow: 'hidden' }}>
                     <Image source={{ uri: draft.uri }} style={StyleSheet.absoluteFill} contentFit="cover" onError={onPhotoError} />
+                    {/* filtre choisi : la photo est redessinée par Skia avec sa matrice — même rendu que chez le destinataire */}
+                    {skImg && filterMatrix ? (
+                      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+                        <SkiaImage image={skImg} x={0} y={0} width={w - 14} height={photoH} fit="cover">
+                          <ColorMatrix matrix={filterMatrix} />
+                        </SkiaImage>
+                      </Canvas>
+                    ) : null}
                     {!reduce && <HoloLayer width={w - 14} height={photoH} tilt={tilt} strength={0.4} />}
                   </View>
                   <View style={s.strip}>
@@ -315,7 +340,38 @@ export default function Create() {
               </ScrollView>
             </Animated.View>
           ) : (
-            <Animated.Text style={[s.tip, uiIn]}>{t('create.tip')}</Animated.Text>
+            <Animated.View style={[{ alignSelf: 'stretch', gap: 10 }, uiIn]}>
+              {/* filtres façon stories : chaque vignette rend la photo avec sa matrice */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={s.filters} keyboardShouldPersistTaps="always">
+                {FILTERS.map((f) => (
+                  <Pressable
+                    key={f.id}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setFilter(f.id);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(`filters.${f.id}` as Key)}
+                    accessibilityState={{ selected: filter === f.id }}
+                    style={s.filt}
+                  >
+                    <View style={[s.filtImg, filter === f.id && s.filtOn]}>
+                      {f.matrix && skImg ? (
+                        <Canvas style={StyleSheet.absoluteFill}>
+                          <SkiaImage image={skImg} x={0} y={0} width={52} height={68} fit="cover">
+                            <ColorMatrix matrix={f.matrix} />
+                          </SkiaImage>
+                        </Canvas>
+                      ) : (
+                        <Image source={{ uri: draft.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                      )}
+                    </View>
+                    <Text style={[s.filtT, filter === f.id && { color: colors.cerise }]}>{t(`filters.${f.id}` as Key)}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <Text style={s.tip}>{t('create.tip')}</Text>
+            </Animated.View>
           )}
         </ScrollView>
         <Animated.View style={uiIn}>
@@ -363,5 +419,11 @@ const s = StyleSheet.create({
   idea: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
   ideaT: { ...tx.bold, fontSize: 14, color: colors.ink },
   hint: { ...tx.bold, fontSize: 12, color: colors.muted, textAlign: 'center' },
+  // strip de filtres sous la carte : vignettes 52×68, sélection = filet cerise
+  filters: { gap: 12, paddingHorizontal: 20, alignItems: 'center' },
+  filt: { alignItems: 'center', gap: 5 },
+  filtImg: { width: 52, height: 68, borderRadius: 12, overflow: 'hidden', borderWidth: 2.5, borderColor: 'transparent' },
+  filtOn: { borderColor: colors.cerise },
+  filtT: { ...tx.bold, fontSize: 11, color: colors.muted },
   tip: { ...tx.text, fontSize: 14, lineHeight: 20, color: colors.muted, textAlign: 'center', paddingHorizontal: 24 },
 });

@@ -1,4 +1,5 @@
-import { BlurMask, Canvas, createPicture, Group, Image as SkiaImage, Path, Picture, Skia, useClock, type SkImage } from '@shopify/react-native-skia';
+import { BlurMask, Canvas, ColorMatrix, createPicture, Group, Image as SkiaImage, Path, Picture, Skia, useClock, type SkImage } from '@shopify/react-native-skia';
+import { matrixOf } from '../lib/filters';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
@@ -87,6 +88,7 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
   const wx = wordStyle?.x ?? 0;
   const wy = wordStyle?.y ?? 0;
   const ws = wordStyle?.scale ?? 1;
+  const filterMatrix = matrixOf(wordStyle?.filter);
   const msgStyle = useAnimatedStyle(() => ({ transform: [{ translateX: wx * width }, { translateY: wy * height }, { scale: msg.value * ws }] }));
   // fonte du mot, de 0 à 1
   const meltP = useSharedValue(0);
@@ -301,7 +303,9 @@ export function ScratchCard({ photo, message, mode, width, height, radius = 16, 
           >
             <Canvas style={StyleSheet.absoluteFill}>
               <Group layer>
-                <SkiaImage image={photo} x={0} y={0} width={width} height={height} fit="cover" />
+                <SkiaImage image={photo} x={0} y={0} width={width} height={height} fit="cover">
+                  {filterMatrix ? <ColorMatrix matrix={filterMatrix} /> : null}
+                </SkiaImage>
                 {!reduce ? <HoloFill width={width} height={height} tilt={tilt} strength={0.5} /> : null}
                 <Path path={path} style="stroke" strokeWidth={brush} strokeCap="round" strokeJoin="round" color="black" blendMode="clear">
                   <BlurMask blur={brush * 0.12} style="normal" />

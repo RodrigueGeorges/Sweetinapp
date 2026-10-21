@@ -1,11 +1,11 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from '../../lib/kv';
 import { Fondue } from '../../components/Fondue';
 import { Flaque } from '../../components/Flaque';
 import type { SkImage } from '@shopify/react-native-skia';
 import * as ScreenCapture from 'expo-screen-capture';
 import { Link, Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bounce } from '../../components/Bounce';
@@ -15,7 +15,8 @@ import { Rolling } from '../../components/Rolling';
 import { OriginZoom, useOriginZoom } from '../../components/OriginZoom';
 import { Shimmer } from '../../components/Shimmer';
 import { Drip } from '../../components/Logo';
-import { NativeMenu } from '../../components/NativeMenu';
+import { Sheet } from '../../components/Sheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Glass } from '../../components/Glass';
 import { thumbhashOf } from '../../lib/thumb';
 import { Image as ExpoImage } from 'expo-image';
@@ -96,6 +97,7 @@ function ReadScreen() {
   const [progress, setProgress] = useState(0);
   const [force, setForce] = useState(false);
   const [ms, setMs] = useState(0);
+  const moreSheet = useRef<BottomSheetModal>(null);
   // fonte : la vanille coule du haut de la carte jusqu'à tout recouvrir
   const [left, setLeft] = useState(MELT_S);
   // la durée peut arriver après le premier rendu : le décompte repart sur la bonne base (ajustement pendant le rendu)
@@ -202,7 +204,7 @@ function ReadScreen() {
         if (alive) setPhoto(img);
       })
       .catch((e) => alive && setError(humanError(e)));
-    AsyncStorage.getItem(COACH_KEY).then((v) => setCoach(!v));
+    kv.getItem(COACH_KEY).then((v) => setCoach(!v));
     return () => {
       alive = false;
     };
@@ -315,7 +317,7 @@ function ReadScreen() {
               radius={0}
               showHint={coach}
               tilt={tilt}
-              onFirstTouch={() => AsyncStorage.setItem(COACH_KEY, '1')}
+              onFirstTouch={() => kv.setItem(COACH_KEY, '1')}
               onProgress={(p) => {
                 if (done) return;
                 setProgress(p);
@@ -369,10 +371,7 @@ function ReadScreen() {
           <View />
         )}
         {flip && !welcome ? (
-          <NativeMenu
-            title={t('read.reportWhy')}
-            items={(['harass', 'sexual', 'violence', 'other'] as const).map((k) => ({ id: k, title: t(`report.${k}`), sf: 'exclamationmark.bubble' as const, destructive: true }))}
-            onSelect={reportFlip} label={t('read.more')}>
+          <Pressable onPress={() => moreSheet.current?.present()} accessibilityRole="button" accessibilityLabel={t('read.more')} hitSlop={8}>
             {done ? (
               <View style={[s.glassBtn, { backgroundColor: melted ? colors.card : 'rgba(255,255,255,0.14)' }]}>
                 <Icon name="more" size={20} color={melted ? colors.ink : colors.vanille} />
@@ -382,7 +381,7 @@ function ReadScreen() {
                 <Icon name="more" size={20} color={colors.vanille} />
               </Glass>
             )}
-          </NativeMenu>
+          </Pressable>
         ) : (
           <View style={{ width: 40 }} />
         )}
@@ -466,6 +465,12 @@ function ReadScreen() {
           ) : null}
         </View>
       )}
+      <Sheet
+        ref={moreSheet}
+        title={t('read.reportWhy')}
+        items={(['harass', 'sexual', 'violence', 'other'] as const).map((k) => ({ id: k, title: t(`report.${k}`), destructive: true }))}
+        onSelect={reportFlip}
+      />
     </Screen>
   );
 }

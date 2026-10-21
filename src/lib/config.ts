@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from './kv';
 import { supabase } from './supabase';
 import { setTestGroup } from './monitoring';
 
@@ -23,14 +23,14 @@ function accept(v: unknown) {
 /** Au démarrage : la valeur gardée d'abord, puis celle du serveur. */
 export async function loadConfig() {
   try {
-    const cached = await AsyncStorage.getItem(CACHE);
+    const cached = await kv.getItem(CACHE);
     if (cached) accept(JSON.parse(cached));
   } catch {}
   try {
     const { data } = await supabase.from('app_config').select('value').eq('key', 'melt').maybeSingle();
     if (data?.value) {
       accept(data.value);
-      AsyncStorage.setItem(CACHE, JSON.stringify(data.value)).catch(() => {});
+      kv.setItem(CACHE, JSON.stringify(data.value)).catch(() => {});
     }
   } catch {}
 }

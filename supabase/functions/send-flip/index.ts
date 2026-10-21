@@ -6,7 +6,8 @@ import { blockingCategory, moderate } from '../_shared/moderation.ts';
 import { copy } from '../_shared/copy.ts';
 
 const WORD_INKS = new Set(['#FFFFFF', '#E8FF5A', '#FF6B88', '#CFE4FF', '#FFC9D6', '#FFD6C2']);
-type WordStyle = { x?: number; y?: number; scale?: number; ink?: string; bubble?: boolean; face?: string };
+const WORD_FILTERS = new Set(['dore', 'neon', 'nuit', 'noir', 'poudre']);
+type WordStyle = { x?: number; y?: number; scale?: number; ink?: string; bubble?: boolean; face?: string; filter?: string };
 type Body = { photo_path?: string; message?: string; mode?: 'free' | 'once'; recipients?: string[]; link?: 'single' | 'story' | null; preview?: string; word_style?: WordStyle | null };
 
 /** Placement et style du mot validés : bornés aux domaines attendus, sinon ignorés (jamais bloquant). */
@@ -22,6 +23,7 @@ function sanitizeWordStyle(v: WordStyle | null | undefined) {
     ink: typeof v.ink === 'string' && WORD_INKS.has(v.ink) ? v.ink : undefined,
     bubble: v.bubble === true ? true : undefined,
     face: v.face === 'sans' ? 'sans' : undefined,
+    filter: typeof v.filter === 'string' && WORD_FILTERS.has(v.filter) ? v.filter : undefined,
   };
 }
 

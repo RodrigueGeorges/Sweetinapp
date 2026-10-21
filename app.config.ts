@@ -40,7 +40,12 @@ const config: ExpoConfig = {
       // tranche d'âge déclarée à Apple, exigée par certaines lois (Texas…) ; voir lib/age.ts
       'com.apple.developer.declared-age-range': true,
     },
-    infoPlist: { UIBackgroundModes: ['remote-notification'], CFBundleAllowMixedLocalizations: true },
+    infoPlist: {
+      UIBackgroundModes: ['remote-notification'],
+      CFBundleAllowMixedLocalizations: true,
+      // react-native-vision-camera n'a pas de plugin Expo : la raison d'usage est déclarée ici (+ locales/)
+      NSCameraUsageDescription: 'Sweetin uses the camera to take the photo for your sweet and to scan a friend’s QR code.',
+    },
     // manifeste de confidentialité : les API « à justifier » utilisées par l'app et ses dépendances
     // (relevées dans les PrivacyInfo.xcprivacy de node_modules, qu'Apple ne lit pas toujours depuis les pods statiques)
     privacyManifests: {
@@ -65,6 +70,8 @@ const config: ExpoConfig = {
       backgroundImage: './assets/android-icon-background.png',
       monochromeImage: './assets/android-icon-monochrome.png',
     },
+    // react-native-vision-camera ne déclare pas la permission CAMERA dans son manifeste : on l'ajoute nous-mêmes
+    permissions: ['android.permission.CAMERA'],
     // pas de micro, pas d'écriture des contacts, pas de « superposition aux autres apps » (ajoutée par défaut)
     blockedPermissions: ['android.permission.RECORD_AUDIO', 'android.permission.WRITE_CONTACTS', 'android.permission.SYSTEM_ALERT_WINDOW'],
     // la session et le brouillon ne partent pas dans la sauvegarde Google Drive du téléphone
@@ -95,15 +102,7 @@ const config: ExpoConfig = {
         android: { image: './assets/splash-icon-android.png', imageWidth: 288 },
       },
     ],
-    [
-      'expo-camera',
-      {
-        cameraPermission: 'Sweetin uses the camera to take the photo for your sweet and to scan a friend’s QR code.',
-        microphonePermission: false,
-        recordAudioAndroid: false,
-        barcodeScannerEnabled: true,
-      },
-    ],
+    // pas de plugin Expo : VisionCamera v5 (Nitro) s'auto-lie ; les permissions sont déclarées via ios.infoPlist + android.permissions
     [
       'expo-image-picker',
       {

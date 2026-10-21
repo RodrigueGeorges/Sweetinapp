@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from './kv';
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 
 /**
@@ -38,7 +38,7 @@ export async function initSounds() {
   if (ready) return;
   ready = true;
   try {
-    enabled = (await AsyncStorage.getItem(KEY)) !== 'off';
+    enabled = (await kv.getItem(KEY)) !== 'off';
     // jamais de son en mode silencieux, et on se mélange à la musique en cours au lieu de la couper
     await setAudioModeAsync({ playsInSilentMode: false, interruptionMode: 'mixWithOthers' });
   } catch {}
@@ -49,7 +49,7 @@ export const soundsEnabled = () => enabled;
 export async function setSoundsEnabled(on: boolean) {
   enabled = on;
   if (!on) scratchLoop.stop();
-  await AsyncStorage.setItem(KEY, on ? 'on' : 'off').catch(() => {});
+  await kv.setItem(KEY, on ? 'on' : 'off').catch(() => {});
 }
 
 export function play(name: SoundName, volume = 1) {

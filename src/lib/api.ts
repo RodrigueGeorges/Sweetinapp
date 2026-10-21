@@ -6,6 +6,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { errorText } from '../i18n';
+import type { FilterId } from './filters';
 import { supabase } from './supabase';
 
 export type Profile = { id: string; username: string; avatar_url?: string | null };
@@ -38,9 +39,10 @@ export type SentItem = {
 export const wordInks = ['#FFFFFF', '#E8FF5A', '#FF6B88', '#CFE4FF', '#FFC9D6', '#FFD6C2'] as const;
 export type WordInk = (typeof wordInks)[number];
 export type WordFace = 'display' | 'sans';
+export type { FilterId };
 
-/** Placement et style du mot sur le verso, façon stories : décalage relatif au centre, échelle, couleur, pastille, fonte. */
-export type WordStyle = { x: number; y: number; scale: number; ink?: WordInk; bubble?: boolean; face?: WordFace };
+/** Placement et style du mot sur le verso, façon stories : décalage relatif au centre, échelle, couleur, pastille, fonte + filtre de la photo. */
+export type WordStyle = { x: number; y: number; scale: number; ink?: WordInk; bubble?: boolean; face?: WordFace; filter?: FilterId };
 
 export type OpenedFlip = { id: string; sender_id: string; sender: string; sender_avatar?: string | null; preview?: string | null; mode: Mode; created_at: string; photo_url: string; message: string; word_style?: WordStyle | null };
 

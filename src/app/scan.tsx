@@ -1,4 +1,4 @@
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Camera, isScannedCode, useCameraDevice, useCameraPermission, useObjectOutput, type ScannedObject } from 'react-native-vision-camera';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useRef } from 'react';
@@ -17,7 +17,8 @@ import { colors } from '../theme';
 export default function Scan() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const [perm, request] = useCameraPermissions();
+  const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('back');
   const busy = useRef(false);
   const lastBad = useRef('');
 
@@ -43,7 +44,15 @@ export default function Scan() {
     }
   };
 
-  if (!perm?.granted) {
+  const objectOutput = useObjectOutput({
+    types: ['qr'],
+    onObjectsScanned: (objects: ScannedObject[]) => {
+      const code = objects.find(isScannedCode)?.value;
+      if (code) void onScan({ data: code });
+    },
+  });
+
+  if (!hasPermission) {
     return (
       <Screen>
         <Header back />
@@ -56,8 +65,8 @@ export default function Scan() {
         </View>
         <BottomCTA>
           <Button
-            label={perm && !perm.canAskAgain ? t('camera.openSettings') : t('camera.allow')}
-            onPress={() => (perm && !perm.canAskAgain ? Linking.openSettings() : request())}
+            label={!canRequestPermission ? t('camera.openSettings') : t('camera.allow')}
+            onPress={() => (!canRequestPermission ? Linking.openSettings() : requestPermission())}
           />
         </BottomCTA>
       </Screen>
@@ -66,7 +75,7 @@ export default function Scan() {
 
   return (
     <Screen tone="cacao">
-      <CameraView style={StyleSheet.absoluteFill} facing="back" barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={onScan} />
+      {device && <Camera style={StyleSheet.absoluteFill} device={device} isActive outputs={[objectOutput]} />}
       <View style={[s.backPos, { top: insets.top + 8 }]}>
         <BackButton tone="cacao" />
       </View>

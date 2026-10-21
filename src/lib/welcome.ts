@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from './kv';
 import { Asset } from 'expo-asset';
 import { Skia, type SkImage } from '@shopify/react-native-skia';
 import { useFocusEffect } from 'expo-router';
@@ -41,14 +41,14 @@ export async function loadWelcomePhoto(): Promise<SkImage> {
   return img;
 }
 
-export const markWelcomeRead = () => AsyncStorage.setItem(KEY, '1').catch(() => {});
+export const markWelcomeRead = () => kv.setItem(KEY, '1').catch(() => {});
 
 /** Vrai tant que le sweet de bienvenue n'a pas été lu (relu à chaque retour sur la vitrine). */
 export function useWelcome(): boolean {
   const [show, setShow] = useState(false);
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem(KEY)
+      kv.getItem(KEY)
         .then((v) => setShow(!v))
         .catch(() => setShow(false));
     }, []),

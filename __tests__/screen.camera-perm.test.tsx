@@ -6,18 +6,22 @@
  * promesses en vol qui cassent le commit React des renders suivants.)
  */
 
-const mockTakePicture = jest.fn();
+const mockCapture = jest.fn();
 const mockRequestPerm = jest.fn();
 let mockPermGranted = false;
 
-jest.mock('expo-camera', () => {
+jest.mock('react-native-vision-camera', () => {
   const React = require('react');
   return {
-    useCameraPermissions: () => [{ granted: mockPermGranted, canAskAgain: true }, mockRequestPerm],
-    CameraView: React.forwardRef((_p: unknown, ref: unknown) => {
-      React.useImperativeHandle(ref, () => ({ takePictureAsync: mockTakePicture, pausePreview: jest.fn(async () => {}), resumePreview: jest.fn(async () => {}) }));
+    Camera: React.forwardRef((_p: unknown, ref: unknown) => {
+      React.useImperativeHandle(ref, () => ({}));
       return null;
     }),
+    useCameraDevice: () => ({ id: 'back', position: 'back', minZoom: 1, maxZoom: 8, hasFlash: true }),
+    useCameraPermission: () => ({ hasPermission: mockPermGranted, canRequestPermission: true, requestPermission: mockRequestPerm }),
+    usePhotoOutput: () => ({ capturePhotoToFile: mockCapture }),
+    useObjectOutput: jest.fn(),
+    isScannedCode: (o: object) => 'value' in o,
   };
 });
 
@@ -83,19 +87,19 @@ beforeEach(() => {
 
 describe('caméra · permissions', () => {
   it('sans permission, le déclencheur demande l’accès au lieu de capturer', async () => {
-    mockRequestPerm.mockResolvedValue({ granted: true });
+    mockRequestPerm.mockResolvedValue(true);
     const { getByLabelText } = await renderCam();
     fireEvent.press(getByLabelText(t('camera.allow')));
     await waitFor(() => expect(mockRequestPerm).toHaveBeenCalledTimes(1));
-    expect(mockTakePicture).not.toHaveBeenCalled();
+    expect(mockCapture).not.toHaveBeenCalled();
   });
 
   it('permission refusée → toast, pas de capture', async () => {
-    mockRequestPerm.mockResolvedValue({ granted: false, canAskAgain: false });
+    mockRequestPerm.mockResolvedValue(false);
     const { getByLabelText, findByText } = await renderCam();
     fireEvent.press(getByLabelText(t('camera.allow')));
     expect(await findByText(t('camera.permissionDenied'))).toBeTruthy();
-    expect(mockTakePicture).not.toHaveBeenCalled();
+    expect(mockCapture).not.toHaveBeenCalled();
   });
 
   it('l’écran sans permission montre le panneau explicatif', async () => {

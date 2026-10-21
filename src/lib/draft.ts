@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from './kv';
 import type { Mode, WordStyle } from './api';
 
 const KEY = 'sweetin.guestDraft';
@@ -69,16 +69,16 @@ export const draft = {
     this.replyName = null;
     this.fromCamera = false;
     this.wordStyle = null;
-    AsyncStorage.removeItem(KEY).catch(() => {});
+    kv.removeItem(KEY).catch(() => {});
   },
   /** Garde le secret de côté pendant l'inscription (l'email de confirmation fait quitter l'app). */
   save() {
-    return AsyncStorage.setItem(KEY, JSON.stringify({ uri: this.uri, message: this.message, mode: this.mode, wordStyle: this.wordStyle, deferred: this.deferred })).catch(() => {});
+    return kv.setItem(KEY, JSON.stringify({ uri: this.uri, message: this.message, mode: this.mode, wordStyle: this.wordStyle, deferred: this.deferred })).catch(() => {});
   },
   async restore() {
     if (this.pending) return true;
     try {
-      const raw = await AsyncStorage.getItem(KEY);
+      const raw = await kv.getItem(KEY);
       if (!raw) return false;
       const d = JSON.parse(raw) as { uri: string; message: string; mode: Mode; wordStyle?: WordStyle | null; deferred?: boolean };
       Object.assign(this, { uri: d.uri, message: d.message, mode: d.mode, wordStyle: d.wordStyle ?? null, deferred: d.deferred ?? false });

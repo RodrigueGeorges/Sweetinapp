@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Platform } from 'react-native';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -144,7 +145,9 @@ function RootLayout() {
             <ErrorBoundary>
               {/* app en bord à bord sur Android (SDK 57) : barres translucides, et on le reste même module coupé */}
               <KeyboardProvider statusBarTranslucent navigationBarTranslucent preserveEdgeToEdge>
-                <Root />
+                <BottomSheetModalProvider>
+                  <Root />
+                </BottomSheetModalProvider>
               </KeyboardProvider>
             </ErrorBoundary>
           </ToastProvider>

@@ -5,20 +5,22 @@
  * soit prise — sur plusieurs appareils Android, suspendre pendant la capture l'avorte.
  */
 
-const mockTakePicture = jest.fn();
-const mockPausePreview = jest.fn(async () => {});
-const mockResumePreview = jest.fn(async () => {});
+const mockCapture = jest.fn();
 const mockRequestPerm = jest.fn();
 let mockPermGranted = true;
 
-jest.mock('expo-camera', () => {
+jest.mock('react-native-vision-camera', () => {
   const React = require('react');
   return {
-    useCameraPermissions: () => [{ granted: mockPermGranted }, mockRequestPerm],
-    CameraView: React.forwardRef((_p: unknown, ref: unknown) => {
-      React.useImperativeHandle(ref, () => ({ takePictureAsync: mockTakePicture, pausePreview: mockPausePreview, resumePreview: mockResumePreview }));
+    Camera: React.forwardRef((_p: unknown, ref: unknown) => {
+      React.useImperativeHandle(ref, () => ({}));
       return null;
     }),
+    useCameraDevice: () => ({ id: 'back', position: 'back', minZoom: 1, maxZoom: 8, hasFlash: true }),
+    useCameraPermission: () => ({ hasPermission: mockPermGranted, canRequestPermission: true, requestPermission: mockRequestPerm }),
+    usePhotoOutput: () => ({ capturePhotoToFile: mockCapture }),
+    useObjectOutput: jest.fn(),
+    isScannedCode: (o: object) => 'value' in o,
   };
 });
 
@@ -94,29 +96,24 @@ beforeEach(() => {
 });
 
 describe('caméra · déclenchement', () => {
-  it('prend la photo PUIS fige l’aperçu (ordre garanti), puis ouvre la carte', async () => {
-    // si mockPausePreview part avant la fin de mockTakePicture, la capture est morte
-    mockTakePicture.mockImplementation(() => {
-      expect(mockPausePreview).not.toHaveBeenCalled();
-      return Promise.resolve({ uri: 'file:///shot.jpg' });
-    });
+  it('prend la photo puis ouvre la carte', async () => {
+    mockCapture.mockResolvedValue({ filePath: '/tmp/shot.jpg' });
 
     const { getByLabelText } = await renderCam();
     fireEvent.press(getByLabelText(t('camera.a11yShoot')));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/create'));
-    expect(mockTakePicture).toHaveBeenCalledTimes(1);
-    expect(mockPausePreview).toHaveBeenCalledTimes(1); // figé APRÈS la capture, pas pendant
-    expect(draft.uri).toBe('file:///shot.jpg');
+    expect(mockCapture).toHaveBeenCalledTimes(1);
+    expect(draft.uri).toBe('file:///tmp/shot.jpg');
   });
 
   it('ne part pas deux fois si on martèle le déclencheur', async () => {
-    mockTakePicture.mockImplementation(() => new Promise((r) => setTimeout(() => r({ uri: 'file:///a.jpg' }), 60)));
+    mockCapture.mockImplementation(() => new Promise((r) => setTimeout(() => r({ filePath: '/tmp/a.jpg' }), 60)));
     const { getByLabelText } = await renderCam();
     const shutter = getByLabelText(t('camera.a11yShoot'));
     fireEvent.press(shutter);
     fireEvent.press(shutter);
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/create'));
-    expect(mockTakePicture).toHaveBeenCalledTimes(1);
+    expect(mockCapture).toHaveBeenCalledTimes(1);
   });
 });
