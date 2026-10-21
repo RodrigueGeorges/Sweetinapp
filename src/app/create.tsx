@@ -152,7 +152,10 @@ export default function Create() {
       runOnJS(() => {
         if (!editing) return inputRef.current?.focus();
         const a = wordArea.current;
-        const inside = e.x >= a.x - 24 && e.x <= a.x + a.w + 24 && e.y >= a.y - 24 && e.y <= a.y + a.h + 24;
+        // le mot a pu être glissé : sa zone « tapable » suit sa position affichée
+        const ox = a.x + wx.value;
+        const oy = a.y + wy.value;
+        const inside = e.x >= ox - 24 && e.x <= ox + a.w + 24 && e.y >= oy - 24 && e.y <= oy + a.h + 24;
         if (!inside) inputRef.current?.blur();
       })(),
     );
