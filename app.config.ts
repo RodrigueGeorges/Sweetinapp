@@ -20,7 +20,7 @@ const config: ExpoConfig = {
   slug: 'sweetin',
   owner: 'rodrigueetifiers-team',
   scheme: 'sweetin',
-  version: '1.1.0',
+  version: '1.2.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
