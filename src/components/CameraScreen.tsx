@@ -7,7 +7,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import Reanimated, { Easing, FadeInDown, FadeOut, FadeOutUp, useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
+import Reanimated, { Easing, FadeInDown, FadeOut, FadeOutUp, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bounce } from '../components/Bounce';
@@ -104,7 +104,23 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
     zoom.value = withTiming(1, { duration: 250 });
     setFacing((f) => (f === 'back' ? 'front' : 'back'));
   };
+  // tap = focus natif VisionCamera (+ anneau), double-tap = flip, pincement = zoom
+  const focusRing = useSharedValue(0);
+  const focusX = useSharedValue(0);
+  const focusY = useSharedValue(0);
+  const doFocus = (x: number, y: number) => {
+    cam.current?.focusTo({ x, y }).catch(() => {});
+    focusX.value = x;
+    focusY.value = y;
+    focusRing.value = 0;
+    focusRing.value = withSequence(withTiming(1, { duration: 140 }), withTiming(0, { duration: 450, easing: Easing.out(Easing.quad) }));
+  };
   const doubleTap = Gesture.Tap().numberOfTaps(2).runOnJS(true).onEnd(flipCam);
+  const singleTap = Gesture.Tap()
+    .numberOfTaps(1)
+    .maxDistance(16)
+    .requireExternalGestureToFail(doubleTap)
+    .onEnd((e) => runOnJS(doFocus)(e.x, e.y));
   const pinchZoom = Gesture.Pinch()
     .onStart(() => {
       zoomStart.value = zoom.value;
@@ -112,7 +128,13 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
     .onUpdate((e) => {
       zoom.value = Math.min(maxZoom, Math.max(minZoom, zoomStart.value * e.scale));
     });
-  const camGestures = Gesture.Simultaneous(doubleTap, pinchZoom);
+  const camGestures = Gesture.Simultaneous(singleTap, doubleTap, pinchZoom);
+  const ringStyle = useAnimatedStyle(() => ({
+    opacity: focusRing.value,
+    left: focusX.value - 34,
+    top: focusY.value - 34,
+    transform: [{ scale: interpolate(focusRing.value, [0, 1], [1.25, 0.9]) }],
+  }));
 
   const pick = async () => {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9, allowsEditing: true, aspect: [3, 4] });
@@ -151,10 +173,11 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
           outputs={[photoOutput]}
           zoom={zoom}
           torchMode={torch ? 'on' : 'off'}
-          enableNativeTapToFocusGesture
           resizeMode="cover"
         />
       )}
+      {/* anneau de focus au point tapé */}
+      {hasPermission && <Reanimated.View pointerEvents="none" style={[s.focusRing, ringStyle]} />}
       {/* double tap n'importe où : on change de caméra ; pincer : on zoome */}
       <GestureDetector gesture={camGestures}>
         <View style={StyleSheet.absoluteFill} />
@@ -273,6 +296,7 @@ const s = StyleSheet.create({
   permWrap: { position: 'absolute', top: '24%', left: 36, right: 36, alignItems: 'center', gap: 16 },
   bottom: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: 14 },
   permSub: { ...tx.bold, fontSize: 15, lineHeight: 21, color: colors.mutedOnDark, textAlign: 'center' },
+  focusRing: { position: 'absolute', width: 68, height: 68, borderRadius: 12, borderWidth: 2, borderColor: colors.vanille },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 36 },
   coach: { paddingVertical: 9, paddingHorizontal: 16, borderRadius: 999, backgroundColor: 'rgba(22,15,18,0.72)' },
   coachT: { ...tx.bold, fontSize: 14, color: colors.vanille },
