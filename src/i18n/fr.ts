@@ -443,6 +443,14 @@ export const fr = {
   'err.SAVE_USED': 'tu as déjà utilisé ton sauvetage ce mois-ci.',
   'err.SAVE_TOO_LATE': 'cette série ne peut plus être sauvée.',
 
+  // filtres photo
+  'filters.none': 'original',
+  'filters.dore': 'doré',
+  'filters.neon': 'néon',
+  'filters.nuit': 'nuit',
+  'filters.noir': 'noir',
+  'filters.poudre': 'poudre',
+
   // dates relatives
   'ago.now': 'à l’instant',
   'ago.min': 'il y a {n} min',

@@ -442,6 +442,14 @@ export const en: Record<Key, string> = {
   'err.SAVE_USED': 'you already used your rescue this month.',
   'err.SAVE_TOO_LATE': 'this streak can’t be saved anymore.',
 
+  // photo filters
+  'filters.none': 'original',
+  'filters.dore': 'golden',
+  'filters.neon': 'neon',
+  'filters.nuit': 'night',
+  'filters.noir': 'noir',
+  'filters.poudre': 'powder',
+
   // relative dates
   'ago.now': 'just now',
   'ago.min': '{n} min ago',
