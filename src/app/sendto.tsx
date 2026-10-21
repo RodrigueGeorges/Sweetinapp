@@ -1,7 +1,8 @@
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icon';
@@ -218,7 +219,7 @@ export default function SendTo() {
         </View>
       ) : null}
 
-      <FlatList
+      <FlashList
         data={friends === null ? [] : rows}
         // lien privé et story en tête, pour tous : c'est par là qu'on fait venir quelqu'un qui n'a pas l'app
         ListHeaderComponent={friends !== null ? <View style={{ gap: 10, paddingBottom: hasFriends ? 18 : 10 }}>{linksBlock}</View> : null}

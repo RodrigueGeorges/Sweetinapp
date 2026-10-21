@@ -2,7 +2,8 @@ import * as Haptics from 'expo-haptics';
 import { Fondue } from '../../components/Fondue';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Bounce } from '../../components/Bounce';
 import { Rolling } from '../../components/Rolling';
@@ -235,7 +236,7 @@ export default function Contacts() {
           </View>
         }
       />
-      <FlatList
+      <FlashList
         data={others}
         keyExtractor={(f) => f.id}
         contentContainerStyle={s.list}

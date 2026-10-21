@@ -7,7 +7,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import Reanimated, { Easing, FadeInDown, FadeOut, FadeOutUp, useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
+import Reanimated, { Easing, FadeInDown, FadeOut, FadeOutUp, useAnimatedProps, useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bounce } from '../components/Bounce';
@@ -23,6 +23,8 @@ import { play } from '../lib/sounds';
 import { colors, fonts, layout, tx } from '../theme';
 
 const COACH_FLIP = 'sweetin.coach.camflip';
+// zoom piloté en UI thread : la prop native `zoom` (0–1) suit le pincement sans re-render
+const AnimatedCamera = Reanimated.createAnimatedComponent(CameraView);
 
 /**
  * La caméra plein écran, le déclencheur cerise, et le Sweet Hour quand il tombe.
@@ -105,12 +107,25 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
     }
   };
 
+  // pincer pour zoomer (façon stories) : 0 = champ max, 1 = zoom numérique max de l'appareil
+  const zoom = useSharedValue(0);
+  const zoomStart = useSharedValue(0);
   const flipCam = () => {
     Haptics.selectionAsync();
     seenCoach();
+    zoom.value = withTiming(0, { duration: 250 });
     setFacing((f) => (f === 'back' ? 'front' : 'back'));
   };
   const doubleTap = Gesture.Tap().numberOfTaps(2).runOnJS(true).onEnd(flipCam);
+  const pinchZoom = Gesture.Pinch()
+    .onStart(() => {
+      zoomStart.value = zoom.value;
+    })
+    .onUpdate((e) => {
+      zoom.value = Math.min(1, Math.max(0, zoomStart.value * e.scale));
+    });
+  const camProps = useAnimatedProps(() => ({ zoom: zoom.value }));
+  const camGestures = Gesture.Simultaneous(doubleTap, pinchZoom);
 
   const pick = async () => {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9, allowsEditing: true, aspect: [3, 4] });
@@ -140,9 +155,9 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
 
   return (
     <Screen tone="cacao">
-      {perm?.granted && active && <CameraView ref={cam} style={StyleSheet.absoluteFill} facing={facing} flash={torch ? 'on' : 'off'} animateShutter={false} />}
-      {/* double tap n'importe où : on change de caméra */}
-      <GestureDetector gesture={doubleTap}>
+      {perm?.granted && active && <AnimatedCamera ref={cam} style={StyleSheet.absoluteFill} facing={facing} flash={torch ? 'on' : 'off'} animateShutter={false} animatedProps={camProps} />}
+      {/* double tap n'importe où : on change de caméra ; pincer : on zoome */}
+      <GestureDetector gesture={camGestures}>
         <View style={StyleSheet.absoluteFill} />
       </GestureDetector>
       {/* léger fondu bas uniquement pendant le Sweet Hour (compte à rebours lisible) */}
