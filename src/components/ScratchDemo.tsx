@@ -2,7 +2,7 @@ import { Canvas, Circle, Group, LinearGradient, Path, Rect, Skia, vec } from '@s
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedReaction, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, Easing, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { play, scratchLoop } from '../lib/sounds';
 import { signature, tick as scratchTick } from '../lib/haptics';
 import { useScratchTexture } from '../lib/texture';
@@ -57,8 +57,6 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
   const t = useSharedValue(reduce ? 0.5 : 0);
   // doigt posé : le fantôme se cache pendant le grattage réel et reprend si on lâche sans avoir lu
   const down = useSharedValue(0);
-  // miroir de `done` côté UI thread : arrête proprement le fantôme (marquage + son) une fois le secret lu
-  const doneV = useSharedValue(0);
   useEffect(() => {
     if (!reduce) t.value = withRepeat(withTiming(1, { duration: CYCLE, easing: Easing.linear }), -1, false);
   }, [reduce, t]);
@@ -133,7 +131,6 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     }
     if (!done.current && pct >= REVEAL_AT) {
       done.current = true;
-      doneV.value = 1;
       scratchLoop.stop();
       texture?.end();
       play('reveal');
@@ -147,39 +144,39 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     }
   };
 
-  // le fantôme gratte pour de vrai : sa progression remplit la grille, donc la démo dévoile le secret
-  // (et le bouton « commencer ») d'elle-même — on n'a pas à deviner qu'on peut toucher la carte
-  const GHOST_STEP = 14; // px entre deux marquages le long du chemin
-  useAnimatedReaction(
-    () => progress.value,
-    (p, prev) => {
-      'worklet';
-      if (down.value || doneV.value) return prev ?? p;
-      const from = prev ?? 0;
-      if (p <= from) return p;
-      const total = cum[cum.length - 1];
-      for (let d = Math.max(1, from * total); d <= p * total; d += GHOST_STEP) {
+  // ---------- le fantôme compte pour de vrai ----------
+  // la grille se remplit au rythme du fantôme (JS timer, aucun worklet) : la carte se dévoile
+  // et le bouton « commencer » apparaît d'elle-même, ~1,5 s — on n'a pas à deviner qu'on peut toucher
+  const holding = useRef(false); // doigt actuellement posé : le fantôme cède la place, il reprend au lâcher
+  useEffect(() => {
+    const total = cum[cum.length - 1];
+    const pace = total / (0.5 * CYCLE); // px/ms — même rythme que la phase de grattage de t
+    let d = 0;
+    let audio = false;
+    const sound = (on: boolean) => {
+      if (on === audio) return;
+      audio = on;
+      if (on) scratchLoop.start(0.38);
+      else scratchLoop.stop();
+    };
+    const iv = setInterval(() => {
+      const on = !done.current && !holding.current;
+      sound(on); // le froissement ne joue que pendant que le fantôme gratte
+      if (!on || d >= total) return;
+      for (let k = 0; k < 2; k++) {
+        d = Math.min(total, d + pace * 25); // 2 marquages par tick de 50 ms
         let i = 1;
         while (i < cum.length - 1 && cum[i] < d) i++;
         const f = (d - cum[i - 1]) / Math.max(1, cum[i] - cum[i - 1]);
-        runOnJS(mark)(pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f);
+        mark(pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f);
       }
-      return p;
-    },
-    [pts, cum],
-  );
-
-  // le froissement de la démo : discret, seulement tant que le fantôme gratte
-  const ghostOn = useDerivedValue(() => (t.value > 0.12 && t.value < 0.62 && !down.value && !doneV.value && !reduce ? 1 : 0));
-  useAnimatedReaction(
-    () => ghostOn.value,
-    (v, prev) => {
-      'worklet';
-      if (v === prev) return;
-      if (v === 1) runOnJS(() => scratchLoop.start(0.38))();
-      else runOnJS(scratchLoop.stop)();
-    },
-  );
+    }, 50);
+    return () => {
+      clearInterval(iv);
+      scratchLoop.stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mark lit des refs stables ; seuls pts/cum pilotent la géométrie
+  }, [pts, cum]);
 
   const pan = Gesture.Pan()
     .runOnJS(true)
@@ -188,6 +185,7 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     .onBegin((e) => {
       if (done.current) return;
       down.value = 1;
+      holding.current = true;
       touched.current = true;
       if (!user) {
         setUser(true);
@@ -209,6 +207,7 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
       scratchLoop.stop();
       texture?.end();
       down.value = 0;
+      holding.current = false;
       // lâché avant la lecture : la boucle fantôme reprend par-dessus les traces laissées
       if (!done.current) t.value = withRepeat(withTiming(1, { duration: CYCLE, easing: Easing.linear }), -1, false);
     });

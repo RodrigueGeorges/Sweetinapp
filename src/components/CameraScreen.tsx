@@ -7,7 +7,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import Reanimated, { Easing, FadeInDown, FadeOut, FadeOutUp, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
+import Reanimated, { Easing, FadeInDown, FadeOut, FadeOutUp, interpolate, useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bounce } from '../components/Bounce';
@@ -120,7 +120,8 @@ export function CameraScreen({ guest = false }: { guest?: boolean }) {
     .numberOfTaps(1)
     .maxDistance(16)
     .requireExternalGestureToFail(doubleTap)
-    .onEnd((e) => runOnJS(doFocus)(e.x, e.y));
+    .runOnJS(true)
+    .onEnd((e) => doFocus(e.x, e.y));
   const pinchZoom = Gesture.Pinch()
     .onStart(() => {
       zoomStart.value = zoom.value;

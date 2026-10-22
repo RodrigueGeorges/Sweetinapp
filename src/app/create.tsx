@@ -165,17 +165,16 @@ export default function Create() {
   const tapFocus = Gesture.Tap()
     .enabled(flipped)
     .maxDuration(300)
-    .onEnd((e) =>
-      runOnJS(() => {
-        if (!editing) return inputRef.current?.focus();
-        const a = wordArea.current;
-        // le mot a pu être glissé : sa zone « tapable » suit sa position affichée
-        const ox = a.x + wx.value;
-        const oy = a.y + wy.value;
-        const inside = e.x >= ox - 24 && e.x <= ox + a.w + 24 && e.y >= oy - 24 && e.y <= oy + a.h + 24;
-        if (!inside) inputRef.current?.blur();
-      })(),
-    );
+    .runOnJS(true)
+    .onEnd((e) => {
+      if (!editing) return inputRef.current?.focus();
+      const a = wordArea.current;
+      // le mot a pu être glissé : sa zone « tapable » suit sa position affichée
+      const ox = a.x + wx.value;
+      const oy = a.y + wy.value;
+      const inside = e.x >= ox - 24 && e.x <= ox + a.w + 24 && e.y >= oy - 24 && e.y <= oy + a.h + 24;
+      if (!inside) inputRef.current?.blur();
+    });
   const drag = Gesture.Pan()
     .enabled(flipped && !editing)
     .onStart(() => {
