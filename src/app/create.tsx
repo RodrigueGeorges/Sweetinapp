@@ -65,8 +65,8 @@ export default function Create() {
   const reduce = useReducedMotion();
 
   // mot façon Insta : on le fait glisser pour le placer, on le pince pour changer sa taille
-  const wx = useSharedValue(draft.wordStyle ? draft.wordStyle.x * (w - 14) : 0);
-  const wy = useSharedValue(draft.wordStyle ? draft.wordStyle.y * cardH : 0);
+  const wx = useSharedValue((draft.wordStyle?.x ?? 0) * (w - 14));
+  const wy = useSharedValue((draft.wordStyle?.y ?? 0) * cardH);
   const wscale = useSharedValue(draft.wordStyle?.scale ?? 1);
   const gStartX = useSharedValue(0);
   const gStartY = useSharedValue(0);
@@ -161,19 +161,19 @@ export default function Create() {
   const inputRef = useRef<TextInput>(null);
   // bornes du mot dans la carte, mesurées au layout : un tap en dehors quitte l'édition au lieu de déplacer le curseur
   const wordArea = useRef({ x: 0, y: 0, w: 0, h: 0 });
-  // tap sur le verso : hors édition → le clavier s'ouvre ; en édition mais hors du mot → le clavier se ferme (mode placement)
+  // tap sur le verso : tap sur le mot → éditer ; tap ailleurs pendant l'édition → fermer le clavier.
+  // Hors édition, un tap ailleurs que sur le mot ne fait rien : le mot reste librement déplaçable au drag.
   const tapFocus = Gesture.Tap()
     .enabled(flipped)
     .maxDuration(300)
     .runOnJS(true)
     .onEnd((e) => {
-      if (!editing) return inputRef.current?.focus();
       const a = wordArea.current;
       // le mot a pu être glissé : sa zone « tapable » suit sa position affichée
       const ox = a.x + wx.value;
       const oy = a.y + wy.value;
       const inside = e.x >= ox - 24 && e.x <= ox + a.w + 24 && e.y >= oy - 24 && e.y <= oy + a.h + 24;
-      if (!inside) inputRef.current?.blur();
+      if (editing ? !inside : inside) editing ? inputRef.current?.blur() : inputRef.current?.focus();
     });
   const drag = Gesture.Pan()
     .enabled(flipped && !editing)

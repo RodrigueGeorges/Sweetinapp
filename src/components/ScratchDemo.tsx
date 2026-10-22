@@ -144,14 +144,14 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     }
   };
 
-  // ---------- le fantôme compte pour de vrai ----------
-  // la grille se remplit au rythme du fantôme (JS timer, aucun worklet) : la carte se dévoile
-  // et le bouton « commencer » apparaît d'elle-même, ~1,5 s — on n'a pas à deviner qu'on peut toucher
-  const holding = useRef(false); // doigt actuellement posé : le fantôme cède la place, il reprend au lâcher
+  // ---------- le froissement du fantôme ----------
+  // le reveal n'appartient qu'au doigt : le fantôme montre le geste, mais seul un vrai
+  // grattage dévoile le secret (et le bouton « commencer »). Le son suit sa phase de
+  // grattage (t ∈ [0,12 ; 0,62] du cycle), coupé pendant le grattage réel et au reveal.
+  const holding = useRef(false); // doigt posé : le fantôme cède la place, son compris
   useEffect(() => {
-    const total = cum[cum.length - 1];
-    const pace = total / (0.5 * CYCLE); // px/ms — même rythme que la phase de grattage de t
-    let d = 0;
+    if (reduce) return;
+    const start = Date.now();
     let audio = false;
     const sound = (on: boolean) => {
       if (on === audio) return;
@@ -160,23 +160,15 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
       else scratchLoop.stop();
     };
     const iv = setInterval(() => {
-      const on = !done.current && !holding.current;
-      sound(on); // le froissement ne joue que pendant que le fantôme gratte
-      if (!on || d >= total) return;
-      for (let k = 0; k < 2; k++) {
-        d = Math.min(total, d + pace * 25); // 2 marquages par tick de 50 ms
-        let i = 1;
-        while (i < cum.length - 1 && cum[i] < d) i++;
-        const f = (d - cum[i - 1]) / Math.max(1, cum[i] - cum[i - 1]);
-        mark(pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f);
-      }
-    }, 50);
+      const phase = ((Date.now() - start) % CYCLE) / CYCLE;
+      sound(!done.current && !holding.current && phase > 0.12 && phase < 0.62);
+    }, 60);
     return () => {
       clearInterval(iv);
       scratchLoop.stop();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mark lit des refs stables ; seuls pts/cum pilotent la géométrie
-  }, [pts, cum]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs stables uniquement
+  }, [reduce]);
 
   const pan = Gesture.Pan()
     .runOnJS(true)
