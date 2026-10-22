@@ -55,6 +55,8 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
   }, [pts]);
 
   const t = useSharedValue(reduce ? 0.5 : 0);
+  // doigt posé : le fantôme se cache pendant le grattage réel et reprend si on lâche sans avoir lu
+  const down = useSharedValue(0);
   useEffect(() => {
     if (!reduce) t.value = withRepeat(withTiming(1, { duration: CYCLE, easing: Easing.linear }), -1, false);
   }, [reduce, t]);
@@ -85,8 +87,6 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
   const frame = useRef<number | null>(null);
   const pop = useSharedValue(1);
   const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
-  // doigt posé : le fantôme se cache pendant le grattage réel et reprend si on lâche sans avoir lu
-  const down = useSharedValue(0);
 
   const userPath = useMemo(() => {
     const b = Skia.PathBuilder.Make();
