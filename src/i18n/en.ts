@@ -418,6 +418,7 @@ export const en: Record<Key, string> = {
   'welcome.readSub': 'that’s the idea. now hide one of yours.',
   'welcome.startAfter': 'your turn to hide one',
   'welcome.scratch': 'scratch the photo with your finger',
+  'splash.scratch': 'scratch to get in',
   'welcome.demoFrom': '{name} is waiting on the other side.',
   'welcome.scratchDone': 'read. in 10 s, it would’ve melted.',
   'auth.titleSend': 'one last step.',

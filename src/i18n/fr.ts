@@ -419,6 +419,7 @@ export const fr = {
   'welcome.readSub': 'voilà le principe. à toi d’en cacher un.',
   'welcome.startAfter': 'à toi d’en cacher un',
   'welcome.scratch': 'gratte la photo du doigt',
+  'splash.scratch': 'gratte pour entrer',
   'welcome.demoFrom': '{name} t’attend de l’autre côté.',
   'welcome.scratchDone': 'lu. dans 10 s, il aurait fondu.',
   'auth.titleSend': 'dernière étape.',

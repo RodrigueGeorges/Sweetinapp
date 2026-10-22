@@ -46,14 +46,8 @@ jest.mock('../src/lib/sounds', () => ({ play: jest.fn(), initSounds: jest.fn(), 
 jest.mock('../src/lib/monitoring', () => ({ track: jest.fn(), wrapRoot: (c: unknown) => c , setTestGroup: jest.fn() }));
 
 import { fireEvent, render } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
 import Welcome from '../src/app/welcome';
 import { t } from '../src/i18n';
-
-// le bouton « commencer » n'apparaît qu'après le grattage — filet de sécurité : lecteur d'écran actif
-beforeEach(() => {
-  jest.spyOn(AccessibilityInfo, 'isScreenReaderEnabled').mockResolvedValue(true);
-});
 
 describe('accueil', () => {
   it('affiche la promesse, la démo et les deux portes d’entrée', async () => {

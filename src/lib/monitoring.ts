@@ -25,6 +25,7 @@ type Event =
   | 'signup_completed'
   | 'push_prompt'
   | 'demo_scratched'
+  | 'splash_scratched'
   | 'welcome_opened'
   | 'welcome_invited'
   | 'next_tapped'

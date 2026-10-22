@@ -20,8 +20,8 @@ export function clearHasAccount() {
   kv.removeItem(KEY).catch(() => {});
 }
 
-/** Où envoyer quelqu'un sans session : la connexion si un compte a déjà existé ici, sinon l'accueil. null pendant la lecture. */
-export function useLanding(): '/welcome' | '/auth?mode=login' | null {
+/** Où envoyer quelqu'un sans session : la connexion si un compte a déjà existé ici, sinon l'inscription. null pendant la lecture. */
+export function useLanding(): '/auth?mode=signup' | '/auth?mode=login' | null {
   const [has, setHas] = useState<boolean | null>(known);
   useEffect(() => {
     if (has !== null) return;
@@ -33,7 +33,7 @@ export function useLanding(): '/welcome' | '/auth?mode=login' | null {
       .catch(() => setHas(false));
   }, [has]);
   if (has === null) return null;
-  return has ? '/auth?mode=login' : '/welcome';
+  return has ? '/auth?mode=login' : '/auth?mode=signup';
 }
 
 export const LOGIN_ROUTE = { pathname: '/auth', params: { mode: 'login' } } as const;

@@ -17,6 +17,7 @@ import { track, wrapRoot } from '../lib/monitoring';
 import { notif } from '../lib/notif';
 import { checkInstallReferrer } from '../lib/referrer';
 import { initSounds, play } from '../lib/sounds';
+import { useLanding } from '../lib/returning';
 import { SessionProvider, useSession } from '../lib/session';
 import { flushSendQueue } from '../lib/sendQueue';
 import { colors, fonts } from '../theme';
@@ -43,10 +44,13 @@ function Root() {
   // le splash animé prend le relais du splash natif, une fois par lancement
   const [splash, setSplash] = useState(true);
   const endSplash = useCallback(() => setSplash(false), []);
+  // première ouverture (jamais de compte ici) : le splash se gratte à la main pour entrer sur l'inscription
+  const landing = useLanding();
+  const landingReady = !!session || landing !== null;
 
   useEffect(() => {
-    if (ready && fontsLoaded) SplashScreen.hideAsync();
-  }, [ready, fontsLoaded]);
+    if (ready && fontsLoaded && landingReady) SplashScreen.hideAsync();
+  }, [ready, fontsLoaded, landingReady]);
 
   // installé depuis un lien d'invitation : l'ami sera ajouté tout seul après l'inscription
   useEffect(() => {
@@ -110,7 +114,9 @@ function Root() {
     };
   }, [ready, uid, toast]);
 
-  if (!ready || !fontsLoaded) return null;
+  // on attend de savoir où atterrir avant de monter le splash : mode grattage ou sortie automatique
+  if (!ready || !fontsLoaded || !landingReady) return null;
+  const scratchToEnter = !session && landing === '/auth?mode=signup';
   return (
     <>
       <StatusBar style={splash ? 'light' : 'dark'} />
@@ -131,7 +137,7 @@ function Root() {
         <Stack.Screen name="phone" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
       </Stack>
-      {splash && <LaunchSplash onDone={endSplash} />}
+      {splash && <LaunchSplash onDone={endSplash} scratch={scratchToEnter} />}
     </>
   );
 }
