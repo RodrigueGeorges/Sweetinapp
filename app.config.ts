@@ -76,7 +76,8 @@ const config: ExpoConfig = {
     blockedPermissions: ['android.permission.RECORD_AUDIO', 'android.permission.WRITE_CONTACTS', 'android.permission.SYSTEM_ALERT_WINDOW'],
     // la session et le brouillon ne partent pas dans la sauvegarde Google Drive du téléphone
     allowBackup: false,
-    predictiveBackGestureEnabled: false,
+    // aperçu de l'écran derrière pendant le geste retour (Android 14+)
+    predictiveBackGestureEnabled: true,
     intentFilters: [
       {
         action: 'VIEW',
@@ -125,6 +126,8 @@ const config: ExpoConfig = {
       { contactsPermission: 'Sweetin compares encrypted fingerprints of your contacts’ numbers to show you who is already on Sweetin. Nothing is stored.' },
     ],
     'expo-apple-authentication',
+    // raccourci « nouvelle photo » au long-press sur l'icône (comme Instagram/BeReal)
+    ['expo-quick-actions', { androidIcons: { camera: { foregroundImage: './assets/android-icon-monochrome.png', backgroundColor: '#FF2E5B' } } }],
     'expo-asset',
     'expo-web-browser',
     'expo-secure-store',

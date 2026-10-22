@@ -1,3 +1,5 @@
+import { setItems } from 'expo-quick-actions';
+import { useQuickActionRouting } from 'expo-quick-actions/router';
 import { Redirect, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { useToast } from '../../components/Toast';
@@ -19,6 +21,11 @@ export default function HomeLayout() {
   const { session, profile, profileReady } = useSession();
   const toast = useToast();
   const landing = useLanding();
+  // raccourci « nouvelle photo » au long-press sur l'icône d'accueil → /camera
+  useQuickActionRouting();
+  useEffect(() => {
+    setItems([{ id: 'camera', title: t('inbox.shoot'), icon: 'camera', params: { href: '/camera' } }]).catch(() => {});
+  }, []);
   // invitation ouverte avant la connexion : on ajoute l'ami maintenant
   useEffect(() => {
     if (profile?.onboarded) consumePendingInvite().then((name) => name && toast(t('invite.added', { name })));

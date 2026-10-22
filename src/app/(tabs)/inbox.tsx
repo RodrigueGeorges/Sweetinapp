@@ -67,6 +67,12 @@ export default function Inbox() {
 
   const [draftWaiting, setDraftWaiting] = useState(draft.pending && draft.deferred);
 
+  // avatars en cache disque dès la vitrine : contacts et grille instantanés (les photos, non : URL signée à l'ouverture, jamais sur disque)
+  useEffect(() => {
+    const urls = [...friends.map((f) => f.avatar_url), ...items.map((i) => i.sender.avatar_url)].filter((u): u is string => !!u);
+    if (urls.length) Image.prefetch(urls).catch(() => {});
+  }, [friends, items]);
+
   const load = useCallback(() => {
     setDraftWaiting(draft.pending && draft.deferred);
     pendingSends().then(setQueued).catch(() => {});
