@@ -4,7 +4,7 @@
   "main": "index.ts",
   "dependencies": {
     "@bacons/apple-targets": "^5.0.0",
-    "@expo/ui": "~57.0.21",
+    "@expo/ui": "~57.0.26",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "12.0.1",
@@ -12,7 +12,7 @@
     "@shopify/flash-list": "2.0.2",
     "@shopify/react-native-skia": "2.6.2",
     "@supabase/supabase-js": "^2.117.2",
-    "expo": "~57.0.30",
+    "expo": "~57.0.31",
     "expo-age-range": "~57.0.5",
     "expo-apple-authentication": "~57.0.2",
     "expo-application": "~57.0.3",
@@ -37,10 +37,10 @@
     "expo-localization": "~57.0.2",
     "expo-notifications": "~57.0.23",
     "expo-quick-actions": "^6.0.2",
-    "expo-router": "~57.0.28",
+    "expo-router": "~57.0.29",
     "expo-screen-capture": "~57.0.4",
     "expo-secure-store": "~57.0.4",
-    "expo-sharing": "~57.0.23",
+    "expo-sharing": "~57.0.24",
     "expo-sms": "~57.0.2",
     "expo-splash-screen": "~57.0.10",
     "expo-status-bar": "~57.0.1",
@@ -50,7 +50,7 @@
     "expo-task-manager": "~57.0.21",
     "expo-updates": "~57.0.26",
     "expo-web-browser": "~57.0.3",
-    "expo-widgets": "~57.0.22",
+    "expo-widgets": "~57.0.27",
     "libphonenumber-js": "^1.13.14",
     "posthog-react-native": "^4.78.4",
     "qrcode": "^1.5.4",
@@ -118,5 +118,12 @@
   },
   "overrides": {
     "react-dom": "19.2.3"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "typescript"
+      ]
+    }
   }
 }
