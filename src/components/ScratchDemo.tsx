@@ -2,7 +2,7 @@ import { Canvas, Circle, Group, LinearGradient, Path, Rect, Skia, vec } from '@s
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { cancelAnimation, Easing, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, Easing, runOnJS, useAnimatedReaction, useAnimatedStyle, useDerivedValue, useReducedMotion, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { play, scratchLoop } from '../lib/sounds';
 import { signature, tick as scratchTick } from '../lib/haptics';
 import { useScratchTexture } from '../lib/texture';
@@ -11,13 +11,13 @@ import { colors, fonts, motion } from '../theme';
 const CYCLE = 4800;
 const COLS = 12;
 const ROWS = 15;
-const REVEAL_AT = 0.42;
+const REVEAL_AT = 0.38;
 
 type Props = {
   width: number;
   message: string;
-  /** Appelé une fois, quand la personne a gratté assez pour lire le secret. */
-  onReveal?: () => void;
+  /** Appelé une fois, quand assez de la photo est grattée pour lire le secret. `manual` = la personne a gratté elle-même (vs la démo automatique). */
+  onReveal?: (manual: boolean) => void;
 };
 
 /**
@@ -57,6 +57,8 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
   const t = useSharedValue(reduce ? 0.5 : 0);
   // doigt posé : le fantôme se cache pendant le grattage réel et reprend si on lâche sans avoir lu
   const down = useSharedValue(0);
+  // miroir de `done` côté UI thread : arrête proprement le fantôme (marquage + son) une fois le secret lu
+  const doneV = useSharedValue(0);
   useEffect(() => {
     if (!reduce) t.value = withRepeat(withTiming(1, { duration: CYCLE, easing: Easing.linear }), -1, false);
   }, [reduce, t]);
@@ -84,6 +86,8 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
   const covered = useRef(0);
   const step = useRef(0);
   const done = useRef(false);
+  // la personne a-t-elle posé le doigt ? (distingue le grattage réel de la démo fantôme pour onReveal)
+  const touched = useRef(false);
   const frame = useRef<number | null>(null);
   const pop = useSharedValue(1);
   const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
@@ -129,6 +133,7 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     }
     if (!done.current && pct >= REVEAL_AT) {
       done.current = true;
+      doneV.value = 1;
       scratchLoop.stop();
       texture?.end();
       play('reveal');
@@ -138,9 +143,43 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
       pop.value = 0.92;
       pop.value = withSpring(1, motion.pop);
       setFull(true);
-      onReveal?.();
+      onReveal?.(touched.current);
     }
   };
+
+  // le fantôme gratte pour de vrai : sa progression remplit la grille, donc la démo dévoile le secret
+  // (et le bouton « commencer ») d'elle-même — on n'a pas à deviner qu'on peut toucher la carte
+  const GHOST_STEP = 14; // px entre deux marquages le long du chemin
+  useAnimatedReaction(
+    () => progress.value,
+    (p, prev) => {
+      'worklet';
+      if (down.value || doneV.value) return prev ?? p;
+      const from = prev ?? 0;
+      if (p <= from) return p;
+      const total = cum[cum.length - 1];
+      for (let d = Math.max(1, from * total); d <= p * total; d += GHOST_STEP) {
+        let i = 1;
+        while (i < cum.length - 1 && cum[i] < d) i++;
+        const f = (d - cum[i - 1]) / Math.max(1, cum[i] - cum[i - 1]);
+        runOnJS(mark)(pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f);
+      }
+      return p;
+    },
+    [pts, cum],
+  );
+
+  // le froissement de la démo : discret, seulement tant que le fantôme gratte
+  const ghostOn = useDerivedValue(() => (t.value > 0.12 && t.value < 0.62 && !down.value && !doneV.value && !reduce ? 1 : 0));
+  useAnimatedReaction(
+    () => ghostOn.value,
+    (v, prev) => {
+      'worklet';
+      if (v === prev) return;
+      if (v === 1) runOnJS(() => scratchLoop.start(0.38))();
+      else runOnJS(scratchLoop.stop)();
+    },
+  );
 
   const pan = Gesture.Pan()
     .runOnJS(true)
@@ -149,6 +188,7 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     .onBegin((e) => {
       if (done.current) return;
       down.value = 1;
+      touched.current = true;
       if (!user) {
         setUser(true);
         cancelAnimation(t);

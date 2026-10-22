@@ -65,11 +65,12 @@ export default function Welcome() {
 
       <Animated.View entering={FadeInUp.delay(80).springify().damping(14)} style={s.hero}>
         <View>
-          <ScratchDemo key={from ?? 'demo'} width={card} message={from ? t('welcome.demoFrom', { name: `@${from}` }) : t('welcome.demo')} onReveal={() => {
+          <ScratchDemo key={from ?? 'demo'} width={card} message={from ? t('welcome.demoFrom', { name: `@${from}` }) : t('welcome.demo')} onReveal={(manual) => {
               setRevealed(true);
               track('demo_scratched');
-              // le principe est vécu ici, avant l'inscription : pas de sweet de bienvenue en double ensuite
-              markWelcomeRead();
+              // le principe est vécu au doigt, avant l'inscription : pas de sweet de bienvenue en double ensuite
+              // (la démo fantôme peut aussi révéler la carte, mais elle ne remplace pas le vrai grattage)
+              if (manual) markWelcomeRead();
             }} />
           {/* autocollants posés de travers : le côté fun de la marque */}
           <Animated.View pointerEvents="none" entering={ZoomIn.delay(420).springify().damping(9)} style={[s.stickPos, { top: -6, right: -34 }]}>

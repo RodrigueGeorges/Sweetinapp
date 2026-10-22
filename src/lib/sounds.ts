@@ -64,12 +64,12 @@ export function play(name: SoundName, volume = 1) {
 
 /** Le grain de la feuille qu'on gratte : démarre au premier contact, s'arrête quand le doigt se lève. */
 export const scratchLoop = {
-  start() {
+  start(volume = 0.55) {
     if (!enabled) return;
     try {
       const p = player('scratch');
       p.loop = true;
-      p.volume = 0.55;
+      p.volume = volume;
       p.play();
     } catch {}
   },
