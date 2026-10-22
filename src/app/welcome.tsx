@@ -41,14 +41,13 @@ export default function Welcome() {
       alive = false;
     };
   }, []);
-  // le bouton n'apparaît qu'après le grattage : la première action, c'est gratter.
-  // Filets de sécurité : il apparaît seul après 6 s sans grattage, et tout de suite avec un lecteur d'écran.
+  // le bouton n'apparaît qu'après le grattage : la première action, c'est gratter, point.
+  // Seule échappatoire : un lecteur d'écran (TalkBack/VoiceOver ne peuvent pas gratter).
+  // Le lien « j'ai déjà un compte » reste visible quoiqu'il arrive : l'inscription n'est jamais bloquée.
   const [late, setLate] = useState(false);
   useEffect(() => {
-    const to = setTimeout(() => setLate(true), 6000);
     // sur le web, react-native-web répond toujours « oui » : on ne s'y fie que sur téléphone
     if (Platform.OS !== 'web') AccessibilityInfo.isScreenReaderEnabled().then((on) => on && setLate(true)).catch(() => {});
-    return () => clearTimeout(to);
   }, []);
   const showCta = revealed || late;
   const cta = useSharedValue(0);
