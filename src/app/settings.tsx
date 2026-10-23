@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from '../components/Icon';
 import { useToast } from '../components/Toast';
-import { Avatar, Body, Button, Field, Header, Pop, Screen, SectionLabel, Title, Toggle } from '../components/ui';
+import { Avatar, Body, Button, Field, Header, Pop, Screen, SectionLabel, Skeleton, Title, Toggle } from '../components/ui';
 import { t, humanError } from '../i18n';
 import { registerForPush } from '../lib/push';
 import { clearHasAccount, LOGIN_ROUTE } from '../lib/returning';
@@ -138,15 +138,25 @@ export default function Settings() {
               </View>
             </Pressable>
           ) : (
-            <ActivityIndicator color={colors.ink} />
+            // profil en cours : des os qui attendent la photo, jamais un pseudo « @… »
+            <Skeleton width={56} height={56} radius={28} base={colors.sand} />
           )}
           <View style={{ flex: 1 }}>
-            <Text style={s.meName} numberOfLines={1}>
-              @{username ?? '…'}
-            </Text>
-            <Text style={s.meMail} numberOfLines={1}>
-              {email}
-            </Text>
+            {username ? (
+              <>
+                <Text style={s.meName} numberOfLines={1}>
+                  @{username}
+                </Text>
+                <Text style={s.meMail} numberOfLines={1}>
+                  {email}
+                </Text>
+              </>
+            ) : (
+              <View style={{ gap: 8 }}>
+                <Skeleton width="60%" height={18} radius={9} base={colors.sand} />
+                <Skeleton width="40%" height={13} radius={7} base={colors.sand} />
+              </View>
+            )}
           </View>
         </Pop>
 
@@ -265,7 +275,7 @@ const s = StyleSheet.create({
   meName: { fontFamily: fonts.display, includeFontPadding: false, fontSize: 22, lineHeight: 25, color: colors.ink },
   meMail: { ...tx.bold, fontSize: 13, color: colors.muted },
   sec: { marginTop: 24, marginBottom: 8 },
-  group: { borderRadius: 20, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, overflow: 'hidden' },
+  group: { borderRadius: 20, backgroundColor: colors.card, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   sep: { height: 1, backgroundColor: colors.line, marginHorizontal: 14 },
   label: { ...tx.bold, fontSize: 15.5, color: colors.ink },

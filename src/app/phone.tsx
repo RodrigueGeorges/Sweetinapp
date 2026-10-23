@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type TextInput } from 'react-native';
+import { StyleSheet, Text, View, type TextInput } from 'react-native';
 // suit le clavier image par image (Android compris), au lieu du saut de KeyboardAvoidingView
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { Icon } from '../components/Icon';
 import { NativeMenu } from '../components/NativeMenu';
 import { useToast } from '../components/Toast';
-import { Body, BottomCTA, Button, Field, Header, Screen, Title } from '../components/ui';
+import { Body, BottomCTA, Button, Field, Header, Screen, TextLink, Title } from '../components/ui';
 import { humanError, t } from '../i18n';
 import { requestPhoneCode, verifyPhoneCode } from '../lib/api';
 import { deviceCountry, PHONE_COUNTRIES as COUNTRIES, toE164 } from '../lib/contacts';
@@ -62,14 +63,16 @@ export default function Phone() {
         <View style={s.form}>
           <Title size={48}>{t('phone.title')}</Title>
           <Body>{t('phone.sub')}</Body>
-          <NativeMenu title={t('phone.country')} items={COUNTRIES.map((x) => ({ id: x.c, title: `${x.flag}  ${x.dial}` }))} onSelect={(id) => { setCountry(id as CountryCode); setE164(null); }} label={t('phone.country')}>
-            <View style={s.country}>
-              <Text style={s.countryT}>{cur.flag}  {cur.dial}</Text>
-              <Text style={s.countryChange}>{t('phone.countryChange')}</Text>
-            </View>
-          </NativeMenu>
           <Field
             label={t('phone.number')}
+            prefix={
+              <NativeMenu title={t('phone.country')} items={COUNTRIES.map((x) => ({ id: x.c, title: `${x.flag}  ${x.dial}` }))} onSelect={(id) => { setCountry(id as CountryCode); setE164(null); }} label={t('phone.country')}>
+                <View style={s.dialPill}>
+                  <Text style={s.dialPillT}>{cur.flag}  {cur.dial}</Text>
+                  <Icon name="chevronDown" size={12} color={colors.muted} stroke={3} />
+                </View>
+              </NativeMenu>
+            }
             value={raw}
             onChangeText={(v) => {
               setRaw(v);
@@ -95,9 +98,7 @@ export default function Phone() {
                 style={s.code}
                 onSubmitEditing={verify}
               />
-              <Pressable onPress={send} hitSlop={8} accessibilityRole="button">
-                <Text style={s.resend}>{t('phone.resend')}</Text>
-              </Pressable>
+              <TextLink label={t('phone.resend')} arrow={false} onPress={send} />
             </View>
           ) : null}
         </View>
@@ -110,10 +111,8 @@ export default function Phone() {
 }
 
 const s = StyleSheet.create({
-  form: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 20 },
-  code: { letterSpacing: 10, textAlign: 'center', ...tx.black, fontSize: 22 },
-  resend: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
-  country: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, alignSelf: 'flex-start' },
-  countryT: { ...tx.black, fontSize: 17, color: colors.ink },
-  countryChange: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
+  form: { flex: 1, paddingHorizontal: 24, paddingTop: 24, gap: 20 },
+  code: { letterSpacing: 10, textAlign: 'center' as const, ...tx.black, fontSize: 22 },
+  dialPill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.paper },
+  dialPillT: { ...tx.black, fontSize: 16, color: colors.ink },
 });

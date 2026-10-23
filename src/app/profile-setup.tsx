@@ -10,7 +10,7 @@ import { AvatarPicker } from '../components/AvatarPicker';
 import { Logo } from '../components/Logo';
 import { useToast } from '../components/Toast';
 import { Icon } from '../components/Icon';
-import { Body, BottomCTA, Button, Field, Screen, SectionLabel, Title } from '../components/ui';
+import { Body, BottomCTA, Button, Field, Screen, Title } from '../components/ui';
 import { lang, t, humanError } from '../i18n';
 import { clearHasAccount } from '../lib/returning';
 import { ApiError, completeProfile, deleteAccount, setAvatar } from '../lib/api';
@@ -92,7 +92,7 @@ export default function ProfileSetup() {
     if (clean.length === max) next?.();
   };
 
-  const box = (value: string, onChange: (v: string) => void, placeholder: string, width: number, ref?: React.Ref<TextInput>, extra?: object) => (
+  const box = (value: string, onChange: (v: string) => void, placeholder: string, flex: number, ref?: React.Ref<TextInput>, extra?: object) => (
     <TextInput
       ref={ref}
       value={value}
@@ -101,7 +101,7 @@ export default function ProfileSetup() {
       placeholderTextColor={colors.placeholder}
       keyboardType="number-pad"
       selectionColor={colors.ink}
-      style={[s.date, { width }]}
+      style={[s.date, { flex }]}
       accessibilityLabel={`${t('profile.birth')} ${placeholder}`}
       {...extra}
     />
@@ -134,8 +134,12 @@ export default function ProfileSetup() {
           <Logo size={26} color={colors.ink} />
         </View>
         <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
-          <View style={{ gap: 8 }}>
-            <SectionLabel>{t('profile.step')}</SectionLabel>
+          <View style={{ gap: 12 }}>
+            {/* la progression en traits plutôt qu'en lettres : « étape 1 sur 2 » reste lue par le lecteur d'écran */}
+            <View style={s.steps} accessibilityLabel={t('profile.step')}>
+              <View style={[s.stepSeg, { backgroundColor: colors.ink }]} />
+              <View style={[s.stepSeg, { backgroundColor: colors.sand }]} />
+            </View>
             <Title size={46}>{t('profile.title')}</Title>
           </View>
           <View style={{ alignItems: 'center' }}>
@@ -161,16 +165,16 @@ export default function ProfileSetup() {
             <View style={s.dateRow}>
               {monthFirst ? (
                 <>
-                  {box(m, digits(setM, 2, () => dRef.current?.focus()), t('profile.month'), 64, mRef, { maxLength: 2 })}
-                  {box(d, digits(setD, 2, () => yRef.current?.focus()), t('profile.day'), 64, dRef, { maxLength: 2 })}
+                  {box(m, digits(setM, 2, () => dRef.current?.focus()), t('profile.month'), 1, mRef, { maxLength: 2 })}
+                  {box(d, digits(setD, 2, () => yRef.current?.focus()), t('profile.day'), 1, dRef, { maxLength: 2 })}
                 </>
               ) : (
                 <>
-                  {box(d, digits(setD, 2, () => mRef.current?.focus()), t('profile.day'), 64, dRef, { maxLength: 2 })}
-                  {box(m, digits(setM, 2, () => yRef.current?.focus()), t('profile.month'), 64, mRef, { maxLength: 2 })}
+                  {box(d, digits(setD, 2, () => mRef.current?.focus()), t('profile.day'), 1, dRef, { maxLength: 2 })}
+                  {box(m, digits(setM, 2, () => yRef.current?.focus()), t('profile.month'), 1, mRef, { maxLength: 2 })}
                 </>
               )}
-              {box(y, digits(setY, 4), t('profile.year'), 96, yRef, { maxLength: 4, onSubmitEditing: submit, returnKeyType: 'go' })}
+              {box(y, digits(setY, 4), t('profile.year'), 1.6, yRef, { maxLength: 4, onSubmitEditing: submit, returnKeyType: 'go' })}
             </View>
             <Text style={s.hint}>{t('profile.birthHint', { age: MIN_AGE })}</Text>
           </View>
@@ -184,11 +188,13 @@ export default function ProfileSetup() {
 }
 
 const s = StyleSheet.create({
-  form: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 24 },
+  form: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 20, gap: 24 },
   label: { ...tx.bold, fontSize: 14, color: colors.ink },
   hint: { ...tx.text, fontSize: 13, lineHeight: 18, color: colors.muted },
   dateRow: { flexDirection: 'row', gap: 10 },
-  date: { height: 54, borderRadius: 18, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.card, textAlign: 'center', ...tx.black, fontSize: 18, color: colors.ink },
+  steps: { flexDirection: 'row', gap: 6 },
+  stepSeg: { height: 4, flex: 1, borderRadius: 2 },
+  date: { height: 56, borderRadius: 18, backgroundColor: colors.card, textAlign: 'center', ...tx.black, fontSize: 18, color: colors.ink },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 18 },
   ok: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.pistache, alignItems: 'center', justifyContent: 'center' },
 });

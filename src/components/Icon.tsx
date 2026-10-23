@@ -7,6 +7,7 @@ import { colors } from '../theme';
 /** Icônes au trait de la DA : trait épais et rond, jamais d'emoji en guise d'icône. */
 export type IconName =
   | 'back'
+  | 'chevronDown'
   | 'close'
   | 'check'
   | 'arrow'
@@ -50,6 +51,7 @@ type Props = { name: IconName; size?: number; color?: string; stroke?: number };
  */
 const SYMBOLS: Partial<Record<IconName, { ios: string; android: string }>> = {
   back: { ios: 'chevron.left', android: 'arrow_back' },
+  chevronDown: { ios: 'chevron.down', android: 'keyboard_arrow_down' },
   close: { ios: 'xmark', android: 'close' },
   check: { ios: 'checkmark', android: 'check' },
   arrow: { ios: 'arrow.right', android: 'arrow_forward' },
@@ -108,6 +110,8 @@ function SvgIcon({ name, size = 22, color = colors.ink, stroke = 2.4 }: Props) {
     switch (name) {
       case 'back':
         return <Path {...p} d="M15 5 8 12l7 7" />;
+      case 'chevronDown':
+        return <Path {...p} d="M5 9l7 7 7-7" />;
       case 'close':
         return <Path {...p} d="M6 6l12 12M18 6 6 18" />;
       case 'check':

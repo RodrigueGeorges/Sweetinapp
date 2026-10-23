@@ -1,4 +1,4 @@
-import { Camera, isScannedCode, useCameraDevice, useCameraPermission, useObjectOutput, type ScannedObject } from 'react-native-vision-camera';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useRef } from 'react';
@@ -10,6 +10,7 @@ import { BackButton, Body, BottomCTA, Button, Chip, Header, Screen, Title } from
 import { t, humanError } from '../i18n';
 import { acceptInvite } from '../lib/api';
 import { parseInvite } from '../lib/invite';
+import { useScanOutput } from '../lib/scanOutput';
 import { track } from '../lib/monitoring';
 import { colors } from '../theme';
 
@@ -44,13 +45,8 @@ export default function Scan() {
     }
   };
 
-  const objectOutput = useObjectOutput({
-    types: ['qr'],
-    onObjectsScanned: (objects: ScannedObject[]) => {
-      const code = objects.find(isScannedCode)?.value;
-      if (code) void onScan({ data: code });
-    },
-  });
+  // la détection elle-même dépend de la plateforme : natif sur iOS, ML Kit sur Android
+  const objectOutput = useScanOutput((value) => void onScan({ data: value }));
 
   if (!hasPermission) {
     return (

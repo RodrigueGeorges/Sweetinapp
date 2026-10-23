@@ -47,7 +47,7 @@ export function AvatarPicker({ uri, name, size = 112, onPick }: { uri?: string |
           </Animated.View>
         ) : (
           <View style={[s.empty, { width: size, height: size, borderRadius: size / 2 }]}>
-            <Icon name="person" size={size * 0.36} color={colors.dashed} />
+            <Icon name="person" size={36} color={colors.muted} />
           </View>
         )}
         <View style={s.badge}>
@@ -60,7 +60,7 @@ export function AvatarPicker({ uri, name, size = 112, onPick }: { uri?: string |
 }
 
 const s = StyleSheet.create({
-  empty: { borderWidth: 2, borderStyle: 'dashed', borderColor: colors.dashed, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
+  empty: { backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', right: 0, bottom: 2, width: 34, height: 34, borderRadius: 17, backgroundColor: colors.cerise, borderWidth: 3, borderColor: colors.paper, alignItems: 'center', justifyContent: 'center' },
   label: { ...tx.black, fontSize: 14, color: colors.ink },
 });

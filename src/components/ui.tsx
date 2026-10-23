@@ -8,9 +8,11 @@ import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, TextInput, View
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
+import { splashVisible } from '../lib/splashState';
 import { avatarColor, colors, displayScale, fonts, holo, isDark, layout, motion, tx } from '../theme';
 import { Icon, type IconName } from './Icon';
 import { Logo } from './Logo';
+import { Shimmer } from './Shimmer';
 
 export type Tone = 'vanille' | 'cerise' | 'cacao';
 
@@ -27,6 +29,8 @@ export const toneOf = (tone: Tone) => TONE[tone];
 export function Screen({ tone = 'vanille', children, style }: { tone?: Tone; children?: ReactNode; style?: StyleProp<ViewStyle> }) {
   useFocusEffect(
     useCallback(() => {
+      // tant que le splash de lancement recouvre l'écran, c'est lui qui commande la barre d'état
+      if (splashVisible) return;
       setStatusBarStyle(tone === 'vanille' && !isDark ? 'dark' : 'light', true);
     }, [tone]),
   );
@@ -45,7 +49,7 @@ export function Pop({
   shadow = colors.cacao,
   bg = colors.card,
   border = colors.line,
-  borderWidth = 1,
+  borderWidth = 0,
   rotate,
 }: {
   children?: ReactNode;
@@ -116,19 +120,22 @@ export function Button({ label, tone = 'nuit', size = 'lg', icon, arrow, loading
   const h = size === 'lg' ? 58 : size === 'md' ? 48 : 38;
   const bw = border ? 1.5 : 0;
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: 1 - p.value * (size === 'lg' ? 0.035 : 0.05) }] }));
-  const c = inactive ? { bg: colors.sand, fg: colors.muted } : BTN[tone];
+  const c = BTN[tone];
   const fs = size === 'lg' ? 17 : size === 'md' ? 16 : 14;
+  // désactivé : pastille claire et texte estompé (l'opacité rabattue lisait comme une casse)
+  const fg = inactive ? colors.muted : c.fg;
+  const bg = inactive ? (isDark ? 'rgba(255,255,255,0.10)' : 'rgba(22,15,18,0.07)') : c.bg;
   const content = (
     <View style={[s.btnRow, { height: h - bw * 2, paddingHorizontal: size === 'sm' ? 14 : 22 }]}>
       {loading ? (
-        <ActivityIndicator color={c.fg} />
+        <ActivityIndicator color={fg} />
       ) : (
         <>
-          {icon && <Icon name={icon} size={fs + 3} color={c.fg} />}
-          <Text style={[s.btnT, { fontSize: fs, color: c.fg }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
+          {icon && <Icon name={icon} size={fs + 3} color={fg} />}
+          <Text style={[s.btnT, { fontSize: fs, color: fg }]} numberOfLines={1} maxFontSizeMultiplier={1.25}>
             {label}
           </Text>
-          {arrow && <Icon name="arrow" size={fs + 2} color={c.fg} stroke={2.8} />}
+          {arrow && <Icon name="arrow" size={fs + 2} color={fg} stroke={2.8} />}
         </>
       )}
     </View>
@@ -153,7 +160,7 @@ export function Button({ label, tone = 'nuit', size = 'lg', icon, arrow, loading
       style={style}
       {...rest}
     >
-      <Animated.View style={[{ borderRadius: h / 2, borderWidth: bw, borderColor: border, backgroundColor: c.bg, overflow: 'hidden' }, anim]}>
+      <Animated.View style={[{ borderRadius: h / 2, borderWidth: bw, borderColor: border, backgroundColor: bg, overflow: 'hidden' }, anim]}>
         {tone === 'holo' && !inactive ? <HoloFill>{content}</HoloFill> : content}
       </Animated.View>
     </Pressable>
@@ -361,17 +368,17 @@ export function Toggle({ value, onValueChange, label, disabled }: { value: boole
   return <Switch accessibilityLabel={label} value={value} disabled={disabled} onValueChange={onValueChange} trackColor={{ true: colors.cerise, false: colors.sand }} thumbColor={colors.white} {...({ activeThumbColor: colors.white } as object)} ios_backgroundColor={colors.sand} />;
 }
 
-type FieldProps = TextInputProps & { label: string; hint?: string; tone?: Tone; prefix?: string; right?: ReactNode; error?: boolean };
+type FieldProps = TextInputProps & { label: string; hint?: string; tone?: Tone; prefix?: ReactNode; right?: ReactNode; error?: boolean };
 
-/** Champ de saisie : carte blanche au trait sable, cacao quand on écrit dedans. */
+/** Champ de saisie : nappe unie au repos (pas de filet), l'encre cerne le focus, la framboise l'erreur. */
 export const Field = forwardRef<TextInput, FieldProps>(function Field({ label, hint, tone = 'vanille', style, onFocus, onBlur, prefix, right, error, ...rest }, ref) {
   const [focus, setFocus] = useState(false);
   const c = TONE[tone];
   return (
     <View style={{ gap: 7 }}>
-      <Text style={[s.fieldL, { color: c.fg }]}>{label}</Text>
+      <Text style={[s.fieldL, { color: c.sub }]}>{label}</Text>
       <View style={[s.fieldBox, focus && { borderColor: colors.ink }, error && { borderColor: colors.ceriseDeep }]}>
-      {prefix ? <Text style={s.prefix}>{prefix}</Text> : null}
+      {prefix ? (typeof prefix === 'string' ? <Text style={s.prefix}>{prefix}</Text> : <View style={s.prefixBox}>{prefix}</View>) : null}
       <TextInput
         ref={ref}
         placeholderTextColor={colors.placeholder}
@@ -394,6 +401,21 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field({ label, h
     </View>
   );
 });
+
+/** Emplacement de chargement : le reflet du Shimmer sur une forme de taille fixe. */
+export function Skeleton({ width, height, radius = 12, base, style }: { width: number | `${number}%`; height: number; radius?: number; base?: string; style?: StyleProp<ViewStyle> }) {
+  return <Shimmer base={base} style={[{ width, height, borderRadius: radius }, style]} />;
+}
+
+/** Lien d'action : gras, sans souligné (réservé aux textes légaux), flèche optionnelle. */
+export function TextLink({ label, onPress, arrow = true, align = 'flex-start', accessibilityLabel }: { label: string; onPress: () => void; arrow?: boolean; align?: ViewStyle['alignSelf']; accessibilityLabel?: string }) {
+  return (
+    <Pressable onPress={onPress} hitSlop={10} accessibilityRole="link" accessibilityLabel={accessibilityLabel ?? label} style={({ pressed }) => [s.textLink, { alignSelf: align }, pressed && { opacity: 0.6 }]}>
+      <Text style={s.textLinkT}>{label}</Text>
+      {arrow ? <Icon name="arrow" size={15} color={colors.ink} stroke={2.8} /> : null}
+    </Pressable>
+  );
+}
 
 /** Pastille ronde avec une icône, pour les états vides et les écrans d'attente. */
 export function IconBadge({ icon, tone = 'vanille', size = 72 }: { icon: IconName; tone?: Tone; size?: number }) {
@@ -440,12 +462,15 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 8, paddingHorizontal: 10, marginHorizontal: -10, borderRadius: 22 },
   rowOn: { backgroundColor: colors.card },
   check: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.dashed, alignItems: 'center', justifyContent: 'center' },
-  fieldL: { ...tx.bold, fontSize: 14 },
-  fieldBox: { flexDirection: 'row', alignItems: 'center', height: 54, borderRadius: 16, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.card },
+  fieldL: { ...tx.bold, fontSize: 13 },
+  fieldBox: { flexDirection: 'row', alignItems: 'center', height: 56, borderRadius: 18, borderWidth: 2, borderColor: 'transparent', backgroundColor: colors.card },
   field: { flex: 1, height: '100%', paddingHorizontal: 16, ...tx.bold, fontSize: 17, color: colors.ink },
   prefix: { ...tx.black, fontSize: 17, color: colors.muted, paddingLeft: 16 },
+  prefixBox: { paddingLeft: 8 },
   fieldRight: { paddingRight: 12, paddingLeft: 4 },
   hint: { ...tx.text, fontSize: 13, lineHeight: 18 },
+  textLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  textLinkT: { ...tx.bold, fontSize: 15, color: colors.ink },
   empty: { alignItems: 'center', gap: 12, paddingVertical: 32, paddingHorizontal: 32 },
   emptyB: { ...tx.text, fontSize: 15, lineHeight: 22, color: colors.muted, textAlign: 'center' },
 });

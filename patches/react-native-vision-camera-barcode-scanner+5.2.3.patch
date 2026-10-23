@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native-vision-camera-barcode-scanner/android/build.gradle b/node_modules/react-native-vision-camera-barcode-scanner/android/build.gradle
+index c4dfdc5..279ecaf 100644
+--- a/node_modules/react-native-vision-camera-barcode-scanner/android/build.gradle
++++ b/node_modules/react-native-vision-camera-barcode-scanner/android/build.gradle
+@@ -68,6 +68,8 @@ android {
+   externalNativeBuild {
+     cmake {
+       path "CMakeLists.txt"
++      // Windows : le .cxx par défaut dépasse MAX_PATH avec les chemins prefab → ninja boucle (« manifest still dirty »)
++      if (System.getProperty('os.name').toLowerCase().contains('windows')) buildStagingDirectory file('C:/cxx/' + project.name)
+     }
+   }
+ 

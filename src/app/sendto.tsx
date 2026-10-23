@@ -23,7 +23,7 @@ import { draft } from '../lib/draft';
 import { inviteBySms } from '../lib/invite';
 import { registerForPush, shouldAskPush } from '../lib/push';
 import { signature } from '../lib/haptics';
-import { colors, tx } from '../theme';
+import { colors, flavors, tx } from '../theme';
 
 /** « envoyer à » : le lien privé et la story en tête, puis les amis (séries en danger d'abord). */
 export default function SendTo() {
@@ -184,13 +184,16 @@ export default function SendTo() {
           const on = link === k;
           return (
             <Pressable key={k} onPress={() => pickLink(k)} accessibilityRole="radio" accessibilityState={{ checked: on }} accessibilityLabel={`${t(k === 'single' ? 'link.private' : 'link.story')}. ${t(k === 'single' ? 'link.privateHint' : 'link.storyHint')}`} style={{ flex: 1 }}>
-              <Pop bg={on ? colors.ink : colors.card} border={on ? colors.ink : colors.line} radius={20} style={s.linkCard}>
+              {/* carte plate : la sélection se lit au filet nuit et à la case pleine, pas au fond retourné */}
+              <Pop bg={colors.card} border={colors.ink} borderWidth={on ? 2 : 0} radius={20} style={s.linkCard}>
                 <View style={s.linkTop}>
-                  <Icon name={k === 'single' ? 'link' : 'story'} size={24} color={on ? colors.paper : colors.ink} />
-                  <View style={[s.radio, on && { backgroundColor: colors.paper, borderColor: colors.paper }]}>{on && <Icon name="check" size={12} stroke={3.4} color={colors.ink} />}</View>
+                  <View style={s.linkIcon}>
+                    <Icon name={k === 'single' ? 'link' : 'story'} size={20} color={colors.ceriseText} />
+                  </View>
+                  <View style={[s.radio, on && s.radioOn]}>{on && <Icon name="check" size={12} stroke={3.4} color={colors.paper} />}</View>
                 </View>
-                <Text style={[s.linkT, on && { color: colors.paper }]}>{t(k === 'single' ? 'link.private' : 'link.story')}</Text>
-                <Text style={[s.linkS, on && { color: colors.paper, opacity: 0.8 }]} numberOfLines={3}>
+                <Text style={s.linkT}>{t(k === 'single' ? 'link.private' : 'link.story')}</Text>
+                <Text style={s.linkS} numberOfLines={3}>
                   {t(k === 'single' ? 'link.privateHint' : 'link.storyHint')}
                 </Text>
               </Pop>
@@ -234,8 +237,22 @@ export default function SendTo() {
                 <Shimmer key={i} style={{ height: 60, borderRadius: 18 }} />
               ))}
             </View>
+          ) : q ? (
+            <Text style={s.empty}>{t('send.noMatch')}</Text>
           ) : (
-            <Text style={s.empty}>{q ? t('send.noMatch') : t('send.empty')}</Text>
+            // encore personne : trois avatars fantômes aux couleurs sorbet, une phrase, un vrai bouton
+            <View style={s.emptyBlock}>
+              <View style={s.ghosts}>
+                {[0, 1].map((i) => (
+                  <View key={i} style={[s.ghost, i > 0 && { marginLeft: -12 }, { backgroundColor: flavors[i] }]} />
+                ))}
+                <View style={[s.ghost, { marginLeft: -12, backgroundColor: flavors[2] }]}>
+                  <Text style={s.ghostPlus}>+</Text>
+                </View>
+              </View>
+              <Text style={s.emptyLine}>{t('send.empty')}</Text>
+              <Button size="md" label={t('send.inviteSms')} onPress={invite} />
+            </View>
           )
         }
         renderItem={({ item: r, index }) => {
@@ -265,12 +282,15 @@ export default function SendTo() {
           );
         }}
         ListFooterComponent={
-          <View style={{ gap: 10, paddingTop: 18 }}>
-            <Pressable style={s.invite} onPress={invite} accessibilityRole="button">
-              <Icon name="message" size={18} color={colors.ink} />
-              <Text style={s.inviteT}>{t('send.inviteSms')}</Text>
-            </Pressable>
-          </View>
+          // avec des amis l'invitation reste un lien discret en bas de liste ; vide, elle est dans le bloc ci-dessus
+          friends !== null && friends.length > 0 ? (
+            <View style={{ gap: 10, paddingTop: 18 }}>
+              <Pressable style={s.invite} onPress={invite} accessibilityRole="button">
+                <Icon name="message" size={18} color={colors.ink} />
+                <Text style={s.inviteT}>{t('send.inviteSms')}</Text>
+              </Pressable>
+            </View>
+          ) : null
         }
       />
 
@@ -333,7 +353,14 @@ const s = StyleSheet.create({
   links: { flexDirection: 'row', gap: 12 },
   linkCard: { padding: 12, gap: 6, minHeight: 128 },
   linkTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  linkIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brandTint, alignItems: 'center', justifyContent: 'center' },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.dashed, alignItems: 'center', justifyContent: 'center' },
+  radioOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  emptyBlock: { alignItems: 'center', gap: 14, paddingTop: 18 },
+  ghosts: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  ghost: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  ghostPlus: { ...tx.black, fontSize: 20, color: colors.cacao },
+  emptyLine: { ...tx.text, fontSize: 15, lineHeight: 21, color: colors.muted, textAlign: 'center' },
   linkT: { ...tx.black, fontSize: 15, lineHeight: 18, color: colors.ink },
   linkS: { ...tx.text, fontSize: 12, lineHeight: 16, color: colors.muted },
   name: { ...tx.black, fontSize: 16.5, color: colors.ink },

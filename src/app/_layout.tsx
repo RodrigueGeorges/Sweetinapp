@@ -18,6 +18,7 @@ import { notif } from '../lib/notif';
 import { checkInstallReferrer } from '../lib/referrer';
 import { initSounds, play } from '../lib/sounds';
 import { useLanding } from '../lib/returning';
+import { endSplashState } from '../lib/splashState';
 import { SessionProvider, useSession } from '../lib/session';
 import { flushSendQueue } from '../lib/sendQueue';
 import { colors, fonts } from '../theme';
@@ -43,7 +44,11 @@ function Root() {
   const [fontsLoaded] = useFonts(FONTS);
   // le splash animé prend le relais du splash natif, une fois par lancement
   const [splash, setSplash] = useState(true);
-  const endSplash = useCallback(() => setSplash(false), []);
+  const endSplash = useCallback(() => {
+    // avant le re-render : les écrans dessous reprennent la main sur la barre d'état
+    endSplashState();
+    setSplash(false);
+  }, []);
   // première ouverture (jamais de compte ici) : le splash se gratte à la main pour entrer sur l'inscription
   const landing = useLanding();
   const landingReady = !!session || landing !== null;

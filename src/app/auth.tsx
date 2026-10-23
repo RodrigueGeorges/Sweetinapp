@@ -13,7 +13,7 @@ import { NativeMenu } from '../components/NativeMenu';
 import { Sticker } from '../components/Reactions';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import type { CountryCode } from 'libphonenumber-js';
-import { Body, BottomCTA, Button, Field, Header, Pop, Screen, Title } from '../components/ui';
+import { Body, BottomCTA, Button, Field, Header, Screen, TextLink, Title } from '../components/ui';
 import { deviceCountry, PHONE_COUNTRIES, toE164 } from '../lib/contacts';
 import { legal } from '../lib/legal';
 import { t, humanError } from '../i18n';
@@ -171,21 +171,18 @@ export default function Auth() {
     <Screen>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         {/* arrivé ici directement (téléphone qui a déjà eu un compte) : le retour mène à l'accueil */}
-        <Header back={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} logo />
+        <Header back={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} />
         <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
-          {/* trois autocollants de réaction : on reconnaît l'app avant même de lire */}
-          <View style={s.stickers} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            <Animated.View entering={ZoomIn.delay(120).springify().damping(10)}>
-              <Sticker kind="melt" />
-            </Animated.View>
-            <Animated.View entering={ZoomIn.delay(200).springify().damping(10)} style={{ marginTop: 18 }}>
-              <Sticker kind="shock" />
-            </Animated.View>
-            <Animated.View entering={ZoomIn.delay(280).springify().damping(10)}>
-              <Sticker kind="lol" />
-            </Animated.View>
-          </View>
           <View style={{ gap: 6 }}>
+            {/* deux autocollants glissés au-dessus du titre, à droite : 8 px de chevauchement, jamais sur les lettres */}
+            <View style={s.stickers} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Animated.View entering={ZoomIn.delay(120).springify().damping(10)} style={{ transform: [{ rotate: '-6deg' }] }}>
+                <Sticker kind="melt" size="sm" />
+              </Animated.View>
+              <Animated.View entering={ZoomIn.delay(200).springify().damping(10)} style={{ transform: [{ rotate: '6deg' }] }}>
+                <Sticker kind="lol" size="sm" />
+              </Animated.View>
+            </View>
             <Title size={48}>{sending ? t('auth.titleSend') : signup ? t('auth.titleSignup') : t('auth.titleLogin')}</Title>
             <Body>{sending ? t('auth.subSend') : signup ? t('auth.subSignup') : t('auth.subLogin')}</Body>
           </View>
@@ -194,17 +191,15 @@ export default function Auth() {
               <AppleAuthentication.AppleAuthenticationButton
                 buttonType={signup ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP : AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
                 buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                cornerRadius={27}
+                cornerRadius={29}
                 style={s.apple}
                 onPress={() => social('apple')}
               />
             )}
-            <Pop radius={27} borderWidth={1.5}>
-              <Pressable accessibilityRole="button" onPress={() => social('google')} style={({ pressed }) => [s.google, pressed && { opacity: 0.7 }]} disabled={busy}>
-                <GoogleG />
-                <Text style={s.googleT}>{t('auth.google')}</Text>
-              </Pressable>
-            </Pop>
+            <Pressable accessibilityRole="button" onPress={() => social('google')} style={({ pressed }) => [s.google, pressed && { opacity: 0.7 }]} disabled={busy}>
+              <GoogleG />
+              <Text style={s.googleT}>{t('auth.google')}</Text>
+            </Pressable>
           </View>
           <View style={s.orRow}>
             <View style={s.orLine} />
@@ -213,14 +208,16 @@ export default function Auth() {
           </View>
           {method === 'phone' ? (
             <>
-              <NativeMenu title={t('phone.country')} items={PHONE_COUNTRIES.map((x) => ({ id: x.c, title: `${x.flag}  ${x.dial}` }))} onSelect={(id) => { setCountry(id as CountryCode); setE164(null); }} label={t('phone.country')}>
-                <View style={s.country}>
-                  <Text style={s.countryT}>{cur.flag}  {cur.dial}</Text>
-                  <Text style={s.countryChange}>{t('phone.countryChange')}</Text>
-                </View>
-              </NativeMenu>
               <Field
                 label={t('phone.number')}
+                prefix={
+                  <NativeMenu title={t('phone.country')} items={PHONE_COUNTRIES.map((x) => ({ id: x.c, title: `${x.flag}  ${x.dial}` }))} onSelect={(id) => { setCountry(id as CountryCode); setE164(null); }} label={t('phone.country')}>
+                    <View style={s.dialPill}>
+                      <Text style={s.dialPillT}>{cur.flag}  {cur.dial}</Text>
+                      <Icon name="chevronDown" size={12} color={colors.muted} stroke={3} />
+                    </View>
+                  </NativeMenu>
+                }
                 value={phone}
                 onChangeText={(v) => {
                   setPhone(v);
@@ -254,16 +251,12 @@ export default function Auth() {
                     onSubmitEditing={verify}
                     returnKeyType="go"
                   />
-                  <Pressable onPress={sendCode} hitSlop={8} accessibilityRole="button" disabled={cooldown > 0 || busy} style={{ alignSelf: 'flex-start' }}>
-                    <Text style={[s.forgot, (cooldown > 0 || busy) && { color: colors.muted, textDecorationLine: 'none' }]}>{cooldown > 0 ? t('phone.resendIn', { n: cooldown }) : t('phone.resend')}</Text>
-                  </Pressable>
+                  <View style={{ opacity: cooldown > 0 || busy ? 0.5 : 1 }}>
+                    <TextLink label={cooldown > 0 ? t('phone.resendIn', { n: cooldown }) : t('phone.resend')} arrow={false} onPress={sendCode} />
+                  </View>
                 </View>
               ) : null}
-              <View style={s.links}>
-                <Pressable onPress={() => setMethod('email')} hitSlop={8} accessibilityRole="button">
-                  <Text style={s.forgot}>{t('auth.useEmail')}</Text>
-                </Pressable>
-              </View>
+              <TextLink label={t('auth.useEmail')} onPress={() => setMethod('email')} />
             </>
           ) : (
             <>
@@ -298,23 +291,18 @@ export default function Auth() {
                   </Pressable>
                 }
               />
-              <View style={s.links}>
-                {!signup && (
-                  <Pressable onPress={forgot} hitSlop={8} accessibilityRole="button">
-                    <Text style={s.forgot}>{t('auth.forgot')}</Text>
-                  </Pressable>
-                )}
-                <Pressable onPress={() => router.setParams({ mode: signup ? 'login' : 'signup' })} hitSlop={8} accessibilityRole="button">
-                  <Text style={s.forgot}>{signup ? t('welcome.login') : t('welcome.signup')}</Text>
-                </Pressable>
-                <Pressable onPress={() => setMethod('phone')} hitSlop={8} accessibilityRole="button">
-                  <Text style={s.forgot}>{t('auth.usePhone')}</Text>
-                </Pressable>
-              </View>
+              {/* « mot de passe oublié » seul, aligné à droite sous le champ (connexion uniquement) */}
+              {!signup && <TextLink label={t('auth.forgot')} arrow={false} align="flex-end" onPress={forgot} />}
+              <TextLink label={t('auth.usePhone')} onPress={() => setMethod('phone')} />
             </>
           )}
         </ScrollView>
         <BottomCTA>
+          {/* bascule inscription ⇄ connexion : une ligne centrée, sans souligné */}
+          <View style={s.switchRow}>
+            <Text style={s.switchMuted}>{signup ? t('auth.haveAccount') : t('auth.noAccount')}</Text>
+            <TextLink label={signup ? t('auth.loginLink') : t('auth.signupLink')} arrow={false} onPress={() => router.setParams({ mode: signup ? 'login' : 'signup' })} />
+          </View>
           <Button
             label={method === 'email' ? t('auth.validate') : e164 ? t('phone.verify') : t('phone.send')}
             arrow
@@ -365,21 +353,20 @@ function GoogleG() {
 }
 
 const s = StyleSheet.create({
-  stickers: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', marginBottom: 4 },
-  form: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 20, gap: 20 },
+  stickers: { flexDirection: 'row', gap: 6, alignItems: 'flex-end', alignSelf: 'flex-end', marginBottom: -14, zIndex: 1 },
+  form: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 20, gap: 20 },
   socials: { gap: 12 },
-  apple: { height: 54, width: '100%' },
-  google: { height: 50, borderRadius: 27, backgroundColor: colors.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  apple: { height: 58, width: '100%' },
+  google: { height: 58, borderRadius: 29, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.paper, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   googleT: { ...tx.bold, fontSize: 17, color: colors.ink },
   orRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   orLine: { flex: 1, height: 2, borderRadius: 1, backgroundColor: colors.sand },
   orT: { ...tx.black, fontSize: 14, color: colors.muted },
-  links: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   code: { letterSpacing: 10, textAlign: 'center' as const, ...tx.black, fontSize: 22 },
-  forgot: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
-  country: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, alignSelf: 'flex-start' },
-  countryT: { ...tx.black, fontSize: 17, color: colors.ink },
-  countryChange: { ...tx.bold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline' },
+  dialPill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.paper },
+  dialPillT: { ...tx.black, fontSize: 16, color: colors.ink },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBottom: 8 },
+  switchMuted: { ...tx.text, fontSize: 15, color: colors.muted },
   sent: { backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 20 },
   legal: { ...tx.text, fontSize: 12, lineHeight: 16, color: colors.muted, textAlign: 'center', textDecorationLine: 'underline' },
   ok: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.pistache, alignItems: 'center', justifyContent: 'center' },
