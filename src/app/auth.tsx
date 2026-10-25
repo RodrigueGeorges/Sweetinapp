@@ -1,4 +1,5 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Haptics from 'expo-haptics';
 import { Fondue } from '../components/Fondue';
 import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -37,6 +38,8 @@ export default function Auth() {
   const [method, setMethod] = useState<'phone' | 'email'>('phone');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [pwError, setPwError] = useState(false);
+  const [codeError, setCodeError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [appleOk, setAppleOk] = useState(false);
@@ -94,7 +97,12 @@ export default function Auth() {
       const { error } = await supabase.auth.verifyOtp({ phone: e164, token: code, type: 'sms' });
       if (error) {
         const m = error.message.toLowerCase();
-        throw new Error(m.includes('invalid') || m.includes('expired') || m.includes('token') ? t('auth.badCode') : error.message);
+        const bad = m.includes('invalid') || m.includes('expired') || m.includes('token');
+        if (bad) {
+          setCodeError(true);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+        throw new Error(bad ? t('auth.badCode') : error.message);
       }
       done('phone');
     } catch (e) {
@@ -133,7 +141,14 @@ export default function Auth() {
         else setSent(true);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: mail, password });
-        if (error) throw new Error(error.message.toLowerCase().includes('confirm') ? t('auth.confirmFirst') : t('auth.wrong'));
+        if (error) {
+          const confirm = error.message.toLowerCase().includes('confirm');
+          if (!confirm) {
+            setPwError(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          }
+          throw new Error(confirm ? t('auth.confirmFirst') : t('auth.wrong'));
+        }
         done('email');
       }
     } catch (e) {
@@ -240,7 +255,11 @@ export default function Auth() {
                     ref={codeRef}
                     label={t('phone.code')}
                     value={code}
-                    onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))}
+                    onChangeText={(v) => {
+                      setCode(v.replace(/\D/g, '').slice(0, 6));
+                      setCodeError(false);
+                    }}
+                    error={codeError}
                     keyboardType="number-pad"
                     textContentType="oneTimeCode"
                     autoComplete="sms-otp"
@@ -251,6 +270,11 @@ export default function Auth() {
                     onSubmitEditing={verify}
                     returnKeyType="go"
                   />
+                  {codeError ? (
+                    <Text style={s.err} accessibilityLiveRegion="polite">
+                      {t('auth.badCode')}
+                    </Text>
+                  ) : null}
                   <View style={{ opacity: cooldown > 0 || busy ? 0.5 : 1 }}>
                     <TextLink label={cooldown > 0 ? t('phone.resendIn', { n: cooldown }) : t('phone.resend')} arrow={false} onPress={sendCode} />
                   </View>
@@ -263,7 +287,10 @@ export default function Auth() {
               <Field
                 label={t('auth.email')}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  setPwError(false);
+                }}
                 keyboardType="email-address"
                 textContentType="emailAddress"
                 autoComplete="email"
@@ -276,7 +303,11 @@ export default function Auth() {
               <Field
                 label={t('auth.password')}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => {
+                  setPassword(v);
+                  setPwError(false);
+                }}
+                error={pwError}
                 secureTextEntry={!showPw}
                 textContentType={signup ? 'newPassword' : 'password'}
                 autoComplete={signup ? 'new-password' : 'current-password'}
@@ -291,6 +322,11 @@ export default function Auth() {
                   </Pressable>
                 }
               />
+              {pwError ? (
+                <Text style={s.err} accessibilityLiveRegion="polite">
+                  {t('auth.wrong')}
+                </Text>
+              ) : null}
               {/* « mot de passe oublié » seul, aligné à droite sous le champ (connexion uniquement) */}
               {!signup && <TextLink label={t('auth.forgot')} arrow={false} align="flex-end" onPress={forgot} />}
               <TextLink label={t('auth.usePhone')} onPress={() => setMethod('phone')} />
@@ -370,4 +406,5 @@ const s = StyleSheet.create({
   sent: { backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 20 },
   legal: { ...tx.text, fontSize: 12, lineHeight: 16, color: colors.muted, textAlign: 'center', textDecorationLine: 'underline' },
   ok: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.pistache, alignItems: 'center', justifyContent: 'center' },
+  err: { ...tx.bold, fontSize: 13, color: colors.ceriseDeep, marginTop: -10 },
 });

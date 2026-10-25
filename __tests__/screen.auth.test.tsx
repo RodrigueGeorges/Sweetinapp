@@ -54,7 +54,9 @@ jest.mock('expo-router', () => ({
 jest.mock('expo-haptics', () => ({
   selectionAsync: jest.fn(async () => {}),
   impactAsync: jest.fn(async () => {}),
+  notificationAsync: jest.fn(async () => {}),
   ImpactFeedbackStyle: { Light: 1, Medium: 2, Heavy: 3 },
+  NotificationFeedbackType: { Success: 1, Warning: 2, Error: 3 },
 }));
 jest.mock('expo-symbols', () => ({ SymbolView: () => null }));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null, setStatusBarStyle: jest.fn() }));
@@ -121,7 +123,7 @@ describe('auth · téléphone (voie par défaut)', () => {
     fireEvent.changeText(await r.findByLabelText(t('phone.number')), '+33612345678');
     fireEvent.press(await r.findByText(t('phone.send')));
     fireEvent.changeText(await r.findByLabelText(t('phone.code')), '000000');
-    expect(await r.findByText(t('auth.badCode'))).toBeTruthy();
+    await waitFor(() => expect(r.queryAllByText(t('auth.badCode')).length).toBeGreaterThan(0));
     expect(mockReplace).not.toHaveBeenCalledWith('/');
   });
 });
@@ -176,8 +178,22 @@ describe('auth · login', () => {
     fireEvent.changeText(await findByLabelText(t('auth.email')), 'moi@test.fr');
     fireEvent.changeText(await findByLabelText(t('auth.password')), 'motdepasse123');
     fireEvent.press(await findByText(t('auth.validate')));
-    expect(await findByText(t('auth.wrong'))).toBeTruthy();
+    await waitFor(() => expect(r.queryAllByText(t('auth.wrong')).length).toBeGreaterThan(0));
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it('mauvais mot de passe → erreur inline sous le champ, effacée à la frappe', async () => {
+    mockSignIn.mockResolvedValue({ data: {}, error: new Error('Invalid login credentials') });
+    const r = await renderAuth();
+    await switchToEmail(r);
+    const { findByLabelText, findByText } = r;
+    fireEvent.changeText(await findByLabelText(t('auth.email')), 'moi@test.fr');
+    fireEvent.changeText(await findByLabelText(t('auth.password')), 'motdepasse123');
+    fireEvent.press(await findByText(t('auth.validate')));
+    // le toast porte le même texte : l'erreur inline se reconnaît à sa liveRegion
+    await waitFor(() => expect(r.queryAllByText(t('auth.wrong')).some((n) => n.props.accessibilityLiveRegion === 'polite')).toBe(true));
+    fireEvent.changeText(await findByLabelText(t('auth.password')), 'x');
+    await waitFor(() => expect(r.queryAllByText(t('auth.wrong')).some((n) => n.props.accessibilityLiveRegion === 'polite')).toBe(false));
   });
 
   it('mot de passe oublié → lien de réinitialisation envoyé', async () => {

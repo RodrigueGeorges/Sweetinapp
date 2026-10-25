@@ -13,7 +13,7 @@ export type SheetItem = { id: string; title: string; icon?: IconName; destructiv
  * Feuille d'actions façon Fondant (@gorhom/bottom-sheet) : fond vanille, poignée,
  * lignes à icône, « annuler » en bas. Réf = BottomSheetModal → `present()`.
  */
-export const Sheet = forwardRef<BottomSheetModal, { title?: string; items: SheetItem[]; onSelect: (id: string) => void }>(function Sheet({ title, items, onSelect }, ref) {
+export const Sheet = forwardRef<BottomSheetModal, { title?: string; items: SheetItem[]; onSelect: (id: string) => void; onDismiss?: () => void }>(function Sheet({ title, items, onSelect, onDismiss }, ref) {
   const insets = useSafeAreaInsets();
   const backdrop = useCallback((p: BottomSheetBackdropProps) => <BottomSheetBackdrop {...p} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.55} pressBehavior="close" />, []);
   const pick = (id: string) => {
@@ -21,7 +21,7 @@ export const Sheet = forwardRef<BottomSheetModal, { title?: string; items: Sheet
     if (id !== '__cancel') onSelect(id);
   };
   return (
-    <BottomSheetModal ref={ref} backdropComponent={backdrop} backgroundStyle={s.bg} handleIndicatorStyle={s.grip} enablePanDownToClose enableDynamicSizing>
+    <BottomSheetModal ref={ref} backdropComponent={backdrop} backgroundStyle={s.bg} handleIndicatorStyle={s.grip} enablePanDownToClose enableDynamicSizing onDismiss={onDismiss}>
       <BottomSheetView style={[s.body, { paddingBottom: Math.max(insets.bottom, 14) + 6 }]}>
         {title ? <Text style={s.title}>{title}</Text> : null}
         <View style={s.list}>

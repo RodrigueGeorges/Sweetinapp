@@ -2,13 +2,12 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import { setStatusBarStyle } from 'expo-status-bar';
 import { forwardRef, useCallback, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, TextInput, View, type PressableProps, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
-import { splashVisible } from '../lib/splashState';
+import { requestStatusBar } from '../lib/splashState';
 import { avatarColor, colors, displayScale, fonts, holo, isDark, layout, motion, tx } from '../theme';
 import { Icon, type IconName } from './Icon';
 import { Logo } from './Logo';
@@ -29,9 +28,8 @@ export const toneOf = (tone: Tone) => TONE[tone];
 export function Screen({ tone = 'vanille', children, style }: { tone?: Tone; children?: ReactNode; style?: StyleProp<ViewStyle> }) {
   useFocusEffect(
     useCallback(() => {
-      // tant que le splash de lancement recouvre l'écran, c'est lui qui commande la barre d'état
-      if (splashVisible) return;
-      setStatusBarStyle(tone === 'vanille' && !isDark ? 'dark' : 'light', true);
+      // tant que le splash de lancement recouvre l'écran, c'est lui qui commande la barre d'état (appliqué à sa sortie)
+      requestStatusBar(tone === 'vanille' && !isDark ? 'dark' : 'light');
     }, [tone]),
   );
   return <View style={[{ flex: 1, backgroundColor: TONE[tone].bg }, style]}>{children}</View>;

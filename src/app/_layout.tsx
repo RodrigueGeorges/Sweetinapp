@@ -21,7 +21,7 @@ import { useLanding } from '../lib/returning';
 import { endSplashState } from '../lib/splashState';
 import { SessionProvider, useSession } from '../lib/session';
 import { flushSendQueue } from '../lib/sendQueue';
-import { colors, fonts } from '../theme';
+import { colors, fonts, isDark } from '../theme';
 
 const FONTS = {
   [fonts.display]: require('../../assets/fonts/SweetinDisplay.ttf'),
@@ -124,7 +124,7 @@ function Root() {
   const scratchToEnter = !session && landing === '/auth?mode=signup';
   return (
     <>
-      <StatusBar style={splash ? 'light' : 'dark'} />
+      <StatusBar style={splash || isDark ? 'light' : 'dark'} />
       {/* transitions natives de chaque plateforme (glissé iOS, Material Android) ; les animations sur mesure sont réservées aux moments forts */}
       <Stack initialRouteName="index" screenOptions={{ headerShown: false, animation: 'default', contentStyle: { backgroundColor: colors.paper } }}>
         {/* Android : écran transparent, c'est la carte de la vitrine qui s'agrandit (OriginZoom) ; iOS : Link.AppleZoom */}

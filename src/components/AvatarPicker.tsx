@@ -1,61 +1,97 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useCallback, useRef, type ReactNode } from 'react';
 import { t } from '../i18n';
 import { avatarColor, colors, tx } from '../theme';
 import { Icon } from './Icon';
+import { Sheet } from './Sheet';
 
-/** Prend un selfie (caméra avant) ou une photo de la galerie, recadrée en carré. Renvoie l'URI locale. */
-export async function pickSelfie(): Promise<string | null> {
-  const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.85 };
-  const camera = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return library();
-    const r = await ImagePicker.launchCameraAsync({ ...opts, cameraType: ImagePicker.CameraType.front });
-    return r.canceled ? null : r.assets[0].uri;
-  };
-  const library = async () => {
-    const r = await ImagePicker.launchImageLibraryAsync(opts);
-    return r.canceled ? null : r.assets[0].uri;
-  };
-  if (Platform.OS === 'web') return library();
-  return new Promise((resolve) => {
-    const choices = [t('avatar.selfie'), t('avatar.library'), t('common.cancel')];
-    const go = (i: number) => (i === 0 ? camera() : i === 1 ? library() : Promise.resolve(null)).then(resolve, () => resolve(null));
-    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: choices, cancelButtonIndex: 2 }, go);
-    else Alert.alert(t('avatar.title'), undefined, [{ text: choices[0], onPress: () => go(0) }, { text: choices[1], onPress: () => go(1) }, { text: choices[2], style: 'cancel', onPress: () => go(2) }]);
-  });
+const OPTS: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.85 };
+const camera = async () => {
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) return library();
+  const r = await ImagePicker.launchCameraAsync({ ...OPTS, cameraType: ImagePicker.CameraType.front });
+  return r.canceled ? null : r.assets[0].uri;
+};
+const library = async () => {
+  const r = await ImagePicker.launchImageLibraryAsync(OPTS);
+  return r.canceled ? null : r.assets[0].uri;
+};
+
+/**
+ * Choix selfie/galerie façon Fondant : une Sheet plutôt que la boîte système.
+ * `pick()` ouvre la feuille et renvoie l'URI (ou null si fermée sans choix) ;
+ * `sheet` doit être rendue dans l'arbre de l'écran.
+ */
+export function useSelfiePicker(): { pick: () => Promise<string | null>; sheet: ReactNode } {
+  const ref = useRef<BottomSheetModal>(null);
+  const resolver = useRef<((u: string | null) => void) | null>(null);
+  const pick = useCallback(() => {
+    if (Platform.OS === 'web') return library();
+    return new Promise<string | null>((resolve) => {
+      resolver.current = resolve;
+      ref.current?.present();
+    });
+  }, []);
+  const onSelect = useCallback((id: string) => {
+    const go = id === 'selfie' ? camera : library;
+    go().then((u) => resolver.current?.(u), () => resolver.current?.(null));
+    resolver.current = null; // dismiss suivra : onDismiss devient un no-op
+  }, []);
+  const onDismiss = useCallback(() => {
+    resolver.current?.(null);
+    resolver.current = null;
+  }, []);
+  const sheet = (
+    <Sheet
+      ref={ref}
+      title={t('avatar.title')}
+      items={[
+        { id: 'selfie', title: t('avatar.selfie'), icon: 'snap' },
+        { id: 'library', title: t('avatar.library'), icon: 'gallery' },
+      ]}
+      onSelect={onSelect}
+      onDismiss={onDismiss}
+    />
+  );
+  return { pick, sheet };
 }
 
 /** Grand rond « ta photo » : vide (pointillés + appareil photo) ou le selfie, avec un badge pour le changer. */
 export function AvatarPicker({ uri, name, size = 112, onPick }: { uri?: string | null; name?: string; size?: number; onPick: (uri: string) => void }) {
+  const { pick, sheet } = useSelfiePicker();
   return (
-    <Pressable
-      onPress={async () => {
-        const u = await pickSelfie();
-        if (u) onPick(u);
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={uri ? t('avatar.change') : t('avatar.add')}
-      style={({ pressed }) => [{ alignItems: 'center', gap: 8 }, pressed && { transform: [{ scale: 0.96 }] }]}
-    >
-      <View style={{ width: size, height: size }}>
-        {uri ? (
-          <Animated.View entering={ZoomIn.springify().damping(12)}>
-            <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: name ? avatarColor(name) : colors.sand }} contentFit="cover" />
-          </Animated.View>
-        ) : (
-          <View style={[s.empty, { width: size, height: size, borderRadius: size / 2 }]}>
-            <Icon name="person" size={36} color={colors.muted} />
+    <>
+      <Pressable
+        onPress={async () => {
+          const u = await pick();
+          if (u) onPick(u);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={uri ? t('avatar.change') : t('avatar.add')}
+        style={({ pressed }) => [{ alignItems: 'center', gap: 8 }, pressed && { transform: [{ scale: 0.96 }] }]}
+      >
+        <View style={{ width: size, height: size }}>
+          {uri ? (
+            <Animated.View entering={ZoomIn.springify().damping(12)}>
+              <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: name ? avatarColor(name) : colors.sand }} contentFit="cover" />
+            </Animated.View>
+          ) : (
+            <View style={[s.empty, { width: size, height: size, borderRadius: size / 2 }]}>
+              <Icon name="person" size={36} color={colors.muted} />
+            </View>
+          )}
+          <View style={s.badge}>
+            <Icon name={uri ? 'retake' : 'snap'} size={15} color={colors.onBrand} stroke={2.6} />
           </View>
-        )}
-        <View style={s.badge}>
-          <Icon name={uri ? 'retake' : 'snap'} size={15} color={colors.onBrand} stroke={2.6} />
         </View>
-      </View>
-      <Text style={s.label}>{uri ? t('avatar.change') : t('avatar.add')}</Text>
-    </Pressable>
+        <Text style={s.label}>{uri ? t('avatar.change') : t('avatar.add')}</Text>
+      </Pressable>
+      {sheet}
+    </>
   );
 }
 

@@ -10,7 +10,7 @@ import { registerForPush } from '../lib/push';
 import { clearHasAccount, LOGIN_ROUTE } from '../lib/returning';
 import { legal } from '../lib/legal';
 import { deleteAccount, mySettings, setAvatar, setDiscoverable, myMute, setMute, type PushKind } from '../lib/api';
-import { pickSelfie } from '../components/AvatarPicker';
+import { useSelfiePicker } from '../components/AvatarPicker';
 import { useSession } from '../lib/session';
 import { updateWidget } from '../lib/widget';
 import { analyticsAvailable, analyticsEnabled, setAnalytics } from '../lib/monitoring';
@@ -24,6 +24,7 @@ export default function Settings() {
   const toast = useToast();
   const { session, profile, refreshProfile } = useSession();
   const [avatar, setAvatarUri] = useState<string | null>(null);
+  const { pick: pickSelfie, sheet: selfieSheet } = useSelfiePicker();
   const username = profile?.username ?? null;
   const email = session?.user.email ?? '';
   const [busy, setBusy] = useState(false);
@@ -264,6 +265,7 @@ export default function Settings() {
           </Pressable>
         </Pressable>
       </Modal>
+      {selfieSheet}
     </Screen>
   );
 }

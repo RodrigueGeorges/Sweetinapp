@@ -41,7 +41,7 @@ jest.mock('../src/lib/sounds', () => ({ play: jest.fn(), scratchLoop: { start: j
 jest.mock('../src/lib/session', () => ({
   useSession: () => ({ session: { user: { id: 'me', email: 'moi@test.fr' } }, profile: { username: 'moi' }, ready: true, refreshProfile: jest.fn(async () => null) }),
 }));
-jest.mock('../src/components/AvatarPicker', () => ({ pickSelfie: jest.fn(async () => null) }));
+jest.mock('../src/components/AvatarPicker', () => ({ useSelfiePicker: () => ({ pick: jest.fn(async () => null), sheet: null }) }));
 jest.mock('expo-constants', () => ({ expoConfig: { version: '1.0.0', extra: {} } }));
 
 const mockReplace = jest.fn();
