@@ -6,7 +6,7 @@ const KEY = env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 const login = await fetch(`${BASE}/auth/v1/token?grant_type=password`, {
   method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email: 'cc@dd.ee', password: 'cccccccc' }),
+  body: JSON.stringify({ email: env.SMOKE_EMAIL, password: env.SMOKE_PASSWORD }),
 }).then((r) => r.json());
 if (!login.access_token) { console.log('LOGIN FAIL'); process.exit(1); }
 const tok = login.access_token;
