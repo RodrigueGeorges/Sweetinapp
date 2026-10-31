@@ -8,7 +8,7 @@
 <meta name="apple-itunes-app" content="app-id=APP_STORE_ID">
 <meta property="og:title" content="rejoins-moi sur sweetin">
 <meta property="og:description" content="une photo, un mot caché dessous. tu grattes pour le lire, puis il fond.">
-<meta property="og:image" content="https://sweetin.app/og-u.png">
+<meta property="og:image" content="https://sweetinapp.netlify.app/og-u.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -65,7 +65,7 @@
     </div>
     <h1 id="title">rejoins-moi sur sweetin.</h1>
     <p id="msg">une photo, un mot caché dessous. tu grattes pour le lire, puis il fond.</p>
-  <a class="btn" id="store" href="https://sweetin.app">télécharger sweetin</a>
+  <a class="btn" id="store" href="https://sweetinapp.netlify.app">télécharger sweetin</a>
   <a class="link" id="open" href="sweetin://">j’ai déjà l’app</a>
   <p class="small" id="hint"></p>
   </main>
@@ -81,7 +81,7 @@
   var ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
   var store = ios ? 'https://apps.apple.com/app/idAPP_STORE_ID'
             : android ? 'https://play.google.com/store/apps/details?id=app.sweetin.android&referrer=' + encodeURIComponent('invite=' + name + '&src=' + src)
-            : 'https://sweetin.app';
+            : 'https://sweetinapp.netlify.app';
   var $ = function (id) { return document.getElementById(id); };
   // même voix que l'app : minuscules, sweet / mot / gratter / fondu
   var T = fr ? {
