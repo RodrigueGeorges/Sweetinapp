@@ -401,7 +401,37 @@ maestro test .maestro    # parcours sur simulateur ou téléphone (voir les vari
 
 ## Ce qui a été vérifié, ce qui reste à faire
 
-Vérifié avant livraison :
+Vérifié (passe de fiabilisation, octobre 2027) :
+- Types TypeScript, lint (0 erreur) et 135 tests Jest : tous verts.
+- `npx expo-doctor` : 21/21.
+- Build release Android local : réussi (APK servi en interne pour les tests).
+- Modération indisponible = envoi bloqué, brouillon conservé (testé).
+- File d'envoi et brouillons isolés par compte ; échecs de sauvegarde signalés au lieu d'être avalés.
+- Envoi idempotent : `request_id` rejoué → même résultat, pas de doublon (`commit_flip` transactionnel).
+- Ajout par pseudo = demande d'ami explicite (accepter/ignorer) ; invitations lien/QR inchangées.
+- État « liste en panne » distingué de « liste vide » (amis, boîte de réception) avec réessai.
+- Échec de lecture du profil → écran de réessai, plus de renvoi vers la création de profil.
+- Pastilles de couleur : libellés distincts et zone tactile ≥ 48 dp ; bouton « terminé » en édition du mot.
+- Filtres web `/f/` réalignés sur les recettes canoniques (`src/lib/filters.ts`).
+- Déconnexion : jeton push désinscrit ; suppression de compte : confirmation par pseudo.
+- Événements analytics dédupliqués : `auth_completed` ≠ `signup_completed`.
+
+À valider avant de déployer les nouvelles migrations (`atomic_send`, `friend_requests`) :
+- Appliquer les migrations sur un Postgres de test (pas de PostgreSQL/Docker sur la machine de dev) puis rejouer : demande d'ami dans les deux sens, blocage, `commit_flip` idempotent, limites.
+- Vérifier les fonctions Edge avec Deno (non installé localement ; couvert par la CI).
+- Déployer `send-flip` + les migrations ensemble : le client envoie déjà `request_id`/`sendId`.
+
+À faire de ton côté (impossible sans tes comptes et un téléphone) :
+- Tester sur un iPhone et un Android avec un build de développement : grattage, caméra, notifications, widget, connexion Apple et Google, blocage des captures, Live Activity du Sweet Hour (iPhone verrouillé), contacts en accès limité, feuille d'âge Apple.
+- Vérifier TalkBack/VoiceOver de bout en bout : splash à gratter (le rideau se lève tout seul si le lecteur d'écran est actif), grattage de lecture, minuteur, réactions.
+- Un vrai échange entre deux comptes sur deux appareils : position/taille du mot fidèle à l'aperçu, filtre identique, réponse.
+- SMS réel : les identifiants Twilio du compte Supabase sont invalides — les renseigner ou rester sur email/Apple/Google.
+- Héberger `web/` sur le domaine des invitations, mettre en ligne les pages légales, brancher le SMTP.
+- Compléter les champs légaux (société, prestataires, région, durées) et le `TEAMID` des liens universels iOS (script de déploiement prévu).
+- Remplir les fiches App Store et Play Store.
+- Commander l'animation Rive de Fondue (brief dans `store/brief-fondue/`) et fournir de vraies photos pour l'accueil et les captures.
+
+Vérifié avant livraison (historique) :
 - Types TypeScript de l'app : aucun problème.
 - 21 tests unitaires passent (Jest).
 - Bundles iOS et Android complets compilés avec `expo export`.
