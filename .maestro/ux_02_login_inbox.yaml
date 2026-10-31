@@ -1,0 +1,47 @@
+# Test UX — connexion email puis vitrine. Variables : SMOKE_EMAIL / SMOKE_PASSWORD.
+appId: app.sweetin.android
+---
+- launchApp:
+    clearState: true
+# premier lancement : il faut gratter le splash (rituel)
+- extendedWaitUntil:
+    visible: "scratch to get in|gratte pour entrer"
+    timeout: 90000
+- swipe: { start: "10%,15%", end: "90%,17%", duration: 500 }
+- swipe: { start: "90%,23%", end: "10%,25%", duration: 500 }
+- swipe: { start: "10%,31%", end: "90%,33%", duration: 500 }
+- swipe: { start: "90%,39%", end: "10%,41%", duration: 500 }
+- swipe: { start: "10%,47%", end: "90%,49%", duration: 500 }
+- swipe: { start: "90%,55%", end: "10%,57%", duration: 500 }
+- swipe: { start: "10%,63%", end: "90%,65%", duration: 500 }
+- swipe: { start: "90%,71%", end: "10%,73%", duration: 500 }
+- swipe: { start: "25%,15%", end: "25%,85%", duration: 700 }
+- swipe: { start: "75%,85%", end: "75%,15%", duration: 700 }
+# welcome (nouvel aiguillage) → « j'ai déjà un compte »
+- extendedWaitUntil:
+    visible: "send my first sweet|envoyer mon premier sweet"
+    timeout: 60000
+- tapOn: "i already have an account|j’ai déjà un compte|j'ai déjà un compte"
+- extendedWaitUntil:
+    visible: "welcome back.|te revoilà."
+    timeout: 30000
+- takeScreenshot: ux04_auth
+- tapOn: "use email instead|plutôt avec un email"
+- extendedWaitUntil:
+    visible: "password|mot de passe"
+    timeout: 30000
+- tapOn: "email"
+- inputText: ${SMOKE_EMAIL}
+- tapOn: "password|mot de passe"
+- inputText: ${SMOKE_PASSWORD}
+- hideKeyboard
+- tapOn: "let me in|entrer"
+# la vitrine : pastilles reçus/envoyés + déclencheur
+- extendedWaitUntil:
+    visible: "received|reçus"
+    timeout: 60000
+- assertVisible: "sent|envoyés"
+- takeScreenshot: ux05_inbox
+# onglet envoyés : historique + liens/stories
+- tapOn: "sent|envoyés"
+- takeScreenshot: ux06_sent

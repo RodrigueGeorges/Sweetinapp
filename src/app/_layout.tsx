@@ -49,7 +49,7 @@ function Root() {
     endSplashState();
     setSplash(false);
   }, []);
-  // première ouverture (jamais de compte ici) : le splash se gratte à la main pour entrer sur l'inscription
+  // première ouverture (jamais de compte ici) : le splash se gratte à la main pour entrer sur l'accueil
   const landing = useLanding();
   const landingReady = !!session || landing !== null;
 
@@ -125,7 +125,7 @@ function Root() {
 
   // on attend de savoir où atterrir avant de monter le splash : mode grattage ou sortie automatique
   if (!ready || !fontsLoaded || !landingReady) return null;
-  const scratchToEnter = !session && landing === '/auth?mode=signup';
+  const scratchToEnter = !session && landing === '/welcome';
   return (
     <>
       <StatusBar style={splash || isDark ? 'light' : 'dark'} />

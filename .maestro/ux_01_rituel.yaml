@@ -1,0 +1,41 @@
+# Test UX — premier lancement : splash à gratter → welcome → démo à gratter.
+# Le rituel ne doit JAMAIS être sauté automatiquement pour un utilisateur normal.
+appId: app.sweetin.android
+---
+- launchApp:
+    clearState: true
+# l'invite de grattage du splash (full-screen Skia)
+- extendedWaitUntil:
+    visible: "scratch to get in|gratte pour entrer"
+    timeout: 90000
+- takeScreenshot: ux01_splash_scratch
+# zigzags denses plein écran : seuil 35 % sur une grille 12×16.
+# chaque balayage horizontal couvre ~2 lignes de la grille, en alternant le sens.
+- swipe: { start: "10%,15%", end: "90%,17%", duration: 500 }
+- swipe: { start: "90%,23%", end: "10%,25%", duration: 500 }
+- swipe: { start: "10%,31%", end: "90%,33%", duration: 500 }
+- swipe: { start: "90%,39%", end: "10%,41%", duration: 500 }
+- swipe: { start: "10%,47%", end: "90%,49%", duration: 500 }
+- swipe: { start: "90%,55%", end: "10%,57%", duration: 500 }
+- swipe: { start: "10%,63%", end: "90%,65%", duration: 500 }
+- swipe: { start: "90%,71%", end: "10%,73%", duration: 500 }
+- swipe: { start: "10%,79%", end: "90%,81%", duration: 500 }
+- swipe: { start: "25%,15%", end: "25%,85%", duration: 700 }
+- swipe: { start: "75%,85%", end: "75%,15%", duration: 700 }
+# welcome : la carte démo à gratter + les autocollants + la promesse
+- extendedWaitUntil:
+    visible: "scratch the photo with your finger|gratte la photo du doigt"
+    timeout: 60000
+- assertVisible: "i’m melting|je fonds"
+- takeScreenshot: ux02_welcome
+# balayage rapide volontaire : teste l'interpolation du grattage
+- swipe: { start: "25%,32%", end: "75%,48%", duration: 150 }
+- swipe: { start: "75%,50%", end: "25%,36%", duration: 150 }
+- swipe: { start: "25%,38%", end: "75%,52%", duration: 150 }
+- swipe: { start: "75%,54%", end: "25%,42%", duration: 150 }
+- swipe: { start: "30%,30%", end: "70%,56%", duration: 150 }
+# le mot découvert + le bouton qui change de libellé
+- extendedWaitUntil:
+    visible: "your turn to hide one|à toi d’en cacher un|à toi d'en cacher un"
+    timeout: 30000
+- takeScreenshot: ux03_demo_revealed
