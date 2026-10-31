@@ -11,7 +11,7 @@ import { rememberInvite, useSession } from '../../lib/session';
 import { colors } from '../../theme';
 
 /**
- * Lien d'invitation https://sweetin.app/u/<pseudo> (ou sweetin://u/<pseudo>).
+ * Lien d'invitation https://sweetinapp.netlify.app/u/<pseudo> (ou sweetin://u/<pseudo>).
  * Connecté avec un profil complet : on ajoute l'ami tout de suite.
  * Sinon : on garde le pseudo, il sera ajouté à la fin de l'inscription.
  */

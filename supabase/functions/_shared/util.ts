@@ -133,7 +133,7 @@ export function randomToken() {
 }
 
 /** Adresse publique du site (pages /f/ et /u/). */
-export const SITE_URL = (Deno.env.get('PUBLIC_SITE_URL') ?? 'https://sweetin.app').replace(/\/$/, '');
+export const SITE_URL = (Deno.env.get('PUBLIC_SITE_URL') ?? 'https://sweetinapp.netlify.app').replace(/\/$/, '');
 
 /** Paliers de série fêtés (mêmes valeurs que l'app, components/SentCelebration). */
 export const STREAK_MILESTONES = new Set([7, 30, 100, 365]);

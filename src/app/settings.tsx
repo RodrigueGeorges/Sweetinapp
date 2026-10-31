@@ -136,6 +136,7 @@ export default function Settings() {
                 try {
                   await setAvatar(u);
                   await refreshProfile();
+                  setAvatarUri(null); // la photo servie (celle que voient les autres) remplace la preview locale
                   toast(t('avatar.saved'));
                 } catch (e) {
                   setAvatarUri(null);

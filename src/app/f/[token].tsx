@@ -10,7 +10,7 @@ import { colors } from '../../theme';
 const LINK_DOMAIN = process.env.APP_LINK_DOMAIN ?? 'sweetinapp.netlify.app';
 
 /**
- * Lien privé https://sweetin.app/f/<jeton> (ou sweetin://f/<jeton>).
+ * Lien privé https://sweetinapp.netlify.app/f/<jeton> (ou sweetin://f/<jeton>).
  * Le grattage se fait sur la page web (« works without the app ») : on y renvoie
  * au lieu de tomber sur l'écran introuvable quand l'OS livre le lien à l'app.
  */

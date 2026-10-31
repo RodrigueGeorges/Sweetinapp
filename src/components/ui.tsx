@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { requestStatusBar } from '../lib/splashState';
 import { avatarColor, colors, displayScale, fonts, holo, isDark, layout, motion, tx } from '../theme';
+import { Backdrop } from './Backdrop';
 import { Icon, type IconName } from './Icon';
 import { Logo } from './Logo';
 import { Shimmer } from './Shimmer';
@@ -24,15 +25,20 @@ const TONE = {
 } as const;
 export const toneOf = (tone: Tone) => TONE[tone];
 
-/** Fond plein écran d'une des trois ambiances. Règle aussi la barre d'état quand l'écran est affiché. */
-export function Screen({ tone = 'vanille', children, style }: { tone?: Tone; children?: ReactNode; style?: StyleProp<ViewStyle> }) {
+/** Fond plein écran d'une des trois ambiances. Règle aussi la barre d'état quand l'écran est affiché. `sorbet` : les taches pastel de la marque sous le contenu. */
+export function Screen({ tone = 'vanille', sorbet = false, children, style }: { tone?: Tone; sorbet?: boolean; children?: ReactNode; style?: StyleProp<ViewStyle> }) {
   useFocusEffect(
     useCallback(() => {
       // tant que le splash de lancement recouvre l'écran, c'est lui qui commande la barre d'état (appliqué à sa sortie)
       requestStatusBar(tone === 'vanille' && !isDark ? 'dark' : 'light');
     }, [tone]),
   );
-  return <View style={[{ flex: 1, backgroundColor: TONE[tone].bg }, style]}>{children}</View>;
+  return (
+    <View style={[{ flex: 1, backgroundColor: TONE[tone].bg }, style]}>
+      {sorbet ? <Backdrop /> : null}
+      {children}
+    </View>
+  );
 }
 
 /**

@@ -209,7 +209,7 @@ export default function Auth() {
   };
 
   if (mode === 'reset') return (
-    <Screen>
+    <Screen sorbet>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <Header back={() => router.replace('/auth?mode=login')} />
         <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
@@ -224,7 +224,7 @@ export default function Auth() {
   );
 
   return (
-    <Screen>
+    <Screen sorbet>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         {/* arrivé ici directement (téléphone qui a déjà eu un compte) : le retour mène à l'accueil */}
         <Header back={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} />

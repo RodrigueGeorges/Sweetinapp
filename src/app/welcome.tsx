@@ -50,7 +50,7 @@ export default function Welcome() {
   const ctaStyle = useAnimatedStyle(() => ({ opacity: withTiming(cta.value > 0 ? 1 : 0, { duration: 180 }), transform: [{ translateY: (1 - cta.value) * 18 }, { scale: 0.96 + 0.04 * cta.value }] }));
 
   return (
-    <Screen tone="cerise">
+    <Screen tone="cerise" sorbet>
       <View style={[s.top, { paddingTop: insets.top + 12 }]}>
         <Logo size={28} color={colors.ink} />
       </View>

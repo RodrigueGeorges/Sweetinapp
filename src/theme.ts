@@ -35,14 +35,14 @@ const brand = {
 
 const ui = isDark
   ? {
-      paper: '#0E0B0C', // fond des écrans
-      card: '#1C1618', // cartes, champs, groupes
-      card2: '#262022', // surfaces au-dessus des cartes
+      paper: '#171114', // fond des écrans : brun-prune chaud, pas un noir de terminal
+      card: '#251C20', // cartes, champs, groupes
+      card2: '#2F242A', // surfaces au-dessus des cartes
       ink: '#FFFFFF', // texte principal
       muted: '#A89EA2', // texte secondaire
-      line: 'rgba(255,255,255,0.09)', // filets
-      sand: '#2B2427', // bouton désactivé, piste d'interrupteur
-      dashed: 'rgba(255,255,255,0.22)', // pointillés (emplacements vides)
+      line: 'rgba(255,255,255,0.10)', // filets
+      sand: '#372C31', // bouton désactivé, piste d'interrupteur
+      dashed: 'rgba(255,255,255,0.24)', // pointillés (emplacements vides)
       placeholder: '#958B8F', // 5,4:1 sur les cartes (AA)
       riskBg: 'rgba(255,46,91,0.16)', // série en danger
       okBg: 'rgba(255,255,255,0.08)', // gratté, vu
@@ -66,6 +66,11 @@ const ui = isDark
     };
 
 export const colors = { ...brand, ...ui } as const;
+
+/** Taches sorbet du fond « peps » (Backdrop) : adoucies en sombre, pastel en clair. */
+export const sorbet = isDark
+  ? { base: ['#171114', '#1D1218'], blobs: ['#5A1B30', '#3B3A16', '#1B3049'] }
+  : { base: ['#FFFFFF', '#FFF3F6'], blobs: ['#FFE6EB', '#F0FFB0', '#D8E9FF'] };
 
 
 /** La feuille à gratter : sucre givré (blanc, framboise très pâle), toujours dans ce sens. Le nom « holo » est historique. */

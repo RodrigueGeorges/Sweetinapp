@@ -29,7 +29,7 @@ import { useWelcome, welcomeItem } from '../../lib/welcome';
 import { useSweetHour } from '../../lib/useSweetHour';
 import { useTilt } from '../../lib/useTilt';
 import { rememberOrigin } from '../../lib/origin';
-import { colors, fonts, isDark, tx } from '../../theme';
+import { colors, fonts, isDark, sorbet, tx } from '../../theme';
 
 const SWEET_HOUR_S = 3600;
 
@@ -115,7 +115,7 @@ export default function Inbox() {
   const [hero, ...rest] = items;
 
   return (
-    <Screen>
+    <Screen sorbet>
       <View style={{ paddingTop: insets.top }}>
         <View style={s.top}>
           <GlassButton label={t('tabs.contacts')} onPress={() => router.push('/contacts')}>
@@ -279,7 +279,7 @@ export default function Inbox() {
 
       {/* fondu du bas : la grille passe sous le déclencheur */}
       <View pointerEvents="none" style={[s.fade, { height: insets.bottom + 120 }]}>
-        <LinearGradient colors={isDark ? ['rgba(14,11,12,0)', 'rgba(14,11,12,0.92)', colors.paper] : ['rgba(255,255,255,0)', 'rgba(255,255,255,0.9)', colors.paper]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={isDark ? ['rgba(29,18,24,0)', 'rgba(29,18,24,0.92)', sorbet.base[1]] : ['rgba(255,243,246,0)', 'rgba(255,243,246,0.9)', sorbet.base[1]]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
       </View>
       <Animated.View entering={ZoomIn.springify().damping(12).delay(120)} style={[s.shutter, { bottom: insets.bottom + 18 }]}>
         <Shutter onPress={shoot} label={sweet !== null ? t('inbox.shootSweet', { t: clock(sweet) }) : t('inbox.shoot')} progress={sweet !== null ? sweet / SWEET_HOUR_S : null} />

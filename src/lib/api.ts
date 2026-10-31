@@ -399,7 +399,7 @@ export async function matchContacts(hashes: string[]): Promise<Profile[]> {
   for (let i = 0; i < hashes.length && i < 6000; i += 2000) {
     const { data, error } = await supabase.rpc('match_contacts', { p_hashes: hashes.slice(i, i + 2000) });
     if (error) throw rpcError(error);
-    out.push(...((data ?? []) as Profile[]));
+    out.push(...((data ?? []) as RawProfile[]).map(prof));
   }
   return [...new Map(out.map((p) => [p.id, p])).values()];
 }

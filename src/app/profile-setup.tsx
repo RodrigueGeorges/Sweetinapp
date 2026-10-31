@@ -62,7 +62,7 @@ export default function ProfileSetup() {
       }
       await completeProfile(name, isoDate(birth));
       // la photo part après : si l'envoi échoue, on la rajoutera depuis les réglages
-      if (selfie) await setAvatar(selfie).catch(() => {});
+      if (selfie) await setAvatar(selfie).catch(() => track('avatar_upload_failed', { at: 'profile_setup' }));
       await refreshProfile();
       track('signup_completed', { step: 'profile' });
       const friend = await consumePendingInvite();

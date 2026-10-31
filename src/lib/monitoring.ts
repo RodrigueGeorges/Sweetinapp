@@ -64,7 +64,8 @@ type Event =
   | 'qr_scanned'
   | 'phone_verified'
   | 'friends_step_done'
-  | 'invite_pasted';
+  | 'invite_pasted'
+  | 'avatar_upload_failed';
 
 /** Enregistre un événement anonyme (propriétés numériques ou booléennes seulement). */
 /** Range un compte dans un groupe de test : toutes ses statistiques suivantes portent ce groupe (propriété PostHog). */
