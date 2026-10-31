@@ -385,6 +385,7 @@ export const fr = {
   'settings.account': 'compte',
   'settings.sounds': 'sons',
   'settings.soundsHint': 'grattage, lecture, envoi. jamais en mode silencieux.',
+  'settings.language': 'langue',
   'settings.notifTitle': 'notifications',
   'settings.notifEnable': 'activer les notifications',
   'settings.notif_flips': 'sweets reçus',

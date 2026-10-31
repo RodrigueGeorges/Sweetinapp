@@ -384,6 +384,7 @@ export const en: Record<Key, string> = {
   'settings.account': 'account',
   'settings.sounds': 'sounds',
   'settings.soundsHint': 'scratching, reading, sending. never in silent mode.',
+  'settings.language': 'language',
   'settings.notifTitle': 'notifications',
   'settings.notifEnable': 'turn on notifications',
   'settings.notif_flips': 'sweets received',

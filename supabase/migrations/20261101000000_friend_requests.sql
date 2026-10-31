@@ -43,7 +43,7 @@ language plpgsql security definer set search_path = '' as $$
 declare
   target public.profiles := public._friend_target(p_username);
 begin
-  if exists (select 1 from public.friendships where user_id = auth.uid() and friend_id = target.id) then
+  if exists (select 1 from public.friendships where (user_id = auth.uid() and friend_id = target.id) or (user_id = target.id and friend_id = auth.uid())) then
     return jsonb_build_object('profile', to_jsonb(target), 'status', 'friends');
   end if;
 
@@ -109,5 +109,5 @@ language plpgsql security definer set search_path = '' as $$
 declare result jsonb;
 begin
   result := public.request_friend(p_username);
-  return (result->'profile')::public.profiles;
+  return jsonb_populate_record(null::public.profiles, result->'profile');
 end $$;

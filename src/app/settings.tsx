@@ -5,7 +5,7 @@ import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, T
 import { Icon, type IconName } from '../components/Icon';
 import { useToast } from '../components/Toast';
 import { Avatar, Body, Button, Field, Header, Pop, Screen, SectionLabel, Skeleton, Title, Toggle } from '../components/ui';
-import { t, humanError } from '../i18n';
+import { lang, setLang, t, humanError } from '../i18n';
 import { registerForPush, unregisterPush } from '../lib/push';
 import { clearHasAccount, LOGIN_ROUTE } from '../lib/returning';
 import { legal } from '../lib/legal';
@@ -177,6 +177,12 @@ export default function Settings() {
             setSounds(v);
             setSoundsEnabled(v);
           })}
+          <View style={s.sep} />
+          <Pressable style={({ pressed }) => [s.row, pressed && { opacity: 0.6 }]} onPress={() => setLang(lang === 'fr' ? 'en' : 'fr')} accessibilityRole="button">
+            <Icon name="message" size={19} />
+            <Text style={[s.label, { flex: 1 }]}>{t('settings.language')}</Text>
+            <Text style={s.hint}>{lang === 'fr' ? 'français' : 'english'}</Text>
+          </Pressable>
         </View>
 
         <SectionLabel style={s.sec}>{t('settings.notifTitle')}</SectionLabel>

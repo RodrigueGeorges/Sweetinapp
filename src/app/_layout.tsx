@@ -4,7 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { LaunchSplash } from '../components/LaunchSplash';
 import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,7 +12,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ToastProvider, useToast } from '../components/Toast';
-import { t } from '../i18n';
+import { onLangChange, t } from '../i18n';
 import { track, wrapRoot } from '../lib/monitoring';
 import { notif } from '../lib/notif';
 import { checkInstallReferrer } from '../lib/referrer';
@@ -61,6 +61,10 @@ function Root() {
   useEffect(() => {
     checkInstallReferrer();
   }, []);
+
+  // langue changée dans les réglages (ou choix persisté relu au démarrage) : tout se re-rend sans remonter
+  const [, langTick] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => onLangChange(langTick), []);
 
   // un tap sur une notification ouvre directement le flip ou la boîte de réception
   useEffect(() => {

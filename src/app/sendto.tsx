@@ -227,7 +227,6 @@ export default function SendTo() {
         // sans amis : lien/story en tête, c'est la voie pour faire venir quelqu'un.
         // Avec des amis : eux d'abord, les options de partage se replient sous la liste.
         ListHeaderComponent={friends !== null && !hasFriends ? <View style={{ gap: 10, paddingBottom: 10 }}>{linksBlock}</View> : null}
-        ListFooterComponent={hasFriends ? <View style={{ gap: 10, paddingTop: 14 }}>{linksBlock}</View> : null}
         keyExtractor={(r) => r.id}
         contentContainerStyle={s.list}
         ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
@@ -284,9 +283,10 @@ export default function SendTo() {
           );
         }}
         ListFooterComponent={
-          // avec des amis l'invitation reste un lien discret en bas de liste ; vide, elle est dans le bloc ci-dessus
+          // avec des amis : eux d'abord, puis lien/story et l'invitation discrète en bas de liste
           friends !== null && friends.length > 0 ? (
             <View style={{ gap: 10, paddingTop: 18 }}>
+              {linksBlock}
               <Pressable style={s.invite} onPress={invite} accessibilityRole="button">
                 <Icon name="message" size={18} color={colors.ink} />
                 <Text style={s.inviteT}>{t('send.inviteSms')}</Text>

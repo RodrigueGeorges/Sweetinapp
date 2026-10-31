@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
 import { en } from './en';
 import { fr, type Key } from './fr';
@@ -17,7 +18,29 @@ export function detectLang(): Lang {
   }
 }
 
-export const lang: Lang = detectLang();
+// langue choisie dans les réglages (persistée) ; la langue du téléphone est le défaut
+const LANG_KEY = 'sweetin.lang';
+export let lang: Lang = detectLang();
+const langListeners = new Set<() => void>();
+/** Abonnement au changement de langue : la racine s'en sert pour re-rendre l'app. */
+export function onLangChange(f: () => void) {
+  langListeners.add(f);
+  return () => { langListeners.delete(f); };
+}
+export function setLang(l: Lang) {
+  if (l === lang) return;
+  lang = l;
+  AsyncStorage.setItem(LANG_KEY, l).catch(() => {});
+  for (const f of langListeners) f();
+}
+AsyncStorage.getItem(LANG_KEY)
+  .then((v) => {
+    if (v === 'fr' || v === 'en') {
+      lang = v;
+      for (const f of langListeners) f();
+    }
+  })
+  .catch(() => {});
 
 /** Traduit une clé et remplace les {variables}. */
 export function t(key: Key, vars?: Record<string, string | number>, l: Lang = lang): string {
