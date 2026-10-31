@@ -354,17 +354,19 @@ function SentList({ sent, links, queued, friends }: { sent: SentItem[]; links: S
         const label = story ? t('link.storyStats', { o: l.opens, s: l.scratches }) : l.scratched_at ? readLabel(l.duration_ms) : l.opened_at ? t('link.opened') : t('link.waiting');
         return (
           <Animated.View key={l.token} entering={FadeInDown.springify().delay(i * 30)} style={s.sentRow}>
-            <View>
-              <SentThumb preview={l.preview} melted={!story && !!l.scratched_at} />
-              <View style={s.linkBadge}>
-                <Icon name={story ? 'story' : 'link'} size={13} color={colors.cacao} stroke={2.6} />
+            <Pressable onPress={() => router.push(`/mine/${l.token}`)} accessibilityRole="button" accessibilityLabel={`${story ? t('link.sentStory') : t('link.sentPrivate')}, ${label}`} style={s.sentRowTap}>
+              <View>
+                <SentThumb preview={l.preview} melted={!story && !!l.scratched_at} />
+                <View style={s.linkBadge}>
+                  <Icon name={story ? 'story' : 'link'} size={13} color={colors.cacao} stroke={2.6} />
+                </View>
               </View>
-            </View>
-            <View style={s.sentMid}>
-              <Text style={s.sentName}>{story ? t('link.sentStory') : t('link.sentPrivate')}</Text>
-              <Text style={s.sentAgo}>{agoShort(l.created_at)}</Text>
-            </View>
-            {story || l.scratched_at ? <Tag label={label} tone="citron" rot={-3} /> : <Text style={s.rowMeta}>{label}</Text>}
+              <View style={s.sentMid}>
+                <Text style={s.sentName}>{story ? t('link.sentStory') : t('link.sentPrivate')}</Text>
+                <Text style={s.sentAgo}>{agoShort(l.created_at)}</Text>
+              </View>
+              {story || l.scratched_at ? <Tag label={label} tone="citron" rot={-3} /> : <Text style={s.rowMeta}>{label}</Text>}
+            </Pressable>
           </Animated.View>
         );
       })}
@@ -441,6 +443,7 @@ const s = StyleSheet.create({
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   shutter: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   sentRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  sentRowTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   queueRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   offline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, alignSelf: 'center', paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors.citron },
   offlineT: { ...tx.black, fontSize: 13, color: colors.cacao },

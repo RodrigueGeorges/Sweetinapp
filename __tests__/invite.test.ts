@@ -6,10 +6,10 @@ import { widgetStateFrom } from '../src/lib/widget';
 
 describe('lien d’invitation', () => {
   it('pointe vers la page /u/<pseudo>', () => {
-    expect(inviteUrl('loic_b')).toBe('https://sweetin.app/u/loic_b');
+    expect(inviteUrl('loic_b')).toBe('https://sweetinapp.netlify.app/u/loic_b');
   });
   it('encode les caractères spéciaux', () => {
-    expect(inviteUrl('a b')).toBe('https://sweetin.app/u/a%20b');
+    expect(inviteUrl('a b')).toBe('https://sweetinapp.netlify.app/u/a%20b');
   });
 });
 

@@ -65,3 +65,6 @@ secret = "env(GOOGLE_SECRET)"
 
 [functions.waitlist]
 verify_jwt = false
+
+[functions.open-mine]
+verify_jwt = true

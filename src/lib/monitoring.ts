@@ -57,6 +57,8 @@ type Event =
   | 'intro_completed'
   | 'link_shared'
   | 'story_shared'
+  | 'mine_opened'
+  | 'mine_shared'
   | 'contacts_matched'
   | 'qr_shown'
   | 'qr_scanned'

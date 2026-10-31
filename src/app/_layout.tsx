@@ -141,6 +141,7 @@ function Root() {
         <Stack.Screen name="sendto" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="profile-setup" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="u/[username]" options={{ animation: 'fade' }} />
+        <Stack.Screen name="mine/[token]" options={{ animation: 'fade' }} />
         <Stack.Screen name="google-auth" options={{ animation: 'none' }} />
         <Stack.Screen name="friends-setup" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="phone" options={{ animation: 'slide_from_right' }} />

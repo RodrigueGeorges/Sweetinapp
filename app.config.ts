@@ -4,8 +4,9 @@ import type { ExpoConfig } from 'expo/config';
 const BUNDLE_ID = process.env.APP_BUNDLE_ID ?? 'app.sweetin.ios';
 const PACKAGE = process.env.APP_PACKAGE ?? 'app.sweetin.android';
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || '3f4fab34-ff2f-47eb-ab12-7341ee2925b5';
-// Domaine des liens d'invitation (https://sweetin.app/u/<pseudo>), voir web/.well-known
-const LINK_DOMAIN = process.env.APP_LINK_DOMAIN ?? 'sweetin.app';
+// Domaine des liens d'invitation (https://<domaine>/u/<pseudo>), voir web/.well-known.
+// sweetinapp.netlify.app = domaine temporaire en attendant l'achat du domaine final.
+const LINK_DOMAIN = process.env.APP_LINK_DOMAIN ?? 'sweetinapp.netlify.app';
 const APP_GROUP = `group.${BUNDLE_ID}`;
 
 // Garde-fou des builds de production : sans ces variables, l'app planterait au lancement (et serait refusée).
@@ -165,12 +166,12 @@ const config: ExpoConfig = {
   experiments: { typedRoutes: true },
   extra: {
     eas: { projectId: EAS_PROJECT_ID },
-    privacyUrl: process.env.EXPO_PUBLIC_PRIVACY_URL ?? 'https://sweetin.app/confidentialite',
-    termsUrl: process.env.EXPO_PUBLIC_TERMS_URL ?? 'https://sweetin.app/conditions',
-    privacyUrlEn: process.env.EXPO_PUBLIC_PRIVACY_URL_EN ?? 'https://sweetin.app/en/privacy',
-    termsUrlEn: process.env.EXPO_PUBLIC_TERMS_URL_EN ?? 'https://sweetin.app/en/terms',
-    safetyUrl: 'https://sweetin.app/securite-enfants',
-    safetyUrlEn: 'https://sweetin.app/en/child-safety',
+    privacyUrl: process.env.EXPO_PUBLIC_PRIVACY_URL ?? 'https://sweetinapp.netlify.app/confidentialite',
+    termsUrl: process.env.EXPO_PUBLIC_TERMS_URL ?? 'https://sweetinapp.netlify.app/conditions',
+    privacyUrlEn: process.env.EXPO_PUBLIC_PRIVACY_URL_EN ?? 'https://sweetinapp.netlify.app/en/privacy',
+    termsUrlEn: process.env.EXPO_PUBLIC_TERMS_URL_EN ?? 'https://sweetinapp.netlify.app/en/terms',
+    safetyUrl: 'https://sweetinapp.netlify.app/securite-enfants',
+    safetyUrlEn: 'https://sweetinapp.netlify.app/en/child-safety',
     supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'team@sweetin.app',
   },
   updates: EAS_PROJECT_ID ? { url: `https://u.expo.dev/${EAS_PROJECT_ID}` } : undefined,

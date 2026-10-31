@@ -16,7 +16,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Canvas, Group, LinearGradient, Path as SPath, Rect, Skia, Turbulence, vec } from '@shopify/react-native-skia';
+import { Canvas, Group, LinearGradient, Path as SPath, RadialGradient, Rect, Skia, Turbulence, vec } from '@shopify/react-native-skia';
 import Svg, { Path } from 'react-native-svg';
 import { t } from '../i18n';
 import { tick as scratchTick } from '../lib/haptics';
@@ -49,7 +49,6 @@ const DRIP_LONG = 1.1;
 const COLS = 12;
 const ROWS = 16;
 const REVEAL_AT = 0.35;
-const BRUSH = 80;
 /** Reflet qui balaie la feuille à gratter : largeur relative à l'écran, inclinaison et aller-retour. */
 const SHEEN_W = 0.35;
 const SHEEN_TILT = (20 * Math.PI) / 180;
@@ -76,6 +75,8 @@ const SK_CONE = Skia.Path.MakeFromSVGString(LOGO_CONE);
 export function LaunchSplash({ onDone, scratch = false }: { onDone: () => void; scratch?: boolean }) {
   const reduce = useReducedMotion();
   const { width: pw, height: ph } = useWindowDimensions();
+  // pinceau proportionnel à l'écran (comme les cartes de lecture) : ni timbre-poste ni balai
+  const BRUSH = Math.max(72, pw * 0.2);
   const texture = useScratchTexture();
   // lecteur d'écran : pas de grattage possible → sortie automatique (web : isScreenReaderEnabled répond toujours oui)
   const [reader, setReader] = useState(false);
@@ -109,6 +110,7 @@ export function LaunchSplash({ onDone, scratch = false }: { onDone: () => void; 
   const done = useRef(false);
   const frame = useRef<number | null>(null);
   const [tick, setTick] = useState(0);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     if (!scratchOn) {
@@ -215,6 +217,7 @@ export function LaunchSplash({ onDone, scratch = false }: { onDone: () => void; 
         }
       }
     const pct = covered.current / (COLS * ROWS);
+    setProgress(pct);
     const s = Math.floor(pct * 10);
     if (s > step.current) {
       step.current = s;
@@ -245,9 +248,18 @@ export function LaunchSplash({ onDone, scratch = false }: { onDone: () => void; 
     })
     .onUpdate((e) => {
       if (done.current) return;
-      strokes.current[strokes.current.length - 1]?.push({ x: e.x, y: e.y });
+      const s = strokes.current[strokes.current.length - 1];
+      const last = s?.[s.length - 1];
+      if (last) {
+        // un geste rapide saute des cases : on comble le trait pour que le % suive le doigt
+        const dist = Math.hypot(e.x - last.x, e.y - last.y);
+        const n = Math.max(1, Math.ceil(dist / (BRUSH / 4)));
+        for (let i = 1; i <= n; i++) mark(last.x + ((e.x - last.x) * i) / n, last.y + ((e.y - last.y) * i) / n);
+      } else {
+        mark(e.x, e.y);
+      }
+      s?.push({ x: e.x, y: e.y });
       texture?.move(Math.hypot(e.velocityX, e.velocityY) / 1000);
-      mark(e.x, e.y);
       redraw();
     })
     .onFinalize(() => {
@@ -296,6 +308,10 @@ export function LaunchSplash({ onDone, scratch = false }: { onDone: () => void; 
             <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
               <Group layer opacity={enterOpacity} transform={enterStyle}>
                 <Rect x={0} y={0} width={pw} height={ph} color={colors.cerise} />
+                {/* vignettage léger : la feuille a du corps au lieu d'être un aplat */}
+                <Rect x={0} y={0} width={pw} height={ph}>
+                  <RadialGradient c={vec(pw / 2, ph / 2)} r={Math.max(pw, ph) * 0.72} colors={['rgba(0,0,0,0)', 'rgba(120,0,30,0.16)']} />
+                </Rect>
                 <Rect x={0} y={0} width={pw} height={ph} opacity={0.05} blendMode="softLight">
                   <Turbulence freqX={0.9} freqY={0.9} octaves={2} />
                 </Rect>
@@ -319,6 +335,12 @@ export function LaunchSplash({ onDone, scratch = false }: { onDone: () => void; 
                 <Icon name="hand" size={16} color={colors.cerise} stroke={2.4} />
               </Animated.View>
             </Animated.View>
+            {/* jauge discrète : rassure pendant le grattage, disparaît à la révélation */}
+            {progress > 0.01 && !done.current ? (
+              <View pointerEvents="none" style={[s.gauge, { top: ph - 96, left: pw / 2 - 60 }]}>
+                <View style={[s.gaugeFill, { width: Math.min(120, 120 * (progress / REVEAL_AT)) }]} />
+              </View>
+            ) : null}
           </Animated.View>
         </GestureDetector>
       ) : (
@@ -339,4 +361,6 @@ const s = StyleSheet.create({
   hint: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: 14 },
   hintT: { ...tx.bold, fontSize: 17, color: colors.white, textShadowColor: 'rgba(0,0,0,0.18)', textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
   thumb: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  gauge: { position: 'absolute', width: 120, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.28)', overflow: 'hidden' },
+  gaugeFill: { height: 4, borderRadius: 2, backgroundColor: colors.white },
 });

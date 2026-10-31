@@ -7,7 +7,7 @@ import { Screen, Title } from '../../components/ui';
 import { t } from '../../i18n';
 import { colors } from '../../theme';
 
-const LINK_DOMAIN = process.env.EXPO_PUBLIC_LINK_DOMAIN ?? 'sweetin.app';
+const LINK_DOMAIN = process.env.APP_LINK_DOMAIN ?? 'sweetinapp.netlify.app';
 
 /**
  * Lien privé https://sweetin.app/f/<jeton> (ou sweetin://f/<jeton>).

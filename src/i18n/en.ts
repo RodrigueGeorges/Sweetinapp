@@ -332,6 +332,11 @@ export const en: Record<Key, string> = {
   'link.opened': 'opened',
   'link.storyStats': '{o} views · {s} read',
 
+  // my story / my link
+  'mine.gone': 'this sweet has melted. only the stats remain.',
+  'mine.share': 'share the link again',
+  'mine.copy': 'copy the link',
+
   // add friends
   'friends.step': 'step 2 of 2',
   'friends.title': 'your friends.',

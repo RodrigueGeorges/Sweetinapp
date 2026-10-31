@@ -321,6 +321,25 @@ export async function sendFlip(input: { localUri: string; message: string; mode:
 }
 
 export const openFlip = (flip_id: string) => withRetry(() => call<OpenedFlip>('open-flip', { flip_id }));
+
+/** Revoir son propre lien (story ou privé) : photo signée + mot + stats, tant que le contenu existe. */
+export type MineFlip = {
+  kind: LinkKind;
+  mode: Mode;
+  created_at: string;
+  expires_at: string;
+  opened_at: string | null;
+  scratched_at: string | null;
+  percent: number | null;
+  duration_ms: number | null;
+  opens: number;
+  scratches: number;
+  gone: boolean;
+  photo_url?: string | null;
+  message?: string;
+  word_style?: WordStyle | null;
+};
+export const openMine = (token: string) => withRetry(() => call<MineFlip>('open-mine', { token }));
 export const markScratched = (flip_id: string, percent: number, duration_ms: number) => withRetry(() => call<{ ok: true }>('scratched', { flip_id, percent, duration_ms }));
 export const react = (flip_id: string, reaction: string) => call<{ ok: true }>('scratched', { flip_id, reaction });
 export const reportScreenshot = (flip_id: string) => call<{ ok: true }>('screenshot', { flip_id });
@@ -335,7 +354,7 @@ export async function currentSweetHour(): Promise<{ starts_at: string; ends_at: 
 }
 
 // ---------- lien d'invitation ----------
-const INVITE_BASE = process.env.EXPO_PUBLIC_INVITE_BASE ?? 'https://sweetin.app/u/';
+const INVITE_BASE = process.env.EXPO_PUBLIC_INVITE_BASE ?? 'https://sweetinapp.netlify.app/u/';
 export const inviteUrl = (username: string) => `${INVITE_BASE}${encodeURIComponent(username)}`;
 
 // ---------- liens envoyés (lien privé, story) ----------

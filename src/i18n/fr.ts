@@ -333,6 +333,11 @@ export const fr = {
   'link.opened': 'ouvert',
   'link.storyStats': '{o} vues · {s} lus',
 
+  // ma story / mon lien
+  'mine.gone': 'ce sweet a fondu. il ne reste que les stats.',
+  'mine.share': 'repartager le lien',
+  'mine.copy': 'copier le lien',
+
   // ajout d'amis
   'friends.step': 'étape 2 sur 2',
   'friends.title': 'tes amis.',

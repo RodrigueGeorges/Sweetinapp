@@ -190,9 +190,18 @@ export function ScratchDemo({ width, message, onReveal }: Props) {
     })
     .onUpdate((e) => {
       if (done.current) return;
-      strokes.current[strokes.current.length - 1]?.push({ x: e.x, y: e.y });
+      const s = strokes.current[strokes.current.length - 1];
+      const last = s?.[s.length - 1];
+      if (last) {
+        // un geste rapide saute des cases : on comble le trait pour que le % suive le doigt
+        const dist = Math.hypot(e.x - last.x, e.y - last.y);
+        const n = Math.max(1, Math.ceil(dist / (brush / 4)));
+        for (let i = 1; i <= n; i++) mark(last.x + ((e.x - last.x) * i) / n, last.y + ((e.y - last.y) * i) / n);
+      } else {
+        mark(e.x, e.y);
+      }
+      s?.push({ x: e.x, y: e.y });
       texture?.move(Math.hypot(e.velocityX, e.velocityY) / 1000);
-      mark(e.x, e.y);
       redraw();
     })
     .onFinalize(() => {
