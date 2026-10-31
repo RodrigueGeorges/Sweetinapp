@@ -22,6 +22,7 @@ if (SENTRY_DSN) {
 const posthog = POSTHOG_KEY ? new PostHog(POSTHOG_KEY, { host: POSTHOG_HOST, captureAppLifecycleEvents: true }) : null;
 
 type Event =
+  | 'auth_completed'
   | 'signup_completed'
   | 'push_prompt'
   | 'demo_scratched'

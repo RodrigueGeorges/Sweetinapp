@@ -60,7 +60,7 @@ export default function Auth() {
   }, []);
 
   const done = (m: string) => {
-    track(signup ? 'signup_completed' : 'login', { method: m });
+    track(signup ? 'auth_completed' : 'login', { method: m });
     router.replace('/');
   };
 
