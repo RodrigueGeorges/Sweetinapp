@@ -44,17 +44,17 @@ Deno.test('clientActor : empreinte stable, courte, et première IP seulement', a
 });
 
 // sendPush : on remplace fetch pour capturer la charge envoyée à Expo (pas de réseau).
-Deno.test('sendPush : messages par jeton, wake iOS + silencieux Android, jetons morts nettoyés', async () => {
+Deno.test('sendPush : messages par jeton actif, reçus enregistrés pour le cron', async () => {
   const tokens = [
-    { user_id: 'u1', token: 'TK-IOS', lang: 'fr', platform: 'ios' },
-    { user_id: 'u1', token: 'TK-AND', lang: 'en', platform: 'android' },
+    { user_id: 'u1', token: 'TK-1', lang: 'fr', mute: [] },
+    { user_id: 'u1', token: 'TK-2', lang: 'en', mute: [] },
+    { user_id: 'u1', token: 'TK-MUTED', lang: 'fr', mute: ['flips'] },
   ];
-  const deleted: string[] = [];
+  const receipts: { ticket_id: string; token: string }[] = [];
   const db = {
     from: () => ({
       select: () => ({ in: async () => ({ data: tokens }) }),
-      delete: () => ({ in: async (_c: string, vals: string[]) => { deleted.push(...vals); return {}; } }),
-      upsert: async () => ({}),
+      upsert: async (rows: { ticket_id: string; token: string }[]) => { receipts.push(...rows); return {}; },
     }),
   } as never;
 
@@ -62,22 +62,19 @@ Deno.test('sendPush : messages par jeton, wake iOS + silencieux Android, jetons 
   const origFetch = globalThis.fetch;
   globalThis.fetch = async (_url: unknown, init: RequestInit | undefined) => {
     sent.push(...(JSON.parse(String(init?.body)) as Record<string, unknown>[]));
-    // le ticket iOS déclare l'appareil désinstallé
-    return new Response(JSON.stringify({ data: [{ status: 'error', details: { error: 'DeviceNotRegistered' } }, { status: 'ok', id: 'r1' }, { status: 'ok', id: 'r2' }] }), { status: 200 });
+    // un ticket en erreur n'est pas enregistré ; les deux autres attendront le cron
+    return new Response(JSON.stringify({ data: [{ status: 'ok', id: 't1' }, { status: 'error' }] }), { status: 200 });
   };
   try {
-    await sendPush(db, ['u1'], () => ({ title: 'sweetin', body: 'corps' }), true);
+    await sendPush(db, ['u1'], () => ({ title: 'sweetin', body: 'corps' }));
   } finally {
     globalThis.fetch = origFetch;
   }
 
-  // ios : 1 message visible avec contentAvailable ; android : visible + message silencieux
-  assertEquals(sent.length, 3);
-  const ios = sent.find((m) => m.to === 'TK-IOS')!;
-  assertEquals(ios.contentAvailable, true);
-  assertEquals(ios.sound, 'sweet.wav');
-  const silent = sent.find((m) => m.to === 'TK-AND' && (m.data as { refresh?: boolean })?.refresh === true)!;
-  assertEquals(silent.priority, 'high');
-  assert(!('title' in silent), 'le wake Android ne doit pas afficher de notification');
-  assertEquals(JSON.stringify(deleted), '["TK-IOS"]');
+  // le jeton qui a coupé « flips » ne reçoit rien
+  assertEquals(sent.length, 2);
+  assertEquals(sent[0].to, 'TK-1');
+  assertEquals(sent[0].sound, 'sweet.wav');
+  // seul le ticket ok produit un reçu à vérifier plus tard
+  assertEquals(JSON.stringify(receipts), '[{"ticket_id":"t1","token":"TK-1"}]');
 });

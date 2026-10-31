@@ -34,6 +34,24 @@ export async function currentUser(req: Request): Promise<User | null> {
   return data.user;
 }
 
+/** Limite de débit atomique (table rate_limits) : true si l'appel est dans le quota. */
+export async function rateHit(db: SupabaseClient, actor: string, action: string, limit: number, windowSec: number) {
+  const { data, error } = await db.rpc('rate_hit', { p_actor: actor, p_action: action, p_limit: limit, p_window: windowSec });
+  if (error) {
+    // la limite ne doit jamais bloquer le service : on laisse passer en cas de panne du compteur
+    console.error('rate_hit failed', error);
+    return true;
+  }
+  return data === true;
+}
+
+/** Empreinte anonyme de l'IP cliente, pour limiter les endpoints sans compte. */
+export async function clientActor(req: Request) {
+  const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'inconnue';
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip));
+  return `ip:${Array.from(new Uint8Array(hash)).slice(0, 8).map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
 // sons signature embarqués dans l'app (assets/sounds) ; channelId = canal Android qui porte le même son
 type Push = { to: string; title?: string; body: string; data?: Record<string, unknown>; sound?: string; channelId?: string };
 
@@ -44,15 +62,59 @@ export type PushKind = 'flips' | 'reads' | 'streaks' | 'sweethour';
 export async function sendPush(db: SupabaseClient, userIds: string[], build: (uid: string, lang: Lang) => Omit<Push, 'to'>, kind: PushKind = 'flips') {
   if (!userIds.length) return;
   const { data } = await db.from('push_tokens').select('user_id, token, lang, mute').in('user_id', userIds);
-  const messages: Push[] = (data ?? []).filter((t) => !(t.mute ?? []).includes(kind)).map((t) => ({ to: t.token, sound: 'sweet.wav', channelId: 'flips', ...build(t.user_id, asLang(t.lang)) }));
+  const targets = (data ?? []).filter((t) => !(t.mute ?? []).includes(kind));
+  const messages: Push[] = targets.map((t) => ({ to: t.token, sound: 'sweet.wav', channelId: 'flips', ...build(t.user_id, asLang(t.lang)) }));
   if (!messages.length) return;
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
     const accessToken = Deno.env.get('EXPO_ACCESS_TOKEN');
     if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-    await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers, body: JSON.stringify(messages) });
+    const res = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers, body: JSON.stringify(messages) });
+    // un reçu Expo est disponible ~15 min après le ticket : le cron cleanup le vérifie
+    const tickets = (((await res.json().catch(() => ({}))) as { data?: { status: string; id?: string }[] }).data) ?? [];
+    const receipts = tickets.map((t, i) => (t.status === 'ok' && t.id ? { ticket_id: t.id, token: targets[i]!.token } : null)).filter((r): r is { ticket_id: string; token: string } => !!r);
+    if (receipts.length) await db.from('push_receipts').upsert(receipts).then(() => {}, () => {});
   } catch (e) {
     console.error('push failed', e);
+  }
+}
+
+/**
+ * Vérifie les reçus Expo des tickets d'il y a plus de 15 minutes :
+ * supprime les jetons morts (DeviceNotRegistered), marque les reçus traités.
+ * Appelée par le cron cleanup. Max 1000 tickets par appel (limite de l'API Expo).
+ */
+export async function processReceipts(db: SupabaseClient) {
+  const { data } = await db
+    .from('push_receipts')
+    .select('ticket_id, token')
+    .is('checked_at', null)
+    .lt('created_at', new Date(Date.now() - 15 * 60_000).toISOString())
+    .order('created_at')
+    .limit(1000);
+  const rows = data ?? [];
+  if (!rows.length) return 0;
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+    const accessToken = Deno.env.get('EXPO_ACCESS_TOKEN');
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    const res = await fetch('https://exp.host/--/api/v2/push/getReceipts', { method: 'POST', headers, body: JSON.stringify({ ids: rows.map((r) => r.ticket_id) }) });
+    const receipts = ((await res.json().catch(() => ({}))) as { data?: Record<string, { status: string; details?: { error?: string } }> }).data ?? {};
+    const now = new Date().toISOString();
+    const done: string[] = [];
+    const dead = new Set<string>();
+    for (const r of rows) {
+      const receipt = receipts[r.ticket_id];
+      if (!receipt) continue; // reçu pas encore prêt : on réessaiera à la prochaine passe
+      done.push(r.ticket_id);
+      if (receipt.details?.error === 'DeviceNotRegistered') dead.add(r.token);
+    }
+    if (done.length) await db.from('push_receipts').update({ checked_at: now }).in('ticket_id', done);
+    if (dead.size) await db.from('push_tokens').delete().in('token', [...dead]);
+    return done.length;
+  } catch (e) {
+    console.error('receipts failed', e);
+    return 0;
   }
 }
 
