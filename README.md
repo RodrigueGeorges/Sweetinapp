@@ -286,7 +286,7 @@ Dans le tableau de bord Supabase :
 
 ```sql
 select cron.schedule(
-  'sweetin-cleanup', '5 * * * *',
+  'sweetin-cleanup', '7 * * * *',
   $$ select net.http_post(
        url := 'https://<ref-du-projet>.supabase.co/functions/v1/cleanup',
        headers := jsonb_build_object('x-cron-secret', '<la valeur de CRON_SECRET>')
@@ -294,9 +294,17 @@ select cron.schedule(
 );
 -- rappel des séries en danger, tous les jours à 17 h UTC (19 h à Paris l'été, 18 h l'hiver)
 select cron.schedule(
-  'sweetin-streaks', '0 17 * * *',
+  'sweetin-streak-reminder', '0 17 * * *',
   $$ select net.http_post(
        url := 'https://<ref-du-projet>.supabase.co/functions/v1/streak-reminder',
+       headers := jsonb_build_object('x-cron-secret', '<la valeur de CRON_SECRET>')
+     ) $$
+);
+-- rappel « le sweet disparaît demain », tous les jours à 17 h 30 UTC
+select cron.schedule(
+  'sweetin-melt-reminder', '30 17 * * *',
+  $$ select net.http_post(
+       url := 'https://<ref-du-projet>.supabase.co/functions/v1/melt-reminder',
        headers := jsonb_build_object('x-cron-secret', '<la valeur de CRON_SECRET>')
      ) $$
 );
@@ -418,15 +426,25 @@ Vérifié (passe de fiabilisation, octobre 2027) :
 - Migrations : les 15 fichiers s'appliquent sans erreur sur PostgreSQL 17.6 ; 33 scénarios métier passent (demandes d'ami dans les deux sens, acceptation, refus, `commit_flip` création + rejoue idempotent, blocage, non-ami, longueur de message, photo d'un autre, lien privé). Harnais rejouable : `bash .pg-test/run.sh` ; vérifié aussi en CI (job `migrations`).
 - Fonctions Edge : `deno check` passe sur les 14 fonctions, 23 tests Deno passent (modération fail-closed, quota, push). Régression corrigée : `rateHit`, `clientActor` et `processReceipts` avaient été perdus — `cleanup`/`waitlist` ne compilaient pas ; les reçus Expo sont de nouveau enregistrés pour purge des jetons morts.
 
+Déployé et vérifié en production (projet `nvtcbwyzalpidgwmagtd`, région Paris) :
+- Migrations `atomic_send` et `friend_requests` appliquées ; les 13 précédentes étaient déjà en place.
+- Les 14 fonctions Edge sont ACTIVE, `OPENAI_API_KEY` renseignée (modération réelle active).
+- 4 crons actifs : `sweetin-cleanup` (toutes les heures), `sweetin-streak-reminder` et `sweetin-melt-reminder` (quotidiens ~18 h Paris), `sweetin-sweet-hour` (chaque minute).
+- Test bout-en-bout réel : connexion d'un compte, upload signé d'un vrai JPEG, `send-flip` avec modération OpenAI → flip créé et lien `/f/` généré ; même `request_id` rejoué → même flip et même lien (idempotence confirmée en prod).
+- `site_url` auth corrigé (`sweetin://`, était `http://localhost:3000`) : les liens de récupération de mot de passe ouvrent l'app.
+
 Ordre de déploiement serveur : les migrations d'abord (`supabase db push`), puis les fonctions (`supabase functions deploy`). Le client envoie déjà `request_id` ; sans la migration `atomic_send`, `commit_flip` n'existe pas et `send-flip` échoue.
 
 À faire de ton côté (impossible sans tes comptes et un téléphone) :
+- **Héberger `web/`** : `sweetin.app` affiche actuellement une page de parking Squarespace — les liens `/f/…` sont cassés tant que le dossier `web/` n'est pas servi sur le domaine (Netlify, Vercel, Cloudflare Pages… instructions dans `web/README.md`). `REF-DU-PROJET` est déjà remplacé ; `TEAMID` et `APP_STORE_ID` attendent tes comptes Apple.
+- Activer **Apple et Google** dans Supabase Authentication (actuellement désactivés : les boutons de l'app échoueront) — Apple : juste le bundle id ; Google : identifiant OAuth « Application Web » dans Google Cloud Console.
+- Pousser le code vers un dépôt Git distant (aucun `remote` configuré pour l'instant) pour que la CI joue les tests et les migrations.
+- Builds cloud et publications : `npx eas-cli login` puis `eas build`/`eas submit` (non connecté sur cette machine).
 - Tester sur un iPhone et un Android avec un build de développement : grattage, caméra, notifications, widget, connexion Apple et Google, blocage des captures, Live Activity du Sweet Hour (iPhone verrouillé), contacts en accès limité, feuille d'âge Apple.
 - Vérifier TalkBack/VoiceOver de bout en bout : splash à gratter (le rideau se lève tout seul si le lecteur d'écran est actif), grattage de lecture, minuteur, réactions.
 - Un vrai échange entre deux comptes sur deux appareils : position/taille du mot fidèle à l'aperçu, filtre identique, réponse.
 - SMS réel : les identifiants Twilio du compte Supabase sont invalides — les renseigner ou rester sur email/Apple/Google.
-- Héberger `web/` sur le domaine des invitations, mettre en ligne les pages légales, brancher le SMTP.
-- Compléter les champs légaux (société, prestataires, région, durées) et le `TEAMID` des liens universels iOS (script de déploiement prévu).
+- Brancher un vrai SMTP (le SMTP Supabase par défaut est limité à quelques emails/heure) et compléter les champs légaux (société, prestataires, région, durées).
 - Remplir les fiches App Store et Play Store.
 - Commander l'animation Rive de Fondue (brief dans `store/brief-fondue/`) et fournir de vraies photos pour l'accueil et les captures.
 
