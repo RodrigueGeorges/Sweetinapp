@@ -1,0 +1,10 @@
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: public, max-age=300
+/.well-known/assetlinks.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=300
+/f/*
+  Cache-Control: no-store
+/u/*
+  Cache-Control: no-store
