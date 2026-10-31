@@ -6,7 +6,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { useToast } from '../components/Toast';
 import { Avatar, Body, Button, Field, Header, Pop, Screen, SectionLabel, Skeleton, Title, Toggle } from '../components/ui';
 import { t, humanError } from '../i18n';
-import { registerForPush } from '../lib/push';
+import { registerForPush, unregisterPush } from '../lib/push';
 import { clearHasAccount, LOGIN_ROUTE } from '../lib/returning';
 import { legal } from '../lib/legal';
 import { deleteAccount, mySettings, setAvatar, setDiscoverable, myMute, setMute, type PushKind } from '../lib/api';
@@ -62,10 +62,20 @@ export default function Settings() {
   }, []);
 
   const logout = async () => {
-    updateWidget([]);
-    await supabase.auth.signOut();
-    if (router.canDismiss()) router.dismissAll(); // sans pile (lien ouvert à froid), dismissAll lève une erreur
-    router.replace(LOGIN_ROUTE); // on revient se connecter, pas redécouvrir l'app
+    if (busy) return;
+    setBusy(true);
+    try {
+      await unregisterPush();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      updateWidget([]);
+      if (router.canDismiss()) router.dismissAll(); // sans pile (lien ouvert à froid), dismissAll lève une erreur
+      router.replace(LOGIN_ROUTE); // on revient se connecter, pas redécouvrir l'app
+    } catch (e) {
+      toast(humanError(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   // suppression irréversible : il faut retaper son pseudo, pas un simple oui/non (footgun)

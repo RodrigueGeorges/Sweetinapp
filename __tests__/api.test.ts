@@ -90,10 +90,17 @@ describe('sendFlip', () => {
 });
 
 describe('rpc', () => {
-  it('addFriend traduit une erreur serveur en ApiError codée', async () => {
+  it('addFriend envoie une demande et traduit une erreur serveur en ApiError codée', async () => {
     mockRpc.mockResolvedValue({ data: null, error: { message: 'USERNAME_NOT_FOUND' } });
     await expect(addFriend('@personne')).rejects.toMatchObject({ code: 'USERNAME_NOT_FOUND' });
-    expect(mockRpc).toHaveBeenCalledWith('add_friend', { p_username: 'personne' });
+    expect(mockRpc).toHaveBeenCalledWith('request_friend', { p_username: 'personne' });
+  });
+
+  it('addFriend rapporte si l’amitié est créée ou la demande en attente', async () => {
+    mockRpc.mockResolvedValue({ data: { profile: { id: 'u2', username: 'zoe', avatar_path: null }, status: 'sent' }, error: null });
+    const r = await addFriend('zoe');
+    expect(r.status).toBe('sent');
+    expect(r.profile.username).toBe('zoe');
   });
 
   it('matchContacts envoie les empreintes par paquets de 2000 et dédoublonne', async () => {

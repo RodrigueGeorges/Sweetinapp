@@ -9,7 +9,10 @@ jest.mock('../src/lib/supabase', () => ({ supabase: { functions: { invoke: jest.
 const mockListFriends = jest.fn(async () => [] as { id: string; username: string }[]);
 const mockStreaks = jest.fn(async () => new Map());
 const mockLost = jest.fn(async () => [] as { friend_id: string; days: number; can_save: boolean }[]);
-const mockAddFriend = jest.fn(async (_u: string) => ({ id: 'f9', username: 'zoe' }));
+const mockAddFriend = jest.fn(async (_u: string): Promise<{ profile: { id: string; username: string }; status: 'friends' | 'sent' }> => ({ profile: { id: 'f9', username: 'zoe' }, status: 'friends' }));
+const mockRequests = jest.fn(async () => ({ incoming: [] as { id: string; username: string }[], outgoing: [] as { id: string; username: string }[] }));
+const mockAcceptFriend = jest.fn(async (id: string) => ({ id, username: 'zoe' }));
+const mockDeclineFriend = jest.fn(async (_id: string) => {});
 const mockRemoveFriend = jest.fn(async (_id: string) => {});
 const mockBlockUser = jest.fn(async (_id: string) => {});
 const mockReport = jest.fn(async (_a: unknown) => {});
@@ -20,6 +23,9 @@ jest.mock('../src/lib/api', () => ({
   myStreaks: () => mockStreaks(),
   myLostStreaks: () => mockLost(),
   addFriend: (u: string) => mockAddFriend(u),
+  listFriendRequests: () => mockRequests(),
+  acceptFriend: (id: string) => mockAcceptFriend(id),
+  declineFriend: (id: string) => mockDeclineFriend(id),
   removeFriend: (id: string) => mockRemoveFriend(id),
   blockUser: (id: string) => mockBlockUser(id),
   report: (a: unknown) => mockReport(a),
@@ -124,12 +130,35 @@ describe('contacts · séries', () => {
 
 describe('contacts · ajout', () => {
   it('« add a friend » ouvre le champ ; pseudo → addFriend appelé', async () => {
-    mockAddFriend.mockResolvedValue({ id: 'f9', username: 'zoe' });
+    mockAddFriend.mockResolvedValue({ profile: { id: 'f9', username: 'zoe' }, status: 'friends' });
     const { findByLabelText, findByText } = await renderContacts();
     fireEvent.press(await findByLabelText(t('contacts.add')));
     fireEvent.changeText(await findByLabelText(t('contacts.addPlaceholder')), 'zoe');
     fireEvent.press(await findByText(t('contacts.addBtn')));
     await waitFor(() => expect(mockAddFriend).toHaveBeenCalledWith('zoe'));
     expect(await findByText(t('contacts.added', { name: 'zoe' }))).toBeTruthy();
+  });
+
+  it('un pseudo inconnu envoie une demande, pas une amitié', async () => {
+    mockAddFriend.mockResolvedValue({ profile: { id: 'f9', username: 'zoe' }, status: 'sent' });
+    const { findByLabelText, findByText } = await renderContacts();
+    fireEvent.press(await findByLabelText(t('contacts.add')));
+    fireEvent.changeText(await findByLabelText(t('contacts.addPlaceholder')), 'zoe');
+    fireEvent.press(await findByText(t('contacts.addBtn')));
+    expect(await findByText(t('contacts.requestSent', { name: 'zoe' }))).toBeTruthy();
+  });
+
+  it('une demande reçue peut être acceptée → amitié créée', async () => {
+    mockRequests.mockResolvedValue({ incoming: [{ id: 'u9', username: 'lea' }], outgoing: [] });
+    const { findByText } = await renderContacts();
+    fireEvent.press(await findByText(t('contacts.accept')));
+    await waitFor(() => expect(mockAcceptFriend).toHaveBeenCalledWith('u9'));
+  });
+
+  it('une demande reçue peut être ignorée', async () => {
+    mockRequests.mockResolvedValue({ incoming: [{ id: 'u9', username: 'lea' }], outgoing: [] });
+    const { findByText } = await renderContacts();
+    fireEvent.press(await findByText(t('contacts.decline')));
+    await waitFor(() => expect(mockDeclineFriend).toHaveBeenCalledWith('u9'));
   });
 });

@@ -21,11 +21,11 @@ import { track } from '../lib/monitoring';
 import { useSession } from '../lib/session';
 import { colors, tx } from '../theme';
 
-const GOAL = 3;
+const GOAL = 1;
 
 /**
- * Juste après l'inscription : ajouter 3 amis. C'est l'étape qui décide si l'app sert à quelque chose.
- * Carnet d'adresses, lien, QR code, lien d'invitation copié depuis le web.
+ * Juste après l'inscription : ajouter un ami — un premier échange réussi vaut
+ * mieux qu'un grand cercle. Carnet d'adresses, lien, QR, invitation copiée.
  */
 export default function FriendsSetup() {
   const { from } = useLocalSearchParams<{ from?: string }>();
@@ -78,11 +78,16 @@ export default function FriendsSetup() {
 
   const add = async (p: Profile) => {
     try {
-      await addFriend(p.username);
+      const r = await addFriend(p.username);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setAdded((s) => new Set(s).add(p.id));
-      setCount((c) => c + 1);
-      track('friend_added', { source: 'contacts' });
+      if (r.status === 'friends') {
+        setCount((c) => c + 1);
+        track('friend_added', { source: 'contacts' });
+      } else {
+        toast(t('contacts.requestSent', { name: r.profile.username }));
+        track('friend_requested', { source: 'contacts' });
+      }
     } catch (e) {
       toast(humanError(e));
     }

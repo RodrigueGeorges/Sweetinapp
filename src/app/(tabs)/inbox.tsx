@@ -38,7 +38,7 @@ const SWEET_HOUR_S = 3600;
  * reçus / envoyés, bandeau « ton tour » ou sweet hour, une grande carte puis la grille, et le déclencheur en bas.
  */
 export default function Inbox() {
-  const { items: received, loading, refresh } = useInbox();
+  const { items: received, loading, error, refresh } = useInbox();
   // rien reçu encore : le sweet de bienvenue « de sweetin » à gratter tout de suite
   const welcome = useWelcome();
   const items = useMemo(() => (received.length === 0 && welcome && !loading ? [welcomeItem()] : received), [received, welcome, loading]);
@@ -221,6 +221,9 @@ export default function Inbox() {
             </View>
           ) : items.length === 0 ? (
             <Animated.View entering={FadeInDown.springify()}>
+              {error && !offline ? (
+                <Empty art={<Fondue mood="sad" size={130} />} title={t('common.loadFailed')} action={<Button label={t('common.retry')} icon="retake" size="md" onPress={onRefresh} />} />
+              ) : (
               <Empty
                 art={<Fondue mood={offline ? 'sad' : 'wait'} size={130} />}
                 title={offline ? t('inbox.offlineTitle') : t('inbox.emptyTitle')}
@@ -237,6 +240,7 @@ export default function Inbox() {
                   )
                 }
               />
+              )}
             </Animated.View>
           ) : (
             <View style={{ gap: 14 }}>

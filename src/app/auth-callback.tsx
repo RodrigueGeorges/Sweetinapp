@@ -8,19 +8,24 @@ import { supabase } from '../lib/supabase';
 
 /** Retour du lien reçu par email (confirmation ou mot de passe oublié). */
 export default function AuthCallback() {
-  const { code } = useLocalSearchParams<{ code?: string }>();
+  const { code, flow } = useLocalSearchParams<{ code?: string; flow?: string }>();
   const toast = useToast();
 
   useEffect(() => {
     (async () => {
-      if (code) {
+      try {
+        if (!code) throw new Error('missing code');
         const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) toast(t('auth.linkExpired'));
-        else toast(t('auth.welcome'));
+        if (error) throw error;
+        if (flow === 'recovery') return router.replace('/auth?mode=reset');
+        toast(t('auth.welcome'));
+        router.replace('/');
+      } catch {
+        toast(t('auth.linkExpired'));
+        router.replace('/auth?mode=login');
       }
-      router.replace('/');
     })();
-  }, [code, toast]);
+  }, [code, flow, toast]);
 
   return (
     <Screen tone="cerise" style={{ alignItems: 'center', justifyContent: 'center', gap: 20 }}>

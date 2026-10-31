@@ -120,8 +120,8 @@ describe('create · style du mot', () => {
     const screen = await render(<Create />);
     fireEvent.press(await screen.findByLabelText(t('create.validate')));
     fireEvent.changeText(await screen.findByLabelText(t('create.secretA11y')), 'stylé');
-    // la deuxième encre (citron) plutôt que le blanc par défaut
-    fireEvent.press((await screen.findAllByLabelText(t('create.inkA11y')))[1]);
+    // l'encre citron plutôt que le blanc par défaut
+    fireEvent.press(await screen.findByLabelText(`${t('create.inkA11y')} ${t('ink.#E8FF5A')}`));
     fireEvent.press(await screen.findByText(t('create.next')));
     expect(draft.wordStyle?.ink).toBe('#E8FF5A');
   });

@@ -38,6 +38,7 @@ export default function Auth() {
   const [method, setMethod] = useState<'phone' | 'email'>('phone');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
   const [pwError, setPwError] = useState(false);
   const [codeError, setCodeError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -72,7 +73,7 @@ export default function Auth() {
 
   /** Code par SMS : inscription et connexion au même endroit (Supabase crée le compte si besoin). */
   const sendCode = async () => {
-    if (busy) return;
+    if (busy || cooldown > 0) return;
     const n = toE164(phone, country); // un numéro tapé avec + garde son propre indicatif
     if (!n) return toast(t('auth.badPhone'));
     setBusy(true);
@@ -142,8 +143,10 @@ export default function Auth() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: mail, password });
         if (error) {
-          const confirm = error.message.toLowerCase().includes('confirm');
-          if (!confirm) {
+          const confirm = error.code === 'email_not_confirmed' || error.message.toLowerCase().includes('confirm');
+          const invalid = error.code === 'invalid_credentials' || /invalid login credentials/i.test(error.message);
+          if (!confirm && !invalid) throw error;
+          if (invalid) {
             setPwError(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           }
@@ -176,11 +179,49 @@ export default function Auth() {
   };
 
   const forgot = async () => {
+    if (busy) return;
     const mail = email.trim().toLowerCase();
-    if (!mail) return toast(t('auth.emailFirst'));
-    await supabase.auth.resetPasswordForEmail(mail, { redirectTo: Linking.createURL('/auth-callback') });
-    toast(t('auth.forgotSent'));
+    if (!mailOk) return toast(t('auth.badEmail'));
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(mail, { redirectTo: Linking.createURL('/auth-callback', { queryParams: { flow: 'recovery' } }) });
+      if (error) throw error;
+      toast(t('auth.forgotSent'));
+    } catch (e) {
+      toast(humanError(e));
+    } finally { setBusy(false); }
   };
+
+  const resetPassword = async () => {
+    if (busy || password.length < 8) return;
+    if (password !== confirmation) return toast(t('auth.passwordMismatch'));
+    setBusy(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t('auth.linkExpired'));
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      toast(t('auth.passwordSaved'));
+      router.replace('/');
+    } catch (e) {
+      toast(humanError(e));
+    } finally { setBusy(false); }
+  };
+
+  if (mode === 'reset') return (
+    <Screen>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <Header back={() => router.replace('/auth?mode=login')} />
+        <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
+          <Title>{t('auth.resetTitle')}</Title>
+          <Body>{t('auth.resetSub')}</Body>
+          <Field label={t('auth.password')} value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" textContentType="newPassword" autoComplete="new-password" />
+          <Field label={t('auth.confirmPassword')} value={confirmation} onChangeText={setConfirmation} secureTextEntry autoCapitalize="none" textContentType="newPassword" onSubmitEditing={resetPassword} />
+        </ScrollView>
+        <BottomCTA><Button label={t('auth.savePassword')} disabled={password.length < 8 || password !== confirmation} loading={busy} onPress={resetPassword} /></BottomCTA>
+      </KeyboardAvoidingView>
+    </Screen>
+  );
 
   return (
     <Screen>
@@ -276,7 +317,7 @@ export default function Auth() {
                     </Text>
                   ) : null}
                   <View style={{ opacity: cooldown > 0 || busy ? 0.5 : 1 }}>
-                    <TextLink label={cooldown > 0 ? t('phone.resendIn', { n: cooldown }) : t('phone.resend')} arrow={false} onPress={sendCode} />
+                    <TextLink label={cooldown > 0 ? t('phone.resendIn', { n: cooldown }) : t('phone.resend')} arrow={false} disabled={cooldown > 0 || busy} onPress={sendCode} />
                   </View>
                 </View>
               ) : null}

@@ -9,7 +9,8 @@ const mockSignUp = jest.fn();
 const mockSignIn = jest.fn();
 const mockOtp = jest.fn(async (_opts?: unknown): Promise<unknown> => ({ data: {}, error: null }));
 const mockVerifyOtp = jest.fn(async (_opts?: unknown): Promise<unknown> => ({ data: { session: {} }, error: null }));
-const mockResetPw = jest.fn(async (_mail: string, _opts?: unknown) => ({}));
+const mockResetPw = jest.fn(async (_mail: string, _opts?: unknown): Promise<{ error?: Error }> => ({}));
+const mockUpdateUser = jest.fn(async (_options: unknown) => ({ error: null }));
 jest.mock('../src/lib/supabase', () => ({
   supabase: {
     auth: {
@@ -18,7 +19,8 @@ jest.mock('../src/lib/supabase', () => ({
       signInWithOtp: (...a: unknown[]) => mockOtp(...a),
       verifyOtp: (...a: unknown[]) => mockVerifyOtp(...a),
       resetPasswordForEmail: (mail: string, opts?: unknown) => mockResetPw(mail, opts),
-      getSession: jest.fn(),
+      getSession: jest.fn(async () => ({ data: { session: { user: { id: 'test' } } } })),
+      updateUser: (options: unknown) => mockUpdateUser(options),
     },
     functions: { invoke: jest.fn() },
     rpc: jest.fn(),
@@ -88,6 +90,24 @@ const switchToEmail = async (r: { findByText: (q: string) => Promise<unknown> })
 beforeEach(() => {
   jest.clearAllMocks();
   mockParams = { mode: 'login' };
+});
+
+describe('auth · récupération et protection des renvois', () => {
+  it('un renvoi pendant le délai ne demande pas un deuxième SMS', async () => {
+    const r = await renderAuth();
+    fireEvent.changeText(await r.findByLabelText(t('phone.number')), '+33612345678');
+    fireEvent.press(await r.findByText(t('phone.send')));
+    fireEvent.press(await r.findByText(t('phone.resendIn', { n: 30 })));
+    expect(mockOtp).toHaveBeenCalledTimes(1);
+  });
+  it('la récupération enregistre le nouveau mot de passe', async () => {
+    mockParams = { mode: 'reset' };
+    const r = await renderAuth();
+    fireEvent.changeText(await r.findByLabelText(t('auth.password')), 'new-password-123');
+    fireEvent.changeText(await r.findByLabelText(t('auth.confirmPassword')), 'new-password-123');
+    fireEvent.press(await r.findByText(t('auth.savePassword')));
+    await waitFor(() => expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'new-password-123' }));
+  });
 });
 
 describe('auth · téléphone (voie par défaut)', () => {

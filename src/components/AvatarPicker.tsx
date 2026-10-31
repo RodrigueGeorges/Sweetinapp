@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useCallback, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { t } from '../i18n';
 import { avatarColor, colors, tx } from '../theme';
 import { Icon } from './Icon';
@@ -29,22 +29,35 @@ const library = async () => {
 export function useSelfiePicker(): { pick: () => Promise<string | null>; sheet: ReactNode } {
   const ref = useRef<BottomSheetModal>(null);
   const resolver = useRef<((u: string | null) => void) | null>(null);
+  const pending = useRef<Promise<string | null> | null>(null);
+  const selected = useRef<string | null>(null);
+  const choosing = useRef(false);
+  const finish = useCallback((uri: string | null) => {
+    resolver.current?.(uri);
+    resolver.current = null;
+    pending.current = null;
+    choosing.current = false;
+    selected.current = null;
+  }, []);
+  useEffect(() => () => finish(null), [finish]);
   const pick = useCallback(() => {
     if (Platform.OS === 'web') return library();
-    return new Promise<string | null>((resolve) => {
-      resolver.current = resolve;
-      ref.current?.present();
-    });
+    if (pending.current) return pending.current;
+    pending.current = new Promise<string | null>((resolve) => { resolver.current = resolve; });
+    ref.current?.present();
+    return pending.current;
   }, []);
   const onSelect = useCallback((id: string) => {
-    const go = id === 'selfie' ? camera : library;
-    go().then((u) => resolver.current?.(u), () => resolver.current?.(null));
-    resolver.current = null; // dismiss suivra : onDismiss devient un no-op
+    selected.current = id; // la galerie attend la fermeture du panneau
   }, []);
   const onDismiss = useCallback(() => {
-    resolver.current?.(null);
-    resolver.current = null;
-  }, []);
+    if (choosing.current || !resolver.current) return;
+    if (!selected.current) return finish(null);
+    choosing.current = true;
+    const go = selected.current === 'selfie' ? camera : library;
+    const resolve = resolver.current;
+    go().then((uri) => { if (resolver.current === resolve) finish(uri); }, () => { if (resolver.current === resolve) finish(null); });
+  }, [finish]);
   const sheet = (
     <Sheet
       ref={ref}

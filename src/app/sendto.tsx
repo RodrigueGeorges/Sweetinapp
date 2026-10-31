@@ -93,7 +93,7 @@ export default function SendTo() {
     let preview: string | null = null;
     try {
       preview = await makePreview(uri);
-      const r = await sendFlip({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], link, preview, wordStyle: draft.wordStyle }, setProgress);
+      const r = await sendFlip({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], link, preview, wordStyle: draft.wordStyle, sendId: draft.getSendId(), ownerId: session?.user.id }, setProgress);
       signature();
       play(r.streak >= 2 ? 'streak' : 'sent');
       track('flip_sent', { recipients: r.sent_to, sweet_hour: r.sweet_hour, reply: !!draft.replyTo, link: link ?? 'none' });
@@ -128,7 +128,7 @@ export default function SendTo() {
       const err = e instanceof ApiError ? e : new ApiError(undefined, (e as Error).message, true);
       // hors connexion : le sweet attend dans la file et partira tout seul (les liens doivent repasser par le partage)
       if (err.code === 'OFFLINE' && !link && selected.size && uri) {
-        await queueSend({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], preview, wordStyle: draft.wordStyle });
+        await queueSend({ localUri: uri, message: draft.message, mode: 'free', recipients: [...selected], preview, wordStyle: draft.wordStyle, sendId: draft.getSendId(), ownerId: session?.user.id });
         draft.reset();
         track('send_queued', { recipients: selected.size });
         toast(t('queue.saved'));
@@ -224,8 +224,10 @@ export default function SendTo() {
 
       <FlashList
         data={friends === null ? [] : rows}
-        // lien privé et story en tête, pour tous : c'est par là qu'on fait venir quelqu'un qui n'a pas l'app
-        ListHeaderComponent={friends !== null ? <View style={{ gap: 10, paddingBottom: hasFriends ? 18 : 10 }}>{linksBlock}</View> : null}
+        // sans amis : lien/story en tête, c'est la voie pour faire venir quelqu'un.
+        // Avec des amis : eux d'abord, les options de partage se replient sous la liste.
+        ListHeaderComponent={friends !== null && !hasFriends ? <View style={{ gap: 10, paddingBottom: 10 }}>{linksBlock}</View> : null}
+        ListFooterComponent={hasFriends ? <View style={{ gap: 10, paddingTop: 14 }}>{linksBlock}</View> : null}
         keyExtractor={(r) => r.id}
         contentContainerStyle={s.list}
         ItemSeparatorComponent={() => <View style={{ height: 6 }} />}

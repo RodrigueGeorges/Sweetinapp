@@ -11,7 +11,8 @@ export type Moderation = ModerationResult | 'unavailable' | null;
 const BLOCKING = ['sexual', 'sexual/minors', 'violence/graphic', 'self-harm', 'self-harm/intent', 'self-harm/instructions', 'hate/threatening', 'harassment/threatening', 'illicit/violent'];
 
 /** Décide si un résultat de modération doit bloquer l'envoi. Renvoie la catégorie fautive ou null. */
-export function blockingCategory(r: ModerationResult | undefined): string | null {
+export function blockingCategory(r: Moderation | undefined): string | null {
+  if (r === 'unavailable') return 'unavailable';
   if (!r) return null;
   for (const c of BLOCKING) if (r.categories?.[c]) return c;
   // une image même légèrement suspecte d'impliquer un mineur est toujours bloquée

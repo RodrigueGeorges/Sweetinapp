@@ -2,6 +2,7 @@ import { setItems } from 'expo-quick-actions';
 import { useQuickActionRouting } from 'expo-quick-actions/router';
 import { Redirect, Stack } from 'expo-router';
 import { useEffect } from 'react';
+import { ProfileError } from '../../components/ProfileError';
 import { useToast } from '../../components/Toast';
 import { t } from '../../i18n';
 import { consumePendingInvite, useSession } from '../../lib/session';
@@ -18,7 +19,7 @@ import { colors } from '../../theme';
 export const unstable_settings = { initialRouteName: 'inbox' };
 
 export default function HomeLayout() {
-  const { session, profile, profileReady } = useSession();
+  const { session, profile, profileReady, profileError, refreshProfile } = useSession();
   const toast = useToast();
   const landing = useLanding();
   // raccourci « nouvelle photo » au long-press sur l'icône d'accueil → /camera
@@ -33,7 +34,9 @@ export default function HomeLayout() {
   if (!session) return landing ? <Redirect href={landing} /> : null;
   // profil pas encore chargé : on attend plutôt que de flasher l'écran de setup
   if (!profileReady) return null;
-  if (!profile?.onboarded) return <Redirect href="/profile-setup" />;
+  // lecture en échec ≠ profil absent : on propose de réessayer, pas de refaire son profil
+  if (!profile) return profileError ? <ProfileError onRetry={() => { void refreshProfile(); }} /> : <Redirect href="/profile-setup" />;
+  if (!profile.onboarded) return <Redirect href="/profile-setup" />;
   return (
     <Stack initialRouteName="inbox" screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}>
       <Stack.Screen name="inbox" options={{ animation: 'fade' }} />

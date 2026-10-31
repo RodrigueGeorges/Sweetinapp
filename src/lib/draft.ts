@@ -1,10 +1,22 @@
+import { randomUUID } from 'expo-crypto';
 import { kv } from './kv';
 import type { Mode, WordStyle } from './api';
 
-const KEY = 'sweetin.guestDraft';
+const KEY = 'sweetin.draft.v2';
 
 /** Flip en cours de création, partagé entre les écrans Caméra → Carte → Send to. */
 export const draft = {
+  ownerId: null as string | null,
+  sendId: null as string | null,
+  get storageKey() { return `${KEY}:${this.ownerId ?? 'guest'}`; },
+  getSendId() { return this.sendId ?? (this.sendId = randomUUID()); },
+  setOwner(uid: string | null) {
+    if (uid === this.ownerId) return;
+    const guest = this.ownerId === null && uid !== null && !!this.uri;
+    if (!guest) this.clearMemory();
+    this.ownerId = uid;
+    if (guest) void this.save().then(() => kv.removeItem(`${KEY}:guest`)).catch(() => {});
+  },
   uri: '' as string,
   message: '',
   mode: 'free' as Mode,
@@ -19,6 +31,7 @@ export const draft = {
   /** Photo prête : le secret n'a pas encore été écrit. */
   setPhoto(uri: string) {
     this.uri = uri;
+    this.sendId = null;
     this.message = '';
     this.wordStyle = null;
     this.deferred = false;
@@ -60,7 +73,8 @@ export const draft = {
   defer() {
     this.deferred = true;
   },
-  reset() {
+  clearMemory() {
+    this.sendId = null;
     this.uri = '';
     this.message = '';
     this.mode = 'free';
@@ -69,19 +83,24 @@ export const draft = {
     this.replyName = null;
     this.fromCamera = false;
     this.wordStyle = null;
-    kv.removeItem(KEY).catch(() => {});
+  },
+  reset() {
+    this.clearMemory();
+    void kv.removeItem(this.storageKey).catch(() => {});
   },
   /** Garde le secret de côté pendant l'inscription (l'email de confirmation fait quitter l'app). */
   save() {
-    return kv.setItem(KEY, JSON.stringify({ uri: this.uri, message: this.message, mode: this.mode, wordStyle: this.wordStyle, deferred: this.deferred })).catch(() => {});
+    return kv.setItem(this.storageKey, JSON.stringify({ uri: this.uri, message: this.message, mode: this.mode, wordStyle: this.wordStyle, deferred: this.deferred, replyTo: this.replyTo, replyName: this.replyName, sendId: this.sendId }));
   },
   async restore() {
     if (this.pending) return true;
     try {
-      const raw = await kv.getItem(KEY);
-      if (!raw) return false;
-      const d = JSON.parse(raw) as { uri: string; message: string; mode: Mode; wordStyle?: WordStyle | null; deferred?: boolean };
-      Object.assign(this, { uri: d.uri, message: d.message, mode: d.mode, wordStyle: d.wordStyle ?? null, deferred: d.deferred ?? false });
+      const key = this.storageKey;
+      const raw = await kv.getItem(key);
+      if (!raw || key !== this.storageKey) return false;
+      const d = JSON.parse(raw) as { uri: string; message: string; mode: Mode; wordStyle?: WordStyle | null; deferred?: boolean; replyTo?: string; replyName?: string; sendId?: string };
+      if (typeof d.uri !== 'string' || typeof d.message !== 'string') return false;
+      Object.assign(this, { uri: d.uri, message: d.message, mode: d.mode, wordStyle: d.wordStyle ?? null, deferred: d.deferred ?? false, replyTo: d.replyTo ?? null, replyName: d.replyName ?? null, sendId: d.sendId ?? null });
       return this.pending;
     } catch {
       return false;

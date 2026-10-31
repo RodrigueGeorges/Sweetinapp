@@ -141,7 +141,7 @@ describe('inbox · envoyés', () => {
   });
 
   it('un envoi en file est visible et annulable par appui long', async () => {
-    mockPending.mockResolvedValue([{ localUri: 'file:///x.jpg', message: 'hey', mode: 'free', recipients: ['f1'], preview: null, queued_at: Date.now() }]);
+    mockPending.mockResolvedValue([{ localUri: 'file:///x.jpg', message: 'hey', mode: 'free', recipients: ['f1'], preview: null, queued_at: Date.now(), sendId: 's1', ownerId: 'me' }]);
     const { findByLabelText } = await renderInbox();
     fireEvent.press(await findByLabelText(t('inbox.sent')));
     const row = await findByLabelText('lea'); // nom résolu via la liste d'amis

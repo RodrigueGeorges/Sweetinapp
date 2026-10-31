@@ -47,6 +47,7 @@ type Event =
   | 'invite_shared'
   | 'invite_accepted'
   | 'friend_added'
+  | 'friend_requested'
   | 'screenshot_attempt'
   | 'send_failed'
   | 'send_queued'

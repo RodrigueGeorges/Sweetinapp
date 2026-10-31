@@ -115,6 +115,8 @@ describe('settings · départ', () => {
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: '/auth', params: { mode: 'login' } }));
     expect(mockUpdateWidget).toHaveBeenCalledWith([]);
     expect(mockSignOut).toHaveBeenCalled();
+    expect(mockUnregisterPush).toHaveBeenCalled();
+    expect(mockUnregisterPush.mock.invocationCallOrder[0]).toBeLessThan(mockSignOut.mock.invocationCallOrder[0]);
     expect(mockDismissAll).toHaveBeenCalled();
   });
 

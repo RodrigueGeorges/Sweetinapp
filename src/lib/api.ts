@@ -64,8 +64,8 @@ function rpcError(error: { message: string }) {
 }
 
 /** Appelle une fonction serveur et transforme les erreurs en ApiError. */
-async function call<T>(name: string, body: object): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
+async function call<T>(name: string, body: object, accessToken?: string): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(name, { body, ...(accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : {}) });
   if (error) {
     let code: string | undefined;
     let msg: string | undefined;
@@ -186,10 +186,32 @@ export async function acceptInvite(username: string, source: InviteSource = 'lin
   return prof(data as RawProfile);
 }
 
-export async function addFriend(username: string): Promise<Profile> {
-  const { data, error } = await supabase.rpc('add_friend', { p_username: username.trim().replace(/^@/, '') });
+/** 'friends' : amitié créée (demande mutuelle) — 'sent' : demande envoyée, en attente de l'autre. */
+export type FriendResult = { profile: Profile; status: 'friends' | 'sent' };
+
+export async function addFriend(username: string): Promise<FriendResult> {
+  const { data, error } = await supabase.rpc('request_friend', { p_username: username.trim().replace(/^@/, '') });
+  if (error) throw rpcError(error);
+  const d = data as { profile: RawProfile; status: string };
+  return { profile: prof(d.profile), status: d.status === 'friends' ? 'friends' : 'sent' };
+}
+
+export async function listFriendRequests(): Promise<{ incoming: Profile[]; outgoing: Profile[] }> {
+  const { data, error } = await supabase.rpc('list_friend_requests');
+  if (error) throw rpcError(error);
+  const d = (data ?? {}) as { incoming?: RawProfile[]; outgoing?: RawProfile[] };
+  return { incoming: (d.incoming ?? []).map(prof), outgoing: (d.outgoing ?? []).map(prof) };
+}
+
+export async function acceptFriend(id: string): Promise<Profile> {
+  const { data, error } = await supabase.rpc('accept_friend', { p_user: id });
   if (error) throw rpcError(error);
   return prof(data as RawProfile);
+}
+
+export async function declineFriend(id: string) {
+  const { error } = await supabase.rpc('decline_friend', { p_user: id });
+  if (error) throw rpcError(error);
 }
 
 export async function removeFriend(id: string) {
@@ -252,8 +274,9 @@ function putWithProgress(url: string, bytes: ArrayBuffer, onProgress?: (p: numbe
 }
 
 /** Compresse la photo, la dépose dans le dossier privé de l'utilisateur, puis efface les fichiers locaux. */
-export async function uploadPhoto(localUri: string, onProgress?: (p: number) => void): Promise<string> {
+export async function uploadPhoto(localUri: string, onProgress?: (p: number) => void, ownerId?: string): Promise<string> {
   const uid = await myId();
+  if (ownerId && ownerId !== uid) throw new ApiError('ACCOUNT_CHANGED');
   const rendered = await ImageManipulator.manipulate(localUri).resize({ width: 1080 }).renderAsync();
   const saved = await rendered.saveAsync({ compress: 0.82, format: SaveFormat.JPEG });
   const resized = new File(saved.uri);
@@ -280,12 +303,17 @@ export function forgetLocalPhoto(uri: string) {
 
 export type SendResult = { id: string; sent_to: number; sweet_hour: boolean; link_url: string | null; link: LinkKind | null; streak: number };
 
-export async function sendFlip(input: { localUri: string; message: string; mode: Mode; recipients: string[]; link?: LinkKind | null; preview?: string | null; wordStyle?: WordStyle | null }, onProgress?: (p: number) => void) {
+export async function sendFlip(input: { localUri: string; message: string; mode: Mode; recipients: string[]; link?: LinkKind | null; preview?: string | null; wordStyle?: WordStyle | null; sendId?: string; ownerId?: string }, onProgress?: (p: number) => void) {
   if (!(await isOnline())) throw new ApiError('OFFLINE', undefined, true);
-  const photo_path = await uploadPhoto(input.localUri, (p) => onProgress?.(p * 0.9));
-  const res = await withRetry(() =>
-    call<SendResult>('send-flip', { photo_path, message: input.message, mode: input.mode, recipients: input.recipients, link: input.link ?? null, preview: input.preview ?? null, word_style: input.wordStyle ?? null }),
-  );
+  const uid = await myId();
+  if (input.ownerId && input.ownerId !== uid) throw new ApiError('ACCOUNT_CHANGED');
+  const request_id = input.sendId ?? Crypto.randomUUID();
+  const photo_path = await uploadPhoto(input.localUri, (p) => onProgress?.(p * 0.9), uid);
+  const res = await withRetry(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || session.user.id !== uid) throw new ApiError('ACCOUNT_CHANGED');
+    return call<SendResult>('send-flip', { request_id, photo_path, message: input.message, mode: input.mode, recipients: input.recipients, link: input.link ?? null, preview: input.preview ?? null, word_style: input.wordStyle ?? null }, session.access_token);
+  });
   onProgress?.(1);
   // la photo locale sert encore à fabriquer l'image de story : on l'efface après le partage
   if (input.link !== 'story') forgetLocalPhoto(input.localUri);

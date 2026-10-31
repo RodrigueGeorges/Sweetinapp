@@ -12,6 +12,8 @@ export function useInbox() {
   const { session } = useSession();
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // true quand la dernière lecture a échoué : l'écran distingue « vide » de « en panne »
+  const [error, setError] = useState(false);
   // un nom de canal par instance : la barre d'onglets et l'écran Boîte écoutent en même temps,
   // et supabase renvoie le canal existant (déjà abonné) si deux instances partagent le même nom
   const [tag] = useState(() => Math.random().toString(36).slice(2, 8));
@@ -24,11 +26,13 @@ export function useInbox() {
     try {
       const list = await listInbox();
       setItems(list);
+      setError(false);
       updateWidget(list);
       // pastille sur l'icône de l'app = nombre de secrets à gratter
       notif()?.setBadgeCountAsync(list.length).catch(() => {});
     } catch {
-      // hors ligne : on garde la liste actuelle
+      // hors ligne : on garde la liste actuelle, mais l'écran ne fait plus croire qu'elle est vide
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -62,5 +66,5 @@ export function useInbox() {
     };
   }, [session?.user.id, refresh, tag]);
 
-  return { items, loading, refresh };
+  return { items, loading, error, refresh };
 }

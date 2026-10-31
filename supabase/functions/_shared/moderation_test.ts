@@ -4,6 +4,10 @@ function assertEquals(a: unknown, b: unknown) {
   if (a !== b) throw new Error(`attendu ${b}, obtenu ${a}`);
 }
 
+Deno.test('une modération indisponible ne peut jamais autoriser un envoi', () => {
+  assertEquals(blockingCategory('unavailable'), 'unavailable');
+});
+
 Deno.test('un contenu sain passe', () => {
   assertEquals(blockingCategory({ flagged: false, categories: {} }), null);
 });

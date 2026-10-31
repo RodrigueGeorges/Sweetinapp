@@ -8,6 +8,7 @@ import { registerForPush } from './push';
 import { markHasAccount } from './returning';
 import { loadConfig } from './config';
 import { supabase } from './supabase';
+import { draft } from './draft';
 
 const PENDING_INVITE = 'sweetin.pendingInvite';
 
@@ -18,9 +19,11 @@ type Ctx = {
   ready: boolean;
   /** Le profil de la session courante a été récupéré au moins une fois (succès ou échec). */
   profileReady: boolean;
+  /** La dernière lecture du profil a échoué : à distinguer de « profil absent » pour ne pas renvoyer vers le setup. */
+  profileError: boolean;
   refreshProfile: () => Promise<MyProfile | null>;
 };
-const SessionContext = createContext<Ctx>({ session: null, profile: null, ready: false, profileReady: false, refreshProfile: async () => null });
+const SessionContext = createContext<Ctx>({ session: null, profile: null, ready: false, profileReady: false, profileError: false, refreshProfile: async () => null });
 
 /** Garde un pseudo d'invitation à traiter quand l'utilisateur aura un profil complet. */
 export const rememberInvite = (username: string, source: InviteSource = 'link') => AsyncStorage.setItem(PENDING_INVITE, `${username}|${source}`).catch(() => {});
@@ -52,13 +55,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [ready, setReady] = useState(false);
   const [profileReady, setProfileReady] = useState(false);
+  const [profileError, setProfileError] = useState(false);
 
   const refreshProfile = useCallback(async () => {
     try {
       const p = await getMyProfile();
       setProfile(p);
+      setProfileError(false);
       return p;
     } catch {
+      setProfileError(true);
       return null;
     } finally {
       setProfileReady(true);
@@ -68,12 +74,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadConfig(); // réglages à distance (durée de lecture…), sans bloquer le démarrage
     supabase.auth.getSession().then(async ({ data }) => {
+      draft.setOwner(data.session?.user.id ?? null);
       setSession(data.session);
       if (data.session) markHasAccount();
       if (data.session) await refreshProfile();
       setReady(true);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, s) => {
+      draft.setOwner(s?.user.id ?? null);
       setSession(s);
       if (s) {
         markHasAccount();
@@ -83,6 +91,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       } else {
         setProfile(null);
         setProfileReady(false);
+        setProfileError(false);
       }
     });
     return () => data.subscription.unsubscribe();
@@ -95,7 +104,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return watchLiveTokens(session.user.id);
   }, [session?.user.id]);
 
-  return <SessionContext.Provider value={{ session, profile, ready, profileReady, refreshProfile }}>{children}</SessionContext.Provider>;
+  return <SessionContext.Provider value={{ session, profile, ready, profileReady, profileError, refreshProfile }}>{children}</SessionContext.Provider>;
 }
 
 export const useSession = () => useContext(SessionContext);

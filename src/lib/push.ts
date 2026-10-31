@@ -92,6 +92,9 @@ export async function unregisterPush() {
   if (!N || !Device.isDevice) return;
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   if (!projectId) return;
-  const { data: token } = await N.getExpoPushTokenAsync({ projectId }).catch(() => ({ data: '' }));
-  if (token) await supabase.from('push_tokens').delete().eq('token', token);
+  const { data: token } = await N.getExpoPushTokenAsync({ projectId });
+  if (token) {
+    const { error } = await supabase.from('push_tokens').delete().eq('token', token);
+    if (error) throw error;
+  }
 }

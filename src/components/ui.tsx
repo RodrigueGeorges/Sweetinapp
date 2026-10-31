@@ -406,9 +406,9 @@ export function Skeleton({ width, height, radius = 12, base, style }: { width: n
 }
 
 /** Lien d'action : gras, sans souligné (réservé aux textes légaux), flèche optionnelle. */
-export function TextLink({ label, onPress, arrow = true, align = 'flex-start', accessibilityLabel }: { label: string; onPress: () => void; arrow?: boolean; align?: ViewStyle['alignSelf']; accessibilityLabel?: string }) {
+export function TextLink({ label, onPress, arrow = true, align = 'flex-start', accessibilityLabel, disabled = false }: { label: string; onPress: () => void; arrow?: boolean; align?: ViewStyle['alignSelf']; accessibilityLabel?: string; disabled?: boolean }) {
   return (
-    <Pressable onPress={onPress} hitSlop={10} accessibilityRole="link" accessibilityLabel={accessibilityLabel ?? label} style={({ pressed }) => [s.textLink, { alignSelf: align }, pressed && { opacity: 0.6 }]}>
+    <Pressable onPress={onPress} disabled={disabled} accessibilityState={{ disabled }} hitSlop={10} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} style={({ pressed }) => [s.textLink, { alignSelf: align }, (pressed || disabled) && { opacity: 0.6 }]}>
       <Text style={s.textLinkT}>{label}</Text>
       {arrow ? <Icon name="arrow" size={15} color={colors.ink} stroke={2.8} /> : null}
     </Pressable>

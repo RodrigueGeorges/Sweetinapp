@@ -8,7 +8,7 @@ import { copy } from '../_shared/copy.ts';
 const WORD_INKS = new Set(['#FFFFFF', '#E8FF5A', '#FF6B88', '#CFE4FF', '#FFC9D6', '#FFD6C2']);
 const WORD_FILTERS = new Set(['dore', 'neon', 'nuit', 'noir', 'poudre']);
 type WordStyle = { x?: number; y?: number; scale?: number; ink?: string; bubble?: boolean; face?: string; filter?: string };
-type Body = { photo_path?: string; message?: string; mode?: 'free' | 'once'; recipients?: string[]; link?: 'single' | 'story' | null; preview?: string; word_style?: WordStyle | null };
+type Body = { request_id?: string; photo_path?: string; message?: string; mode?: 'free' | 'once'; recipients?: string[]; link?: 'single' | 'story' | null; preview?: string; word_style?: WordStyle | null };
 
 /** Placement et style du mot validés : bornés aux domaines attendus, sinon ignorés (jamais bloquant). */
 function sanitizeWordStyle(v: WordStyle | null | undefined) {
@@ -47,6 +47,13 @@ Deno.serve(async (req) => {
   if (!recipients.length && !link) return fail('Choisis au moins une personne', 400, 'NO_RECIPIENT');
 
   const db = admin();
+  const requestId = body.request_id ?? path;
+  if (typeof requestId !== 'string' || !requestId.length || requestId.length > 200) return fail('Envoi invalide', 400, 'INVALID_REQUEST');
+  const { data: receipt, error: receiptError } = await db.from('send_receipts').select('result').eq('sender_id', user.id).eq('request_id', requestId).maybeSingle();
+  if (receiptError) return fail('Envoi indisponible, réessaie', 503, 'SERVER');
+  const response = (r: { id: string; sent_to: number; sweet_hour: boolean; link: string | null; link_token: string | null; streak: number }) =>
+    json({ id: r.id, sent_to: r.sent_to, sweet_hour: r.sweet_hour, link: r.link, streak: r.streak, link_url: r.link_token ? `${SITE_URL}/f/${r.link_token}` : null });
+  if (receipt) return response(receipt.result);
   const dropPhoto = () => db.storage.from('flips').remove([path]);
 
   const { data: me } = await db.from('profiles').select('username, onboarded').eq('id', user.id).single();
@@ -77,6 +84,7 @@ Deno.serve(async (req) => {
   const signed = await db.storage.from('flips').createSignedUrl(path, 120);
   if (signed.error) return fail('Photo introuvable, renvoie-la', 400, 'PHOTO_INVALID');
   const verdict = blockingCategory((await moderate(message, signed.data.signedUrl)) ?? undefined);
+  if (verdict === 'unavailable') return fail('Le contrôle de sécurité ne répond pas, réessaie', 503, 'MODERATION_UNAVAILABLE');
   if (verdict) {
     await dropPhoto();
     console.warn('flip refusé par la modération', user.id, verdict);
@@ -84,25 +92,26 @@ Deno.serve(async (req) => {
   }
 
   // envoyé pendant le Sweet Hour ?
-  const { data: hour } = await db.from('sweet_hours').select('starts_at').eq('day', new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })).maybeSingle();
-  const start = hour ? new Date(hour.starts_at).getTime() : 0;
-  const sweet = !!hour && Date.now() >= start && Date.now() <= start + 2 * 60_000;
 
   // une story ne vit que 24 h
-  const expires = new Date(Date.now() + (link === 'story' ? 24 : 7 * 24) * 3600_000).toISOString();
-  const { data: flip, error } = await db.from('flips').insert({ sender_id: user.id, photo_path: path, mode, sweet_hour: sweet, preview, expires_at: expires }).select('id').single();
-  if (error || !flip) return fail('Envoi impossible, réessaie', 500, 'SERVER');
-
-  await db.from('flip_secrets').insert({ flip_id: flip.id, message, word_style: sanitizeWordStyle(body.word_style) });
-
-  let streak = 0;
+  const { data: committed, error } = await db.rpc('commit_flip', {
+    p_sender: user.id, p_request: requestId, p_path: path, p_message: message, p_mode: mode,
+    p_recipients: recipients, p_link: link, p_token: randomToken(), p_preview: preview,
+    p_style: sanitizeWordStyle(body.word_style),
+  });
+  if (error || !committed) {
+    const code = ['NO_RECIPIENT', 'PROFILE_INCOMPLETE', 'RATE_LIMIT'].find((c) => error?.message === c);
+    return fail('Envoi impossible, réessaie', code ? 400 : 503, code ?? 'SERVER');
+  }
+  if (!committed.created) return response(committed);
+  const flip = { id: committed.id };
+  allowed = committed.recipients;
   if (allowed.length) {
-    await db.from('flip_recipients').insert(allowed.map((rid: string) => ({ flip_id: flip.id, recipient_id: rid })));
     const milestones: { rid: string; days: number }[] = [];
     for (const rid of allowed) {
-      const { data: days } = await db.rpc('record_streak', { p_sender: user.id, p_recipient: rid });
-      const d = (days as number) ?? 0;
-      streak = Math.max(streak, d);
+      const [first, second] = [user.id, rid].sort();
+      const { data: current } = await db.from('streaks').select('days').eq('user_a', first).eq('user_b', second).maybeSingle();
+      const d = current?.days ?? 0;
       // palier atteint aujourd'hui : on prévient l'ami une seule fois
       if (STREAK_MILESTONES.has(d)) {
         const [a, b] = [user.id, rid].sort();
@@ -120,12 +129,5 @@ Deno.serve(async (req) => {
     }), 'flips');
   }
 
-  let link_url: string | null = null;
-  if (link) {
-    const token = randomToken();
-    await db.from('flip_links').insert({ token, flip_id: flip.id, kind: link });
-    link_url = `${SITE_URL}/f/${token}`;
-  }
-
-  return json({ id: flip.id, sent_to: allowed.length, sweet_hour: sweet, link_url, link, streak });
+  return response(committed);
 });

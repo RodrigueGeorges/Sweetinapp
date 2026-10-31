@@ -18,10 +18,30 @@ const mocked = jest.mocked(kv);
 beforeEach(() => {
   jest.clearAllMocks();
   mockStore.clear();
+  draft.clearMemory();
+  draft.setOwner(null);
   draft.reset();
 });
 
 describe('draft', () => {
+  it('isole le brouillon entre deux comptes et conserve la réponse', async () => {
+    draft.setOwner('alice');
+    draft.setPhoto('file:///alice.jpg');
+    draft.setMessage('privé', false);
+    draft.setReply('friend', 'lea');
+    await draft.save();
+    draft.setOwner('bob');
+    await expect(draft.restore()).resolves.toBe(false);
+    expect(draft.uri).toBe('');
+    draft.setOwner('alice');
+    await expect(draft.restore()).resolves.toBe(true);
+    expect(draft.replyTo).toBe('friend');
+  });
+
+  it('ne masque pas un échec de sauvegarde', async () => {
+    mocked.setItem.mockRejectedValueOnce(new Error('full'));
+    await expect(draft.save()).rejects.toThrow('full');
+  });
   it('setPhoto pose la photo et vide le mot', () => {
     draft.setMessage('ancien mot', false);
     draft.setPhoto('file:///cache/p.jpg');
@@ -56,7 +76,7 @@ describe('draft', () => {
     draft.reset();
     expect(draft.uri).toBe('');
     expect(draft.replyTo).toBeNull();
-    expect(mocked.removeItem).toHaveBeenCalledWith('sweetin.guestDraft');
+    expect(mocked.removeItem).toHaveBeenCalledWith(draft.storageKey);
   });
 
   it('save puis restore retrouve le brouillon d’invité', async () => {

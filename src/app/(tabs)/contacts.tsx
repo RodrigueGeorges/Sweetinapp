@@ -14,7 +14,7 @@ import { NativeMenu, type MenuItem } from '../../components/NativeMenu';
 import { useToast } from '../../components/Toast';
 import { Avatar, Button, Empty, IconButton, Pop, Row, Screen, SectionLabel, StreakNum, Title, Header } from '../../components/ui';
 import { t } from '../../i18n';
-import { addFriend, blockUser, report, listFriends, myLostStreaks, myStreaks, removeFriend, restoreStreak, type LostStreak, type Profile, type Streak } from '../../lib/api';
+import { acceptFriend, addFriend, blockUser, declineFriend, report, listFriendRequests, listFriends, myLostStreaks, myStreaks, removeFriend, restoreStreak, type LostStreak, type Profile, type Streak } from '../../lib/api';
 import { draft } from '../../lib/draft';
 import { shareInviteLink } from '../../lib/invite';
 import { track } from '../../lib/monitoring';
@@ -33,9 +33,18 @@ export default function Contacts() {
   const [busy, setBusy] = useState(false);
   const [streaks, setStreaks] = useState<Map<string, Streak>>(new Map());
   const [lost, setLost] = useState<LostStreak[]>([]);
+  const [requests, setRequests] = useState<{ incoming: Profile[]; outgoing: Profile[] }>({ incoming: [], outgoing: [] });
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(() => {
-    listFriends().then(setFriends).catch(() => setFriends([]));
+    setLoadError(false);
+    listFriends()
+      .then(setFriends)
+      .catch(() => {
+        setFriends([]);
+        setLoadError(true);
+      });
+    listFriendRequests().then(setRequests).catch(() => {});
     myStreaks().then(setStreaks).catch(() => {});
     myLostStreaks().then(setLost).catch(() => {});
   }, []);
@@ -71,10 +80,10 @@ export default function Contacts() {
     if (!name.trim() || busy) return;
     setBusy(true);
     try {
-      const p = await addFriend(name);
+      const r = await addFriend(name);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      toast(t('contacts.added', { name: p.username }));
-      track('friend_added');
+      toast(r.status === 'friends' ? t('contacts.added', { name: r.profile.username }) : t('contacts.requestSent', { name: r.profile.username }));
+      track(r.status === 'friends' ? 'friend_added' : 'friend_requested', { source: 'username' });
       setName('');
       setAdding(false);
       load();
@@ -82,6 +91,22 @@ export default function Contacts() {
       toast((e as Error).message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const answer = async (p: Profile, ok: boolean) => {
+    try {
+      if (ok) {
+        const f = await acceptFriend(p.id);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        toast(t('contacts.added', { name: f.username }));
+        track('friend_added', { source: 'request' });
+      } else {
+        await declineFriend(p.id);
+      }
+      load();
+    } catch (e) {
+      toast((e as Error).message);
     }
   };
 
@@ -186,6 +211,30 @@ export default function Contacts() {
         <Tile icon="scan" label={t('friends.scan')} onPress={() => router.push('/scan')} />
       </View>
 
+      {(requests.incoming.length > 0 || requests.outgoing.length > 0) && (
+        <View style={{ gap: 8 }}>
+          {requests.incoming.length > 0 && <SectionLabel>{t('contacts.requests')}</SectionLabel>}
+          {requests.incoming.map((p) => (
+            <Row key={`req-${p.id}`} style={s.risk}>
+              <Avatar name={p.username} uri={p.avatar_url} size={46} />
+              <Text style={[s.name, { flex: 1 }]}>{p.username}</Text>
+              <Button label={t('contacts.decline')} size="sm" tone="white" onPress={() => answer(p, false)} />
+              <Button label={t('contacts.accept')} size="sm" tone="cerise" onPress={() => answer(p, true)} />
+            </Row>
+          ))}
+          {requests.outgoing.map((p) => (
+            <Row key={`out-${p.id}`} style={s.risk}>
+              <Avatar name={p.username} uri={p.avatar_url} size={46} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.name}>{p.username}</Text>
+                <Text style={s.riskSub}>{t('contacts.outgoing')}</Text>
+              </View>
+              <Button label={t('contacts.decline')} size="sm" tone="white" onPress={() => answer(p, false)} />
+            </Row>
+          ))}
+        </View>
+      )}
+
       {lost.map((l) => {
         const f = friends?.find((x) => x.id === l.friend_id);
         if (!f) return null;
@@ -250,6 +299,8 @@ export default function Contacts() {
                 <Shimmer key={i} style={{ height: 60, borderRadius: 18 }} />
               ))}
             </View>
+          ) : loadError ? (
+            <Empty title={t('common.loadFailed')} action={<Button label={t('common.retry')} size="md" tone="white" onPress={load} />} />
           ) : atRisk.length === 0 ? (
             <Empty art={<Fondue mood="happy" size={120} />} title={t('contacts.emptyTitle')} body={t('contacts.empty')} />
           ) : null

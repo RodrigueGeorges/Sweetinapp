@@ -155,9 +155,9 @@ export default function Create() {
     opacity: interpolate(rot.value, [89, 91], [0, 1], 'clamp'),
   }));
 
-  // le mot reste dans la carte : bornes du déplacement en fonction de la taille du verso
-  const limX = (w - 14) / 2 - 60;
-  const limY = cardH / 2 - 60;
+  // le mot reste dans la carte : bornes calculées depuis sa taille réelle mesurée (pas une marge fixe)
+  const wordW = useSharedValue(0);
+  const wordH = useSharedValue(0);
   const inputRef = useRef<TextInput>(null);
   // bornes du mot dans la carte, mesurées au layout : un tap en dehors quitte l'édition au lieu de déplacer le curseur
   const wordArea = useRef({ x: 0, y: 0, w: 0, h: 0 });
@@ -183,8 +183,10 @@ export default function Create() {
     })
     .onUpdate((e) => {
       'worklet';
-      wx.value = Math.min(limX, Math.max(-limX, gStartX.value + e.translationX));
-      wy.value = Math.min(limY, Math.max(-limY, gStartY.value + e.translationY));
+      const mx = Math.max(0, (w - 14) / 2 - (wordW.value * wscale.value) / 2);
+      const my = Math.max(0, cardH / 2 - (wordH.value * wscale.value) / 2);
+      wx.value = Math.min(mx, Math.max(-mx, gStartX.value + e.translationX));
+      wy.value = Math.min(my, Math.max(-my, gStartY.value + e.translationY));
     });
   const pinch = Gesture.Pinch()
     .enabled(flipped && !editing)
@@ -193,7 +195,13 @@ export default function Create() {
     })
     .onUpdate((e) => {
       'worklet';
-      wscale.value = Math.min(2.4, Math.max(0.55, gStartS.value * e.scale));
+      const s = Math.min(2.4, Math.max(0.55, gStartS.value * e.scale));
+      wscale.value = s;
+      // agrandi : le mot ne doit pas dépasser — on rabat sa position dans les nouvelles bornes
+      const mx = Math.max(0, (w - 14) / 2 - (wordW.value * s) / 2);
+      const my = Math.max(0, cardH / 2 - (wordH.value * s) / 2);
+      wx.value = Math.min(mx, Math.max(-mx, wx.value));
+      wy.value = Math.min(my, Math.max(-my, wy.value));
     });
   const move = Gesture.Simultaneous(drag, pinch, tapFocus);
   const wordMove = useAnimatedStyle(() => ({ transform: [{ translateX: wx.value }, { translateY: wy.value }, { scale: wscale.value }] }));
@@ -278,7 +286,7 @@ export default function Create() {
                 {/* le cœur (DA Fondant) : nuit, le mot en display blanc, une pointe de citron */}
                 <View style={s.heart}>
                   <Text style={s.over}>{t('create.hiddenUnder')}</Text>
-                  <Animated.View style={[s.inputWrap, wordMove]} onLayout={(e) => (wordArea.current = { x: e.nativeEvent.layout.x, y: e.nativeEvent.layout.y, w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+                  <Animated.View style={[s.inputWrap, wordMove]} onLayout={(e) => { wordArea.current = { x: e.nativeEvent.layout.x, y: e.nativeEvent.layout.y, w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height }; wordW.value = e.nativeEvent.layout.width; wordH.value = e.nativeEvent.layout.height; }}>
                     {flipped && (
                       <TextInput
                         ref={inputRef}
@@ -314,13 +322,16 @@ export default function Create() {
 
           {flipped ? (
             <Animated.View entering={FadeInDown.delay(250).springify()} style={{ alignSelf: 'stretch', gap: 12 }}>
-              <Text style={s.hint}>{editing ? t('create.editHint') : t('create.moveHint')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <Text style={[s.hint, { flex: 1 }]}>{editing ? t('create.editHint') : t('create.moveHint')}</Text>
+                {editing ? <Button label={t('create.done')} size="sm" tone="nuit" onPress={() => inputRef.current?.blur()} /> : null}
+              </View>
               {/* style du mot façon stories : encre, pastille, fonte — puis les gestes pour placer */}
               <View style={s.styler}>
                 {wordInks.map((c) => (
-                  <Pressable key={c} onPress={() => { Haptics.selectionAsync(); setInk(c); }} accessibilityRole="button" accessibilityLabel={t('create.inkA11y')} accessibilityState={{ selected: ink === c }} hitSlop={6} style={[s.swatch, { backgroundColor: c }, ink === c && s.swatchOn]} />
+                  <Pressable key={c} onPress={() => { Haptics.selectionAsync(); setInk(c); }} accessibilityRole="button" accessibilityLabel={`${t('create.inkA11y')} ${t(`ink.${c}`)}`} accessibilityState={{ selected: ink === c }} hitSlop={11} style={[s.swatch, { backgroundColor: c }, ink === c && s.swatchOn]} />
                 ))}
-                <Pressable onPress={() => { Haptics.selectionAsync(); setBubble(!bubble); }} accessibilityRole="button" accessibilityLabel={t('create.bubbleA11y')} accessibilityState={{ selected: bubble }} hitSlop={6} style={[s.chipBtn, bubble && { backgroundColor: ink, borderColor: ink }]}>
+                <Pressable onPress={() => { Haptics.selectionAsync(); setBubble(!bubble); }} accessibilityRole="button" accessibilityLabel={t('create.bubbleA11y')} accessibilityState={{ selected: bubble }} hitSlop={8} style={[s.chipBtn, bubble && { backgroundColor: ink, borderColor: ink }]}>
                   <Text style={[s.chipAa, bubble && { color: colors.coeur }]}>Aa</Text>
                 </Pressable>
                 <Pressable onPress={() => { Haptics.selectionAsync(); setFace(face === 'display' ? 'sans' : 'display'); }} accessibilityRole="button" accessibilityLabel={t('create.faceA11y')} accessibilityState={{ selected: face === 'sans' }} hitSlop={6} style={[s.chipBtn, face === 'sans' && { borderColor: colors.ink, borderWidth: 2 }]}>
