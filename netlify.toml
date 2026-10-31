@@ -1,0 +1,4 @@
+# Site statique : rien à compiler, on publie web/ tel quel.
+[build]
+  command = "echo 'site statique - pas de build'"
+  publish = "web"
