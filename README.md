@@ -415,11 +415,10 @@ Vérifié (passe de fiabilisation, octobre 2027) :
 - Filtres web `/f/` réalignés sur les recettes canoniques (`src/lib/filters.ts`).
 - Déconnexion : jeton push désinscrit ; suppression de compte : confirmation par pseudo.
 - Événements analytics dédupliqués : `auth_completed` ≠ `signup_completed`.
+- Migrations : les 15 fichiers s'appliquent sans erreur sur PostgreSQL 17.6 ; 33 scénarios métier passent (demandes d'ami dans les deux sens, acceptation, refus, `commit_flip` création + rejoue idempotent, blocage, non-ami, longueur de message, photo d'un autre, lien privé). Harnais rejouable : `bash .pg-test/run.sh` ; vérifié aussi en CI (job `migrations`).
+- Fonctions Edge : `deno check` passe sur les 14 fonctions, 23 tests Deno passent (modération fail-closed, quota, push). Régression corrigée : `rateHit`, `clientActor` et `processReceipts` avaient été perdus — `cleanup`/`waitlist` ne compilaient pas ; les reçus Expo sont de nouveau enregistrés pour purge des jetons morts.
 
-À valider avant de déployer les nouvelles migrations (`atomic_send`, `friend_requests`) :
-- Appliquer les migrations sur un Postgres de test (pas de PostgreSQL/Docker sur la machine de dev) puis rejouer : demande d'ami dans les deux sens, blocage, `commit_flip` idempotent, limites.
-- Vérifier les fonctions Edge avec Deno (non installé localement ; couvert par la CI).
-- Déployer `send-flip` + les migrations ensemble : le client envoie déjà `request_id`/`sendId`.
+Ordre de déploiement serveur : les migrations d'abord (`supabase db push`), puis les fonctions (`supabase functions deploy`). Le client envoie déjà `request_id` ; sans la migration `atomic_send`, `commit_flip` n'existe pas et `send-flip` échoue.
 
 À faire de ton côté (impossible sans tes comptes et un téléphone) :
 - Tester sur un iPhone et un Android avec un build de développement : grattage, caméra, notifications, widget, connexion Apple et Google, blocage des captures, Live Activity du Sweet Hour (iPhone verrouillé), contacts en accès limité, feuille d'âge Apple.

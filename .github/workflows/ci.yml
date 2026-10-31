@@ -31,6 +31,29 @@ jobs:
       - run: node scripts/mise-en-ligne.mjs --check
         continue-on-error: true
 
+  # Migrations rejouées sur un vrai PostgreSQL + scénarios métier (consentement amis, envoi idempotent)
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash .pg-test/run.sh
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: sweetin_test
+
   # Aperçu natif (iOS + Android) sur demande : Actions > ci > Run workflow
   build:
     if: github.event_name == 'workflow_dispatch'

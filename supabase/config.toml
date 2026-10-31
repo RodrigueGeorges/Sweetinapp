@@ -19,6 +19,9 @@ verify_jwt = false
 [functions.screenshot]
 verify_jwt = true
 
+[functions.set-avatar]
+verify_jwt = true
+
 [functions.sweet-hour]
 verify_jwt = false
 
