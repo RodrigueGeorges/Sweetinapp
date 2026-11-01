@@ -306,6 +306,14 @@ export const fr = {
 
   // liens privés (web-first)
   'flip.opening': 'ton sweet s’ouvre…',
+  'flip.from': '{name} a caché un mot pour toi.',
+  'flip.anon': 'un mot caché pour toi.',
+  'flip.sub': 'gratte la photo du doigt pour le lire. ensuite, il fond.',
+  'flip.once': 'il ne s’ouvre qu’une fois.',
+  'flip.open': 'ouvrir et gratter',
+  'flip.web': 'le lire sur le web',
+  'flip.replySub': 'réponds à {name} avec ton propre mot.',
+  'flip.later': 'plus tard',
 
   // widget
   'widget.none': 'rien à gratter.',

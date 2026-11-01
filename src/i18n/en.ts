@@ -305,6 +305,14 @@ export const en: Record<Key, string> = {
 
   // private links (web-first)
   'flip.opening': 'opening your sweet…',
+  'flip.from': '{name} hid a word for you.',
+  'flip.anon': 'a word hidden for you.',
+  'flip.sub': 'scratch the photo with your finger to read it. then it melts.',
+  'flip.once': 'it opens only once.',
+  'flip.open': 'open and scratch',
+  'flip.web': 'read it on the web',
+  'flip.replySub': 'reply to {name} with a word of your own.',
+  'flip.later': 'later',
 
   // widget
   'widget.none': 'nothing to scratch.',

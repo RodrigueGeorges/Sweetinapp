@@ -340,6 +340,14 @@ export type MineFlip = {
   word_style?: WordStyle | null;
 };
 export const openMine = (token: string) => withRetry(() => call<MineFlip>('open-mine', { token }));
+
+/** Lien partagé /f/<jeton> : aperçu sans rien consommer, puis ouverture (lien privé = une seule fois). */
+export type LinkPeek = { kind: LinkKind; sender: string; mode: Mode; preview: string | null };
+export type LinkOpen = LinkPeek & { created_at: string; photo_url: string; message: string; word_style?: WordStyle | null };
+export const peekLink = (token: string) => withRetry(() => call<LinkPeek>('open-link', { token, peek: true }));
+export const openLink = (token: string) => call<LinkOpen>('open-link', { token });
+export const linkScratched = (token: string, percent: number, duration_ms: number) => call<{ ok: true }>('link-scratched', { token, percent, duration_ms });
+
 export const markScratched = (flip_id: string, percent: number, duration_ms: number) => withRetry(() => call<{ ok: true }>('scratched', { flip_id, percent, duration_ms }));
 export const react = (flip_id: string, reaction: string) => call<{ ok: true }>('scratched', { flip_id, reaction });
 export const reportScreenshot = (flip_id: string) => call<{ ok: true }>('screenshot', { flip_id });
