@@ -3,7 +3,10 @@
     "details": [
       {
         "appIDs": ["TEAMID.app.sweetin.ios"],
-        "components": [{ "/": "/u/*", "comment": "Liens d'invitation Sweetin" }]
+        "components": [
+          { "/": "/u/*", "comment": "Liens d'invitation Sweetin" },
+          { "/": "/f/*", "comment": "Liens privés Sweetin (ouverture native si app installée)" }
+        ]
       }
     ]
   },

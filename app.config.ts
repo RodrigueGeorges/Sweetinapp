@@ -86,6 +86,13 @@ const config: ExpoConfig = {
         data: [{ scheme: 'https', host: LINK_DOMAIN, pathPrefix: '/u/' }],
         category: ['BROWSABLE', 'DEFAULT'],
       },
+      {
+        // lien privé /f/ : natif si l'app est installée (route f/[token].tsx), sinon le web gère
+        action: 'VIEW',
+        autoVerify: true,
+        data: [{ scheme: 'https', host: LINK_DOMAIN, pathPrefix: '/f/' }],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
     ],
   },
   plugins: [
