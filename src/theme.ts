@@ -69,7 +69,7 @@ export const colors = { ...brand, ...ui } as const;
 
 /** Taches sorbet du fond « peps » (Backdrop) : adoucies en sombre, pastel en clair. */
 export const sorbet = isDark
-  ? { base: ['#171114', '#1D1218'], blobs: ['#5A1B30', '#3B3A16', '#1B3049'] }
+  ? { base: ['#171114', '#1D1218'], blobs: ['#7E2547', '#5A5520', '#1F4570'] }
   : { base: ['#FFFFFF', '#FFF3F6'], blobs: ['#FFE6EB', '#F0FFB0', '#D8E9FF'] };
 
 

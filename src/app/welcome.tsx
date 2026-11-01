@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, useAnimatedStyle, useSharedValue, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Logo } from '../components/Logo';
 import { ScratchDemo } from '../components/ScratchDemo';
@@ -43,11 +43,6 @@ export default function Welcome() {
   }, []);
   // le bouton est visible d'emblée : le grattage d'entrée a déjà eu lieu sur le splash,
   // la carte reste un jouet (le libellé du bouton change quand on l'a grattée).
-  const cta = useSharedValue(0);
-  useEffect(() => {
-    cta.value = withSpring(1, { damping: 14, stiffness: 160 });
-  }, [cta]);
-  const ctaStyle = useAnimatedStyle(() => ({ opacity: withTiming(cta.value > 0 ? 1 : 0, { duration: 180 }), transform: [{ translateY: (1 - cta.value) * 18 }, { scale: 0.96 + 0.04 * cta.value }] }));
 
   return (
     <Screen tone="cerise" sorbet>
@@ -89,9 +84,7 @@ export default function Welcome() {
           {t('welcome.sub')}
         </Animated.Text>
         <Animated.View entering={FadeInDown.delay(310).springify()} style={{ gap: 4, marginTop: 14 }}>
-          <Animated.View style={ctaStyle}>
-            <Button label={revealed ? t('welcome.startAfter') : t('welcome.start')} arrow haptic="medium" onPress={() => router.push('/try')} />
-          </Animated.View>
+          <Button label={revealed ? t('welcome.startAfter') : t('welcome.start')} arrow haptic="medium" onPress={() => router.push('/try')} />
           <Pressable onPress={() => router.push({ pathname: '/auth', params: { mode: 'login' } })} accessibilityRole="button" hitSlop={8} style={s.login}>
             <Text style={s.loginT}>{t('welcome.login')}</Text>
           </Pressable>

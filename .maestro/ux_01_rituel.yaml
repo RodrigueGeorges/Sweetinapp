@@ -22,18 +22,34 @@ appId: app.sweetin.android
 - swipe: { start: "10%,79%", end: "90%,81%", duration: 500 }
 - swipe: { start: "25%,15%", end: "25%,85%", duration: 700 }
 - swipe: { start: "75%,85%", end: "75%,15%", duration: 700 }
+# passe de secours si des balayages ont été droppés par l'émulateur (le rideau reste là)
+- runFlow:
+    when:
+      visible: "scratch to get in|gratte pour entrer"
+    commands:
+      - swipe: { start: "15%,20%", end: "85%,45%", duration: 500 }
+      - swipe: { start: "85%,50%", end: "15%,75%", duration: 500 }
+      - swipe: { start: "15%,30%", end: "85%,55%", duration: 500 }
+      - swipe: { start: "85%,60%", end: "15%,85%", duration: 500 }
+      - swipe: { start: "50%,10%", end: "50%,90%", duration: 600 }
+- extendedWaitUntil:
+    notVisible: "scratch to get in|gratte pour entrer"
+    timeout: 30000
 # welcome : la carte démo à gratter + les autocollants + la promesse
 - extendedWaitUntil:
     visible: "scratch the photo with your finger|gratte la photo du doigt"
     timeout: 60000
 - assertVisible: "i’m melting|je fonds"
 - takeScreenshot: ux02_welcome
-# balayage rapide volontaire : teste l'interpolation du grattage
-- swipe: { start: "25%,32%", end: "75%,48%", duration: 150 }
-- swipe: { start: "75%,50%", end: "25%,36%", duration: 150 }
-- swipe: { start: "25%,38%", end: "75%,52%", duration: 150 }
-- swipe: { start: "75%,54%", end: "25%,42%", duration: 150 }
-- swipe: { start: "30%,30%", end: "70%,56%", duration: 150 }
+# balayage rapide volontaire : teste l'interpolation du grattage.
+# la carte démo n'occupe que ~17-45 % de la hauteur : viser dedans, pas tout l'écran.
+- swipe: { start: "20%,20%", end: "80%,23%", duration: 150 }
+- swipe: { start: "80%,26%", end: "20%,29%", duration: 150 }
+- swipe: { start: "20%,32%", end: "80%,35%", duration: 150 }
+- swipe: { start: "80%,38%", end: "20%,41%", duration: 150 }
+- swipe: { start: "20%,44%", end: "80%,46%", duration: 150 }
+- swipe: { start: "35%,18%", end: "35%,45%", duration: 200 }
+- swipe: { start: "65%,45%", end: "65%,18%", duration: 200 }
 # le mot découvert + le bouton qui change de libellé
 - extendedWaitUntil:
     visible: "your turn to hide one|à toi d’en cacher un|à toi d'en cacher un"

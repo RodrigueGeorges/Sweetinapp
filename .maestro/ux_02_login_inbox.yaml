@@ -15,8 +15,31 @@ appId: app.sweetin.android
 - swipe: { start: "90%,55%", end: "10%,57%", duration: 500 }
 - swipe: { start: "10%,63%", end: "90%,65%", duration: 500 }
 - swipe: { start: "90%,71%", end: "10%,73%", duration: 500 }
+- swipe: { start: "10%,79%", end: "90%,81%", duration: 500 }
 - swipe: { start: "25%,15%", end: "25%,85%", duration: 700 }
 - swipe: { start: "75%,85%", end: "75%,15%", duration: 700 }
+# passe de secours si des balayages ont été droppés par l'émulateur (le rideau reste là)
+- runFlow:
+    when:
+      visible: "scratch to get in|gratte pour entrer"
+    commands:
+      - swipe: { start: "15%,20%", end: "85%,45%", duration: 500 }
+      - swipe: { start: "85%,50%", end: "15%,75%", duration: 500 }
+      - swipe: { start: "15%,30%", end: "85%,55%", duration: 500 }
+      - swipe: { start: "85%,60%", end: "15%,85%", duration: 500 }
+      - swipe: { start: "50%,10%", end: "50%,90%", duration: 600 }
+- runFlow:
+    when:
+      visible: "scratch to get in|gratte pour entrer"
+    commands:
+      - swipe: { start: "20%,50%", end: "80%,50%", duration: 400 }
+      - swipe: { start: "80%,55%", end: "20%,55%", duration: 400 }
+      - swipe: { start: "20%,60%", end: "80%,60%", duration: 400 }
+      - swipe: { start: "80%,40%", end: "20%,40%", duration: 400 }
+# le rideau doit être parti : son label d'accessibilité disparaît au démontage
+- extendedWaitUntil:
+    notVisible: "scratch to get in|gratte pour entrer"
+    timeout: 30000
 # welcome (nouvel aiguillage) → « j'ai déjà un compte »
 - extendedWaitUntil:
     visible: "send my first sweet|envoyer mon premier sweet"
@@ -32,6 +55,11 @@ appId: app.sweetin.android
     timeout: 30000
 - tapOn: "email"
 - inputText: ${SMOKE_EMAIL}
+# clavier ouvert : le champ mot de passe passe sous le CTA et sort de l'arbre (removeClippedSubviews) → on scroll jusqu'à lui
+- scrollUntilVisible:
+    element: "password|mot de passe"
+    direction: up
+    timeout: 15000
 - tapOn: "password|mot de passe"
 - inputText: ${SMOKE_PASSWORD}
 - hideKeyboard
