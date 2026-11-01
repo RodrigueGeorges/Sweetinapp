@@ -1,0 +1,33 @@
+# Sous-flow réutilisable — connexion email. Requiert : SMOKE_EMAIL, SMOKE_PW1..8.
+# Attend l'écran welcome (chemin rapide reduced-motion ou rituel déjà passé).
+appId: app.sweetin.android
+---
+- extendedWaitUntil:
+    visible: "send my first sweet|envoyer mon premier sweet"
+    timeout: 90000
+- tapOn: "i already have an account|j’ai déjà un compte|j'ai déjà un compte"
+- extendedWaitUntil:
+    visible: "welcome back.|te revoilà."
+    timeout: 60000
+- tapOn: "use email instead|plutôt avec un email"
+- extendedWaitUntil:
+    visible: "password|mot de passe"
+    timeout: 30000
+- tapOn: "email"
+- inputText: ${SMOKE_EMAIL}
+- hideKeyboard
+- tapOn:
+    point: "50%,60%"
+- inputText: ${SMOKE_PW1}
+- inputText: ${SMOKE_PW2}
+- inputText: ${SMOKE_PW3}
+- inputText: ${SMOKE_PW4}
+- inputText: ${SMOKE_PW5}
+- inputText: ${SMOKE_PW6}
+- inputText: ${SMOKE_PW7}
+- inputText: ${SMOKE_PW8}
+- hideKeyboard
+- tapOn: "let me in|entrer"
+- extendedWaitUntil:
+    visible: "received|reçus"
+    timeout: 90000

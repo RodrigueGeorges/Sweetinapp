@@ -1,0 +1,71 @@
+# Test UX — lire le sweet de bienvenue + répondre + envoyer en lien privé.
+# Variables : SMOKE_EMAIL, SMOKE_PW1..8 (sous-flow _login).
+# ATTENTION : l'écran de lecture a FLAG_SECURE — les captures sont noires PAR DESIGN.
+# Les assertions passent par l'arbre d'accessibilité, pas par les pixels.
+appId: app.sweetin.android
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    when:
+      visible: "Wait"
+    commands:
+      - tapOn: "Wait"
+# login → vitrine reçus
+- runFlow: _login.yaml
+# ---------- ouvrir le sweet de bienvenue (carte ~17-56% de la hauteur) ----------
+- extendedWaitUntil:
+    visible: "scratch.|gratte."
+    timeout: 90000
+- tapOn:
+    point: "50%,38%"
+- extendedWaitUntil:
+    visible: "Scratch the photo to read the word|Gratte la photo pour lire le mot"
+    timeout: 90000
+# ---------- gratter la carte (vrais balayages) ----------
+- swipe: { start: "8%,18%", end: "92%,21%", duration: 500 }
+- swipe: { start: "92%,28%", end: "8%,31%", duration: 500 }
+- swipe: { start: "8%,38%", end: "92%,41%", duration: 500 }
+- swipe: { start: "92%,48%", end: "8%,51%", duration: 500 }
+- swipe: { start: "8%,58%", end: "92%,61%", duration: 500 }
+- swipe: { start: "50%,14%", end: "50%,80%", duration: 700 }
+- runFlow:
+    when:
+      visible: "read without scratching|lire sans gratter"
+    commands:
+      - swipe: { start: "15%,70%", end: "85%,73%", duration: 500 }
+      - swipe: { start: "85%,78%", end: "15%,81%", duration: 500 }
+# révélé : réactions + répondre
+- extendedWaitUntil:
+    visible: "send my first sweet|envoyer mon premier sweet|reply|répondre"
+    timeout: 90000
+# ---------- répondre → caméra ----------
+- tapOn: "send my first sweet|envoyer mon premier sweet|reply|répondre"
+- extendedWaitUntil:
+    visible: "Take photo|Prendre une photo|Take a photo"
+    timeout: 60000
+- tapOn: "Take photo|Prendre une photo|Take a photo"
+# ---------- éditeur : filtres ----------
+- extendedWaitUntil:
+    visible: "original|golden|neon"
+    timeout: 90000
+- tapOn: "golden"
+- tapOn: "Keep the photo and write the word|garder la photo"
+# ---------- le mot ----------
+- extendedWaitUntil:
+    visible: "write your word|écris ton mot"
+    timeout: 60000
+- tapOn: "write your word|écris ton mot"
+- inputText: "coucou"
+- tapOn: "done"
+- tapOn: "choose who|choisis qui"
+# ---------- sendto → lien privé ----------
+- extendedWaitUntil:
+    visible: "private link|lien privé"
+    timeout: 60000
+- tapOn: "private link|lien privé"
+- tapOn: "send the link|envoyer le lien"
+# la feuille de partage s'ouvre avec le vrai lien /f/ Netlify
+- extendedWaitUntil:
+    visible: "sweetinapp.netlify.app/f/|Scratch to read|scratch to read"
+    timeout: 120000
