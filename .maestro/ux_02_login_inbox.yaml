@@ -1,24 +1,33 @@
 # Test UX — connexion email puis vitrine. Variables : SMOKE_EMAIL / SMOKE_PASSWORD.
+# Robuste aux deux modes : animations ON → rituel de grattage ; animations OFF
+# (animator_duration_scale=0) → le splash s'auto-skip (fallback accessibilité).
 appId: app.sweetin.android
 ---
 - launchApp:
     clearState: true
-# premier lancement : il faut gratter le splash (rituel)
-- extendedWaitUntil:
-    visible: "scratch to get in|gratte pour entrer"
-    timeout: 90000
-- swipe: { start: "10%,15%", end: "90%,17%", duration: 500 }
-- swipe: { start: "90%,23%", end: "10%,25%", duration: 500 }
-- swipe: { start: "10%,31%", end: "90%,33%", duration: 500 }
-- swipe: { start: "90%,39%", end: "10%,41%", duration: 500 }
-- swipe: { start: "10%,47%", end: "90%,49%", duration: 500 }
-- swipe: { start: "90%,55%", end: "10%,57%", duration: 500 }
-- swipe: { start: "10%,63%", end: "90%,65%", duration: 500 }
-- swipe: { start: "90%,71%", end: "10%,73%", duration: 500 }
-- swipe: { start: "10%,79%", end: "90%,81%", duration: 500 }
-- swipe: { start: "25%,15%", end: "25%,85%", duration: 700 }
-- swipe: { start: "75%,85%", end: "75%,15%", duration: 700 }
-# passe de secours si des balayages ont été droppés par l'émulateur (le rideau reste là)
+# dialogs ANR système : « Wait » pour continuer (émulateur chargé)
+- runFlow:
+    when:
+      visible: "Wait"
+    commands:
+      - tapOn: "Wait"
+# rituel de grattage — seulement si le rideau est là
+- runFlow:
+    when:
+      visible: "scratch to get in|gratte pour entrer"
+    commands:
+      - swipe: { start: "10%,15%", end: "90%,17%", duration: 500 }
+      - swipe: { start: "90%,23%", end: "10%,25%", duration: 500 }
+      - swipe: { start: "10%,31%", end: "90%,33%", duration: 500 }
+      - swipe: { start: "90%,39%", end: "10%,41%", duration: 500 }
+      - swipe: { start: "10%,47%", end: "90%,49%", duration: 500 }
+      - swipe: { start: "90%,55%", end: "10%,57%", duration: 500 }
+      - swipe: { start: "10%,63%", end: "90%,65%", duration: 500 }
+      - swipe: { start: "90%,71%", end: "10%,73%", duration: 500 }
+      - swipe: { start: "10%,79%", end: "90%,81%", duration: 500 }
+      - swipe: { start: "25%,15%", end: "25%,85%", duration: 700 }
+      - swipe: { start: "75%,85%", end: "75%,15%", duration: 700 }
+# passe de secours si des balayages ont été droppés par l'émulateur
 - runFlow:
     when:
       visible: "scratch to get in|gratte pour entrer"
@@ -39,15 +48,15 @@ appId: app.sweetin.android
 # le rideau doit être parti : son label d'accessibilité disparaît au démontage
 - extendedWaitUntil:
     notVisible: "scratch to get in|gratte pour entrer"
-    timeout: 30000
+    timeout: 120000
 # welcome (nouvel aiguillage) → « j'ai déjà un compte »
 - extendedWaitUntil:
     visible: "send my first sweet|envoyer mon premier sweet"
-    timeout: 60000
+    timeout: 90000
 - tapOn: "i already have an account|j’ai déjà un compte|j'ai déjà un compte"
 - extendedWaitUntil:
     visible: "welcome back.|te revoilà."
-    timeout: 30000
+    timeout: 60000
 - takeScreenshot: ux04_auth
 - tapOn: "use email instead|plutôt avec un email"
 - extendedWaitUntil:
@@ -55,19 +64,29 @@ appId: app.sweetin.android
     timeout: 30000
 - tapOn: "email"
 - inputText: ${SMOKE_EMAIL}
-# clavier ouvert : le champ mot de passe passe sous le CTA et sort de l'arbre (removeClippedSubviews) → on scroll jusqu'à lui
-- scrollUntilVisible:
-    element: "password|mot de passe"
-    direction: up
-    timeout: 15000
-- tapOn: "password|mot de passe"
-- inputText: ${SMOKE_PASSWORD}
+# clavier fermé → le formulaire reprend sa place (la boîte mot de passe passe sous le CTA
+# quand le clavier est ouvert et sort de l'arbre a11y — removeClippedSubviews)
+- hideKeyboard
+# tap par point : "password" matche aussi le label et "forgot password?" — la boîte
+# EditText est à ~57-63% de la hauteur quand le clavier est fermé
+- tapOn:
+    point: "50%,60%"
+# saisie découpée : chaque caractère met ~10s sur cet émulateur — 44 car. d'un coup
+# dépassent la deadline gRPC (120s). Chaque chunk a son propre budget.
+- inputText: ${SMOKE_PW1}
+- inputText: ${SMOKE_PW2}
+- inputText: ${SMOKE_PW3}
+- inputText: ${SMOKE_PW4}
+- inputText: ${SMOKE_PW5}
+- inputText: ${SMOKE_PW6}
+- inputText: ${SMOKE_PW7}
+- inputText: ${SMOKE_PW8}
 - hideKeyboard
 - tapOn: "let me in|entrer"
 # la vitrine : pastilles reçus/envoyés + déclencheur
 - extendedWaitUntil:
     visible: "received|reçus"
-    timeout: 60000
+    timeout: 90000
 - assertVisible: "sent|envoyés"
 - takeScreenshot: ux05_inbox
 # onglet envoyés : historique + liens/stories

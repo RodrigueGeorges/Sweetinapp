@@ -1,0 +1,21 @@
+# Test UX — reprise : app sur l'écran auth, email rempli, clavier fermé.
+# La boîte EditText du mot de passe est à ~57-63% de la hauteur.
+appId: app.sweetin.android
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "welcome back.|te revoilà."
+    timeout: 60000
+- tapOn:
+    point: "50%,60%"
+- inputText: ${SMOKE_PASSWORD}
+- hideKeyboard
+- tapOn: "let me in|entrer"
+# vitrine : reçus/envoyés
+- extendedWaitUntil:
+    visible: "received|reçus"
+    timeout: 90000
+- assertVisible: "sent|envoyés"
+- takeScreenshot: ux05_inbox
+- tapOn: "sent|envoyés"
+- takeScreenshot: ux06_sent
